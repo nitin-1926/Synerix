@@ -1,11 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Transition from '../utils/Transition';
 
-// import FeaturesBg from '../images/features-bg.png';
-// import FeaturesElement from '../images/features-element.png';
-// import Mentor from '../images/AVATARZ - Tomas.png';
-// import OneOnOne from '../images/0275.png'
-// import session from '../images/Working from Home.png'
+import OneOnOne from '../images/0275.png';
+import Mentor from '../images/AVATARZ - Tomas.png';
+import session from '../images/Working from Home.png';
+
 function Features() {
 
   const [tab, setTab] = useState(1);
@@ -36,7 +35,7 @@ function Features() {
           {/* Section header */}
           <div className="max-w-3xl mx-auto text-center pb-12 md:pb-16">
             <h1 className="h2 mb-4">What can we bring for you?</h1>
-            <p className="text-xl text-gray-600">I am Monkster, a team of people that does expert management for you. I provide a team of mentors and interviewers to fix the workflow for experts of your company.</p>
+            <p className="text-xl text-gray-600">At  Pinata , we understand the unique challenges that an enterprise  faces in today's competitive business landscape. Whether you are just starting your business or looking to expand, our experienced team of consultants is here to provide you with tailored solutions that drive growth, improve efficiency, and maximize profitability.</p>
           </div>
 
           {/* Section content */}
@@ -45,19 +44,19 @@ function Features() {
             {/* Content */}
             <div className="max-w-xl md:max-w-none md:w-full mx-auto md:col-span-7 lg:col-span-6 md:mt-6" data-aos="fade-right">
               <div className="md:pr-4 lg:pr-12 xl:pr-16 mb-8">
-                <h3 className="h3 mb-3">Powerful workflow of monks</h3>
-                <p className="text-xl text-gray-600">Monkster Provides you with a team of experts to coach your students while they're attending your course. The expert team is composed of experienced and talented mentors who are available <strong style={{color:'#000000'}}>at all times!</strong></p>
+                <h3 className="h3 mb-3">Why Choose Us?</h3>
+                <p className="text-md text-gray-600">Partnering with us offers the advantage of our deep local expertise in the Indian market. We understand the cultural, economic, and regulatory intricacies, ensuring our strategies align with your business needs. Pinata stays current on industry trends and government policies, providing precise and timely advice for a competitive edge.</p>
               </div>
               {/* Tabs buttons */}
               <div className="mb-8 md:mb-0">
                 <a
-                  className={`flex items-center text-lg p-5 rounded border transition duration-300 ease-in-out mb-3 ${tab !== 1 ? 'bg-white shadow-md border-gray-200 hover:shadow-lg' : 'bg-gray-200 border-transparent'}`}
+                  className={`flex items-center text-base p-5 rounded border transition duration-300 ease-in-out mb-3 ${tab !== 1 ? 'bg-white shadow-md border-gray-200 hover:shadow-lg' : 'bg-gray-200 border-transparent'}`}
                   href="#0"
                   onClick={(e) => { e.preventDefault(); setTab(1); }}
                 >
                   <div>
-                    <div className="font-bold leading-snug tracking-tight mb-1">One-on-One Mentoring Sessions</div>
-                    <div className="text-gray-600">Get access to seasoned mentors from different backgrounds, worked in big tech firms, mentored 100+ students.</div>
+                    <div className="font-bold leading-snug tracking-tight mb-1">Experience:</div>
+                    <div className="text-gray-600 text-sm">We possess extensive experience across various industries, allowing us to offer tailor-made solutions that cater to your specific business needs.</div>
                   </div>
                   <div className="flex justify-center items-center w-8 h-8 bg-white rounded-full shadow flex-shrink-0 ml-3">
                     <svg className="w-3 h-3 fill-current" viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg">
@@ -66,13 +65,13 @@ function Features() {
                   </div>
                 </a>
                 <a
-                  className={`flex items-center text-lg p-5 rounded border transition duration-300 ease-in-out mb-3 ${tab !== 2 ? 'bg-white shadow-md border-gray-200 hover:shadow-lg' : 'bg-gray-200 border-transparent'}`}
+                  className={`flex items-center text-base p-5 rounded border transition duration-300 ease-in-out mb-3 ${tab !== 2 ? 'bg-white shadow-md border-gray-200 hover:shadow-lg' : 'bg-gray-200 border-transparent'}`}
                   href="#0"
                   onClick={(e) => { e.preventDefault(); setTab(2); }}
                 >
                   <div>
-                    <div className="font-bold leading-snug tracking-tight mb-1">Mock interviews</div>
-                    <div className="text-gray-600">Experienced Mock Interviewers who know the ins and outs of interviewing for all tech stacks.</div>
+                    <div className="font-bold leading-snug tracking-tight mb-1">Holistic Approach:</div>
+                    <div className="text-gray-600 text-sm">We prioritize understanding your unique circumstances and goals to develop comprehensive strategies.</div>
                   </div>
                   <div className="flex justify-center items-center w-8 h-8 bg-white rounded-full shadow flex-shrink-0 ml-3">
                     <svg className="w-3 h-3 fill-current" viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg">
@@ -81,13 +80,28 @@ function Features() {
                   </div>
                 </a>
                 <a
-                  className={`flex items-center text-lg p-5 rounded border transition duration-300 ease-in-out mb-3 ${tab !== 3 ? 'bg-white shadow-md border-gray-200 hover:shadow-lg' : 'bg-gray-200 border-transparent'}`}
+                  className={`flex items-center text-base p-5 rounded border transition duration-300 ease-in-out mb-3 ${tab !== 3 ? 'bg-white shadow-md border-gray-200 hover:shadow-lg' : 'bg-gray-200 border-transparent'}`}
                   href="#0"
                   onClick={(e) => { e.preventDefault(); setTab(3); }}
                 >
                   <div>
-                    <div className="font-bold leading-snug tracking-tight mb-1">Personalised training sessions</div>
-                    <div className="text-gray-600">On-demand personalised and bespoke training sessions and bootcamps, across a full spectrum of tech stacks.</div>
+                    <div className="font-bold leading-snug tracking-tight mb-1">Results-Driven: </div>
+                    <div className="text-gray-600 text-sm">We are committed to achieving tangible and measurable results. Our consultants will work with you every step of the way to ensure the successful implementation of our recommendations.</div>
+                  </div>
+                  <div className="flex justify-center items-center w-8 h-8 bg-white rounded-full shadow flex-shrink-0 ml-3">
+                    <svg className="w-3 h-3 fill-current" viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M11.334 8.06a.5.5 0 00-.421-.237 6.023 6.023 0 01-5.905-6c0-.41.042-.82.125-1.221a.5.5 0 00-.614-.586 6 6 0 106.832 8.529.5.5 0 00-.017-.485z" fill="#191919" fillRule="nonzero" />
+                    </svg>
+                  </div>
+                </a>
+                <a
+                  className={`flex items-center text-base p-5 rounded border transition duration-300 ease-in-out mb-3 ${tab !== 4 ? 'bg-white shadow-md border-gray-200 hover:shadow-lg' : 'bg-gray-200 border-transparent'}`}
+                  href="#0"
+                  onClick={(e) => { e.preventDefault(); setTab(4); }}
+                >
+                  <div>
+                    <div className="font-bold leading-snug tracking-tight mb-1">Long-term Partnership: </div>
+                    <div className="text-gray-600 text-sm">We view our relationship with clients as a long-term partnership. We will be there to support you not only during the initial consulting process but also as your business continues to grow and evolve.</div>
                   </div>
                   <div className="flex justify-center items-center w-8 h-8 bg-white rounded-full shadow flex-shrink-0 ml-3">
                     <svg className="w-3 h-3 fill-current" viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg">
@@ -149,6 +163,23 @@ function Features() {
                 >
                   <div className="relative inline-flex flex-col">
                     <img className="relative md:max-w-none mx-auto rounded" src={session} width="800" height="562" alt="Features bg" />
+                    {/* <img className="md:max-w-none absolute w-full left-0 transform animate-float" src={FeaturesElement} width="500" height="44" alt="Element" style={{ top: '30%' }} /> */}
+                  </div>
+                </Transition>
+                {/* Item 4 */}
+                <Transition
+                  show={tab === 4}
+                  appear={true}
+                  className="w-full"
+                  enter="transition ease-in-out duration-700 transform order-first"
+                  enterStart="opacity-0 translate-y-16"
+                  enterEnd="opacity-100 translate-y-0"
+                  leave="transition ease-in-out duration-300 transform absolute"
+                  leaveStart="opacity-100 translate-y-0"
+                  leaveEnd="opacity-0 -translate-y-16"
+                >
+                  <div className="relative inline-flex flex-col">
+                    <img className="relative md:max-w-none mx-auto rounded" src={Mentor} width="800" height="562" alt="Features bg" />
                     {/* <img className="md:max-w-none absolute w-full left-0 transform animate-float" src={FeaturesElement} width="500" height="44" alt="Element" style={{ top: '30%' }} /> */}
                   </div>
                 </Transition>
