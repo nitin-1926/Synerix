@@ -5,26 +5,25 @@ function Newsletter() {
   const [email,setEmail] = useState('');
   const [emailSent, setEmailSent] = useState(false);
   function sendEmail(e) {
-    if (email.trim() === '' ) {
- return;
+    if (email.trim() === '') {
+      return;
     }
     e.preventDefault();   
     setEmailSent(true);
     var templateParams = {
-      to_name: 'Monkster',
+      to_name: 'Pinata',
       from_name: email
   };
 
-  
-   
   emailjs.send('service_pvhk1dk', 'template_z32oftj', templateParams, 'cP7kxt5F88IIaqTgE')
       .then(function(response) {
-         console.log('SUCCESS!', response.status, response.text);
+        console.log('SUCCESS!', response.status, response.text);
       }, function(error) {
-         console.log('FAILED...', error);
+        console.log('FAILED...', error);
       });
       setEmail('');
   }
+
   return (
     <section>
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
@@ -63,14 +62,14 @@ function Newsletter() {
 
               {/* CTA content */}
               <div className="text-center lg:text-left lg:max-w-xl">
-                <h3 className="h3 text-white mb-2">Unleash the power with Monkster</h3>
-                <p className="text-gray-300 text-lg mb-6">Do you want your students to reach their goals in a faster and better way? Want to get in touch and crack the code?</p>
+                <h3 className="h3 text-white mb-2">Unleash the power of your Business</h3>
+                <p className="text-gray-300 text-lg mb-6">To learn more about how our Pinata Business Consulting services can benefit your organization, please feel free to reach out to us via email or phone. Our team is eagerly waiting to embark on this journey with you and help your MSME thrive in today's competitive market.</p>
 
                 {/* CTA form */}
                 <form className="w-full lg:w-auto">
                   <div className="flex flex-col sm:flex-row justify-start max-w-xs mx-auto sm:max-w-md lg:mx-0">
-                   {!emailSent && <input type="email" className="form-input w-full appearance-none bg-gray-800 border border-gray-700 focus:border-gray-600 rounded-sm px-4 py-3 mb-2 sm:mb-0 sm:mr-2 text-white placeholder-gray-500" placeholder="Your email…" aria-label="Your email…" onChange={(e) => setEmail(e.target.value)} />}
-                    <a className="btn text-white bg-orange-600 hover:bg-orange-500 shadow" href="#0"  onClick={sendEmail}>{ !emailSent ? 'Connect' : 'We will reach you back!' }</a>
+                    {!emailSent && <input type="email" className="form-input w-full appearance-none bg-gray-800 border border-gray-700 focus:border-gray-600 rounded-sm px-4 py-3 mb-2 sm:mb-0 sm:mr-2 text-white placeholder-gray-500" placeholder="Your email…" aria-label="Your email…" onChange={(e) => setEmail(e.target.value)} />}
+                    <a className="btn text-white bg-orange-600 hover:bg-orange-500 shadow" href="#0" onClick={sendEmail}>{ !emailSent ? 'Connect' : 'We will reach you back!' }</a>
                   </div>
                   {/* Success message */}
                   {/* <p className="text-sm text-gray-400 mt-3">Thanks for subscribing!</p> */}

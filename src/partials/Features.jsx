@@ -35,7 +35,7 @@ function Features() {
           {/* Section header */}
           <div className="max-w-3xl mx-auto text-center pb-12 md:pb-16">
             <h1 className="h2 mb-4">What can we bring for you?</h1>
-            <p className="text-xl text-gray-600">At  Pinata , we understand the unique challenges that an enterprise  faces in today's competitive business landscape. Whether you are just starting your business or looking to expand, our experienced team of consultants is here to provide you with tailored solutions that drive growth, improve efficiency, and maximize profitability.</p>
+            <p className="text-xl text-gray-600">At  Pinata, we understand the unique challenges that an enterprise faces in today's competitive business landscape. Whether you are just starting your business or looking to expand, our experienced team of consultants is here to provide you with tailored solutions that drive growth, improve efficiency, and maximize profitability.</p>
           </div>
 
           {/* Section content */}
