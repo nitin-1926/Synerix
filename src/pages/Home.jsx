@@ -8,6 +8,7 @@ import Testimonials from '../partials/Testimonials';
 import Newsletter from '../partials/Newsletter';
 import Footer from '../partials/Footer';
 import Banner from '../partials/Banner';
+import Expert from '../partials/Expert';
 
 function Home() {
   return (
@@ -23,6 +24,7 @@ function Home() {
         <HeroHome />
         <FeaturesHome />
         <FeaturesBlocks />
+        {/* <Expert /> */}
         <Testimonials />
         <Newsletter />
 

@@ -4,6 +4,7 @@ import Transition from '../utils/Transition';
 import OneOnOne from '../images/0275.png';
 import Mentor from '../images/AVATARZ - Tomas.png';
 import session from '../images/Working from Home.png';
+import Money from '../images/35.png';
 
 function Features() {
 
@@ -162,7 +163,7 @@ function Features() {
                   leaveEnd="opacity-0 -translate-y-16"
                 >
                   <div className="relative inline-flex flex-col">
-                    <img className="relative md:max-w-none mx-auto rounded" src={session} width="800" height="562" alt="Features bg" />
+                    <img className="relative md:max-w-none mx-auto rounded" src={Money} width="800" height="562" alt="Features bg" />
                     {/* <img className="md:max-w-none absolute w-full left-0 transform animate-float" src={FeaturesElement} width="500" height="44" alt="Element" style={{ top: '30%' }} /> */}
                   </div>
                 </Transition>
@@ -179,7 +180,7 @@ function Features() {
                   leaveEnd="opacity-0 -translate-y-16"
                 >
                   <div className="relative inline-flex flex-col">
-                    <img className="relative md:max-w-none mx-auto rounded" src={Mentor} width="800" height="562" alt="Features bg" />
+                    <img className="relative md:max-w-none mx-auto rounded" src={session} width="800" height="562" alt="Features bg" />
                     {/* <img className="md:max-w-none absolute w-full left-0 transform animate-float" src={FeaturesElement} width="500" height="44" alt="Element" style={{ top: '30%' }} /> */}
                   </div>
                 </Transition>

@@ -6,7 +6,7 @@ import React from 'react';
 // import Geeky from '../images/geeky.png'
 // import Rocketium from '../images/rocketium.png'
 
-import Mentor from '../images/AVATARZ - Tomas.png';
+import Professional from '../images/0017.png';
 
 function Testimonials() {
   return (
@@ -40,7 +40,7 @@ function Testimonials() {
 
           {/* Items */}
           <div className="max-w-sm md:max-w-4xl mx-auto grid gap-2">
-          <img className="relative md:max-w-none mx-auto rounded" src={Mentor} width="800" height="562" alt="Features bg" />
+            <img className="relative md:max-w-none mx-auto rounded" src={Professional} width="800" height="562" alt="Features bg" />
 
             {/* Item */}
             {/* <div className="flex items-center justify-center py-2 col-span-2 md:col-auto">
