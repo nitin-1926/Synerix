@@ -70,7 +70,7 @@ function FeaturesBlocks() {
                   </g>
                 </svg>
               </center>
-              <h4 className="text-lg font-bold leading-snug tracking-tight mb-1">Ops & Process Improvement 🔄</h4>
+              <h4 className="text-lg font-bold leading-snug tracking-tight mb-1">OPS & Process Improvement 🔄</h4>
               <p className="text-gray-600 text-md">Efficiency is the key to sustained growth. Our consultants specialize in identifying bottlenecks and streamlining processes to enhance productivity and reduce costs. By analyzing your operations and implementing best practices, we empower your business to deliver exceptional products or services. We transform challenges into opportunities, ensuring your operations are finely tuned for success.</p>
             </div>
 
