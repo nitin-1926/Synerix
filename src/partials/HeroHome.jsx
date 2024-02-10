@@ -34,8 +34,7 @@ function HeroHome() {
 
           {/* Section header */}
           <div className="text-center pb-12 md:pb-16">
-            <h1 className="text-5xl md:text-6xl font-extrabold leading-tighter tracking-tighter mb-4" data-aos="zoom-y-out">Maximize Your <span style={{background: '#7E120A',
-background: 'linear-gradient(to right, #7E120A 0%, #EB6440 100%)',
+            <h1 className="text-5xl md:text-6xl font-extrabold leading-tighter tracking-tighter mb-4" data-aos="zoom-y-out">Maximize Your <span style={{background: 'linear-gradient(to right, #7E120A 0%, #EB6440 100%)',
 '-webkit-background-clip': 'text',
 '-webkit-text-fill-color': 'transparent',
 }}>Business Potential</span></h1>
