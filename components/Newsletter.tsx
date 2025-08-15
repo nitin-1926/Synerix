@@ -4,13 +4,14 @@ import { useState } from 'react';
 function Newsletter() {
 	const [email, setEmail] = useState('');
 	const [emailSent, setEmailSent] = useState(false);
+
 	function sendEmail(e) {
 		if (email.trim() === '') {
 			return;
 		}
 		e.preventDefault();
 		setEmailSent(true);
-		var templateParams = {
+		const templateParams = {
 			to_name: 'Synerix',
 			from_name: email,
 		};
