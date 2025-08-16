@@ -9,40 +9,40 @@ module.exports = {
 		extend: {
 			colors: {
 				primary: {
-					50: '#F0F7FF',
-					100: '#E6F0FD',
-					200: '#CCE2FC',
-					300: '#99C5FA',
-					400: '#66A9F7',
-					500: '#3B82F6', // Main primary color
-					600: '#2563EB',
-					700: '#1D4ED8',
-					800: '#1E40AF',
-					900: '#1E3A8A',
+					50: '#E6F2FF',
+					100: '#CCE5FF',
+					200: '#99CBFF',
+					300: '#66B1FF',
+					400: '#3397FF',
+					500: '#007E97', // Main primary color (darker teal from logo)
+					600: '#006785', // Another logo color
+					700: '#005570',
+					800: '#00445A',
+					900: '#002070', // Darkest logo color
 				},
 				secondary: {
-					50: '#ECFDF5',
-					100: '#D1FAE5',
-					200: '#A7F3D0',
-					300: '#6EE7B7',
-					400: '#34D399',
-					500: '#10B981', // Main secondary color
-					600: '#059669',
-					700: '#047857',
-					800: '#065F46',
-					900: '#064E3B',
+					50: '#E6FEFE',
+					100: '#CCFDFD',
+					200: '#99FBFB',
+					300: '#66F9F9',
+					400: '#33F7F7',
+					500: '#00C6C9', // Bright cyan from logo
+					600: '#00B3B6',
+					700: '#009FA2',
+					800: '#008C8F',
+					900: '#016D8A', // Medium teal-blue from logo
 				},
 				accent: {
-					50: '#FFF7ED',
-					100: '#FFEDD5',
-					200: '#FED7AA',
-					300: '#FDBA74',
-					400: '#FB923C',
-					500: '#F97316', // Main accent color
-					600: '#EA580C',
-					700: '#C2410C',
-					800: '#9A3412',
-					900: '#7C2D12',
+					50: '#E6F9FA',
+					100: '#CCF3F5',
+					200: '#99E7EB',
+					300: '#66DBE1',
+					400: '#33CFD7',
+					500: '#00C6C9', // Bright cyan (same as secondary-500 for cohesion)
+					600: '#00B3B6',
+					700: '#009FA2',
+					800: '#008C8F',
+					900: '#007E97', // Teal from logo
 				},
 				gray: {
 					50: '#F9FAFB',

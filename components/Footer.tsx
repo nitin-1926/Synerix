@@ -30,7 +30,7 @@ const Footer: React.FC = () => {
 					{/* Copyrights note */}
 					<div className="text-sm text-gray-600 mr-4">
 						Made by{' '}
-						<a className="text-orange-600 hover:underline" href="/">
+						<a className="text-primary-600 hover:underline" href="/">
 							Synerix
 						</a>
 						. All rights reserved.

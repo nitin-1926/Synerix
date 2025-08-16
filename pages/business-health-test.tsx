@@ -158,7 +158,7 @@ const BusinessHealthTest: React.FC = () => {
 	// Congratulations Screen
 	if (showCongratulations) {
 		return (
-			<div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 flex flex-col">
+			<div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-secondary-50 flex flex-col">
 				{/* Header */}
 				<Header />
 
@@ -185,9 +185,9 @@ const BusinessHealthTest: React.FC = () => {
 						<div className="text-center space-y-6 sm:space-y-8 animate-fade-in">
 							{/* Success Icon */}
 							<div className="relative">
-								<div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto animate-scale-in">
+								<div className="w-20 h-20 bg-secondary-100 rounded-full flex items-center justify-center mx-auto animate-scale-in">
 									<svg
-										className="w-10 h-10 text-green-600"
+										className="w-10 h-10 text-secondary-600"
 										fill="none"
 										stroke="currentColor"
 										viewBox="0 0 24 24"
@@ -200,7 +200,7 @@ const BusinessHealthTest: React.FC = () => {
 										/>
 									</svg>
 								</div>
-								<div className="absolute inset-0 w-20 h-20 border-4 border-green-200 rounded-full mx-auto animate-ping"></div>
+								<div className="absolute inset-0 w-20 h-20 border-4 border-secondary-200 rounded-full mx-auto animate-ping"></div>
 							</div>
 
 							{/* Congratulations Text */}
@@ -220,7 +220,7 @@ const BusinessHealthTest: React.FC = () => {
 									</p>
 									<button
 										onClick={handleFinishTest}
-										className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-4 px-6 rounded-xl font-semibold hover:from-blue-700 hover:to-blue-800 transform hover:scale-105 transition-all duration-200 shadow-lg"
+										className="w-full bg-gradient-to-r from-primary-500 to-secondary-500 text-white py-4 px-6 rounded-xl font-semibold hover:from-primary-600 hover:to-secondary-600 transform hover:scale-105 transition-all duration-200 shadow-lg"
 									>
 										Get My Detailed Report
 									</button>
@@ -234,7 +234,7 @@ const BusinessHealthTest: React.FC = () => {
 										<input
 											type="email"
 											id="email"
-											className="w-full px-4 py-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg"
+											className="w-full px-4 py-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent text-lg"
 											placeholder="your.email@example.com"
 											value={userInfo.email || ''}
 											onChange={e => setUserInfo(prev => ({ ...prev, email: e.target.value }))}
@@ -244,7 +244,7 @@ const BusinessHealthTest: React.FC = () => {
 									<button
 										onClick={handleEmailSubmit}
 										disabled={isSubmitting || !userInfo.email?.trim()}
-										className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-4 px-6 rounded-xl font-semibold hover:from-blue-700 hover:to-blue-800 transform hover:scale-105 transition-all duration-200 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+										className="w-full bg-gradient-to-r from-primary-500 to-secondary-500 text-white py-4 px-6 rounded-xl font-semibold hover:from-primary-600 hover:to-secondary-600 transform hover:scale-105 transition-all duration-200 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
 									>
 										{isSubmitting ? (
 											<div className="flex items-center justify-center">
@@ -311,7 +311,7 @@ const BusinessHealthTest: React.FC = () => {
 		currentStep >= 3 ? answers.find(a => a.questionId === businessDiagnosticQuestions[currentStep - 3]?.id) : null;
 
 	return (
-		<div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 flex flex-col">
+		<div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-primary-50 flex flex-col">
 			{/* Header */}
 			<Header />
 
@@ -319,7 +319,7 @@ const BusinessHealthTest: React.FC = () => {
 			<div className="fixed top-16 md:top-20 left-0 right-0 z-50">
 				<div className="h-1 bg-gray-200">
 					<div
-						className="h-full bg-gradient-to-r from-blue-500 to-green-500 transition-all duration-500 ease-out"
+						className="h-full bg-gradient-to-r from-primary-500 to-secondary-500 transition-all duration-500 ease-out"
 						style={{ width: `${progress}%` }}
 					></div>
 				</div>
@@ -350,7 +350,7 @@ const BusinessHealthTest: React.FC = () => {
 						{/* Question Header */}
 						<div className="text-center mb-8 space-y-3">
 							{currentQuestion.category && (
-								<div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+								<div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-primary-100 text-primary-800">
 									{currentQuestion.category}
 								</div>
 							)}
@@ -366,7 +366,7 @@ const BusinessHealthTest: React.FC = () => {
 								<div className="px-2">
 									<input
 										type="text"
-										className="w-full px-4 py-4 text-base sm:text-lg border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-0 transition-colors duration-200 bg-white"
+										className="w-full px-4 py-4 text-base sm:text-lg border-2 border-gray-200 rounded-xl focus:border-primary-500 focus:ring-0 transition-colors duration-200 bg-white"
 										placeholder={currentQuestion.placeholder}
 										value={inputValue}
 										onChange={e => handleInputChange(e.target.value)}
@@ -380,7 +380,7 @@ const BusinessHealthTest: React.FC = () => {
 								<div className="px-2">
 									<textarea
 										rows={4}
-										className="w-full px-4 py-4 text-base sm:text-lg border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-0 transition-colors duration-200 resize-none bg-white"
+										className="w-full px-4 py-4 text-base sm:text-lg border-2 border-gray-200 rounded-xl focus:border-primary-500 focus:ring-0 transition-colors duration-200 resize-none bg-white"
 										placeholder={currentQuestion.placeholder}
 										value={inputValue}
 										onChange={e => handleInputChange(e.target.value)}
@@ -407,7 +407,7 @@ const BusinessHealthTest: React.FC = () => {
 											}
 											className={`w-full p-4 sm:p-5 text-left border-2 rounded-xl transition-all duration-200 hover:shadow-md group animate-stagger-in ${
 												selectedAnswer?.optionId === option.id
-													? 'border-blue-500 bg-blue-50 shadow-md'
+													? 'border-primary-500 bg-primary-50 shadow-md'
 													: 'border-gray-200 hover:border-gray-300'
 											}`}
 											style={{ animationDelay: `${index * 150}ms` }}
@@ -416,12 +416,12 @@ const BusinessHealthTest: React.FC = () => {
 												<div
 													className={`w-5 h-5 rounded-full border-2 mt-0.5 mr-3 sm:mr-4 flex-shrink-0 ${
 														selectedAnswer?.optionId === option.id
-															? 'border-blue-500 bg-blue-500'
+															? 'border-primary-500 bg-primary-500'
 															: 'border-gray-300 group-hover:border-gray-400'
 													}`}
 												>
 													{selectedAnswer?.optionId === option.id && (
-														<div className="w-full h-full rounded-full bg-blue-500 flex items-center justify-center">
+														<div className="w-full h-full rounded-full bg-primary-500 flex items-center justify-center">
 															<div className="w-2 h-2 rounded-full bg-white"></div>
 														</div>
 													)}
@@ -465,7 +465,7 @@ const BusinessHealthTest: React.FC = () => {
 								<button
 									onClick={handleNext}
 									disabled={!canProceed()}
-									className="flex items-center px-6 sm:px-8 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 transition-all duration-200 shadow-lg text-sm sm:text-base"
+									className="flex items-center px-6 sm:px-8 py-3 bg-gradient-to-r from-primary-500 to-secondary-500 text-white rounded-xl font-semibold hover:from-primary-600 hover:to-secondary-600 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 transition-all duration-200 shadow-lg text-sm sm:text-base"
 								>
 									{currentStep === totalSteps - 1 ? 'Complete' : 'Continue'}
 									<svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

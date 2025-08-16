@@ -36,7 +36,7 @@ const HeroHome: React.FC = () => {
 							<span
 								style={
 									{
-										background: 'linear-gradient(to right, #7E120A 0%, #EB6440 100%)',
+										background: 'linear-gradient(to right, #002070 0%, #016D8A 50%, #00C6C9 100%)',
 										WebkitBackgroundClip: 'text',
 										WebkitTextFillColor: 'transparent',
 									} as React.CSSProperties
@@ -56,7 +56,7 @@ const HeroHome: React.FC = () => {
 							>
 								<div>
 									<a
-										className="btn text-white bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 w-full mb-4 sm:w-auto sm:mb-0 shadow-lg"
+										className="btn text-white bg-gradient-to-r from-primary-500 to-secondary-500 hover:from-primary-600 hover:to-secondary-600 w-full mb-4 sm:w-auto sm:mb-0 shadow-lg"
 										href="/business-health-test"
 									>
 										Take Free Business Health Test
@@ -64,7 +64,7 @@ const HeroHome: React.FC = () => {
 								</div>
 								<div>
 									<a
-										className="btn text-primary-600 bg-white border-2 border-primary-600 hover:bg-primary-50 w-full sm:w-auto sm:ml-4 shadow-lg"
+										className="btn text-primary-500 bg-white border-2 border-primary-500 hover:bg-primary-50 w-full sm:w-auto sm:ml-4 shadow-lg"
 										href="#services"
 									>
 										Learn More

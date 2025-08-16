@@ -45,10 +45,30 @@ const Header: React.FC = () => {
 						</Link>
 					</div>
 					<div className="flex flex-col items-center justify-center">
-						<div className="text-2xl" style={{ fontFamily: 'Fredoka One', color: '#002B5C' }}>
+						<div
+							className="text-2xl text-primary-900"
+							style={{
+								fontFamily: 'Fredoka One',
+								background:
+									'linear-gradient(to right, #002070 0%, #016D8A 20%, #00C6C9 40%, #007E97 60%, #006785 100%)',
+								WebkitBackgroundClip: 'text',
+								WebkitTextFillColor: 'transparent',
+								backgroundClip: 'text',
+							}}
+						>
 							S Y N E R I X
 						</div>
-						<div className="text-sm mt-[-10px]" style={{ fontFamily: 'Fredoka One', color: '#002B5C' }}>
+						<div
+							className="text-sm mt-[-10px] text-primary-900"
+							style={{
+								fontFamily: 'Fredoka One',
+								background:
+									'linear-gradient(to right, #002070 0%, #016D8A 20%, #00C6C9 40%, #007E97 60%, #006785 100%)',
+								WebkitBackgroundClip: 'text',
+								WebkitTextFillColor: 'transparent',
+								backgroundClip: 'text',
+							}}
+						>
 							Synergy For Vertex
 						</div>
 					</div>

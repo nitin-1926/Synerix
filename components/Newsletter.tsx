@@ -85,7 +85,7 @@ function Newsletter() {
 								{/* Business Health Test CTA */}
 								<div className="mb-6 p-4 bg-white bg-opacity-10 rounded-lg backdrop-blur-sm border border-white border-opacity-20">
 									<div className="flex items-center mb-3">
-										<div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center mr-3">
+										<div className="w-8 h-8 bg-secondary-500 rounded-full flex items-center justify-center mr-3">
 											<svg
 												className="w-4 h-4 text-white"
 												fill="none"
@@ -147,7 +147,7 @@ function Newsletter() {
 											/>
 										)}
 										<a
-											className="btn text-white bg-orange-600 hover:bg-orange-500 shadow"
+											className="btn text-white bg-gradient-to-r from-primary-500 to-secondary-500 hover:from-primary-600 hover:to-secondary-600 shadow"
 											href="#0"
 											onClick={sendEmail}
 										>
