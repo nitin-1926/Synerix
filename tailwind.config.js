@@ -136,6 +136,7 @@ module.exports = {
 				'slide-up': 'slideUp 0.5s ease-out',
 				'slide-down': 'slideDown 0.5s ease-out',
 				'bounce-light': 'bounceLight 1s infinite',
+				'stagger-in': 'staggerIn 0.6s ease-out forwards',
 			},
 			keyframes: {
 				float: {
@@ -161,6 +162,10 @@ module.exports = {
 				bounceLight: {
 					'0%, 100%': { transform: 'translateY(-2%)' },
 					'50%': { transform: 'translateY(0)' },
+				},
+				staggerIn: {
+					'0%': { opacity: '0', transform: 'translateY(20px)' },
+					'100%': { opacity: '1', transform: 'translateY(0)' },
 				},
 			},
 			zIndex: {

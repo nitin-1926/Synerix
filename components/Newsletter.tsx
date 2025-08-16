@@ -77,8 +77,59 @@ function Newsletter() {
 							<div className="text-center lg:text-left lg:max-w-xl">
 								<h3 className="h3 text-white mb-2">Unleash the power of your Business</h3>
 								<p className="text-gray-300 text-lg mb-6">
-									To learn more about how our Synerix Business Consulting services can benefit your
-									organization, please feel free to reach out to us via email or phone. Our team is
+									Ready to take your business to the next level? Start with our free Business Health
+									Test to identify your growth opportunities, or connect with us directly for
+									personalized consulting services.
+								</p>
+
+								{/* Business Health Test CTA */}
+								<div className="mb-6 p-4 bg-white bg-opacity-10 rounded-lg backdrop-blur-sm border border-white border-opacity-20">
+									<div className="flex items-center mb-3">
+										<div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center mr-3">
+											<svg
+												className="w-4 h-4 text-white"
+												fill="none"
+												stroke="currentColor"
+												viewBox="0 0 24 24"
+											>
+												<path
+													strokeLinecap="round"
+													strokeLinejoin="round"
+													strokeWidth={2}
+													d="M9 12l2 2 4-4"
+												/>
+											</svg>
+										</div>
+										<span className="text-white font-semibold">
+											Free Business Health Assessment
+										</span>
+									</div>
+									<p className="text-gray-200 text-sm mb-4">
+										Discover your business strengths and get actionable insights in just 5 minutes.
+									</p>
+									<a
+										href="/business-health-test"
+										className="inline-flex items-center px-6 py-2 bg-white text-gray-900 font-semibold rounded-lg hover:bg-gray-100 transition-colors duration-200"
+									>
+										Take Free Test
+										<svg
+											className="w-4 h-4 ml-2"
+											fill="none"
+											stroke="currentColor"
+											viewBox="0 0 24 24"
+										>
+											<path
+												strokeLinecap="round"
+												strokeLinejoin="round"
+												strokeWidth={2}
+												d="M13 7l5 5m0 0l-5 5m5-5H6"
+											/>
+										</svg>
+									</a>
+								</div>
+
+								<p className="text-gray-300 text-lg mb-6">
+									Or reach out to us directly for personalized consulting services. Our team is
 									eagerly waiting to embark on this journey with you and help your MSME thrive in
 									today's competitive market.
 								</p>
