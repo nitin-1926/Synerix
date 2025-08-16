@@ -62,11 +62,6 @@ const Header: React.FC = () => {
 							className="text-sm mt-[-10px] text-primary-900"
 							style={{
 								fontFamily: 'Fredoka One',
-								background:
-									'linear-gradient(to right, #002070 0%, #016D8A 20%, #00C6C9 40%, #007E97 60%, #006785 100%)',
-								WebkitBackgroundClip: 'text',
-								WebkitTextFillColor: 'transparent',
-								backgroundClip: 'text',
 							}}
 						>
 							Synergy For Vertex
