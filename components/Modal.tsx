@@ -3,12 +3,12 @@ import { useEffect, useRef } from 'react';
 import Transition from './Transition';
 
 function Modal({ children, id, ariaLabel, show, handleClose }) {
-	const modalContent = useRef(null);
+	const modalContent = useRef<HTMLDivElement>(null);
 
 	// close the modal on click outside
 	useEffect(() => {
 		const clickHandler = ({ target }) => {
-			if (!show || modalContent.current.contains(target)) return;
+			if (!show || !modalContent.current || modalContent.current.contains(target)) return;
 			handleClose();
 		};
 		document.addEventListener('click', clickHandler);
