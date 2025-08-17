@@ -57,7 +57,7 @@ const HeroHome: React.FC = () => {
 								<div>
 									<a
 										className="btn text-white bg-gradient-to-r from-primary-500 to-secondary-500 hover:from-primary-600 hover:to-secondary-600 w-full mb-4 sm:w-auto sm:mb-0 shadow-lg"
-										href="/business-health-test"
+										href="/tests/business-health"
 									>
 										Take Free Business Health Test
 									</a>
