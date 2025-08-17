@@ -12,8 +12,8 @@ const defaultMeta = {
 	title: 'Synerix - Your Digital Innovation Partner',
 	description:
 		'Synerix helps businesses transform their digital presence with cutting-edge solutions, expert consulting, and innovative technology services.',
-	image: '/images/synerix-og.png', // You'll need to add this image
-	url: 'https://synerix.com', // Replace with your actual domain
+	image: '/images/SynergyLogoCropped.png', // You'll need to add this image
+	url: 'https://pinataconsulting.com', // Replace with your actual domain
 };
 
 export default function Seo({
@@ -49,7 +49,7 @@ export default function Seo({
 			<link rel="canonical" href={url} />
 
 			{/* Favicon */}
-			<link rel="icon" href="/favicon.svg" />
+			<link rel="icon" href="/images/SynergyLogoCropped.png" />
 
 			{/* Robots */}
 			<meta name="robots" content="index,follow" />

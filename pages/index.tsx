@@ -1,3 +1,5 @@
+import { Analytics } from '@vercel/analytics/next';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 import React from 'react';
 import FeaturesHome from '../components/Features';
 import FeaturesBlocks from '../components/FeaturesBlocks';
@@ -9,26 +11,30 @@ import Testimonials from '../components/Testimonials';
 
 const Home: React.FC = () => {
 	return (
-		<div className="flex flex-col min-h-screen overflow-hidden">
-			{/*  Site header */}
-			<Header />
+		<>
+			<SpeedInsights />
+			<Analytics />
+			<div className="flex flex-col min-h-screen overflow-hidden">
+				{/*  Site header */}
+				<Header />
 
-			{/*  Page content */}
-			<main className="flex-grow">
-				{/*  Page sections */}
-				<HeroHome />
-				<FeaturesHome />
-				<FeaturesBlocks />
-				{/* <Expert /> */}
-				<Testimonials />
-				<Newsletter />
-			</main>
+				{/*  Page content */}
+				<main className="flex-grow">
+					{/*  Page sections */}
+					<HeroHome />
+					<FeaturesHome />
+					<FeaturesBlocks />
+					{/* <Expert /> */}
+					<Testimonials />
+					<Newsletter />
+				</main>
 
-			{/* <Banner /> */}
+				{/* <Banner /> */}
 
-			{/*  Site footer */}
-			<Footer />
-		</div>
+				{/*  Site footer */}
+				<Footer />
+			</div>
+		</>
 	);
 };
 

@@ -4,11 +4,11 @@ import Transition from './Transition';
 const Features: React.FC = () => {
 	const [tab, setTab] = useState<number>(1);
 
-	const tabs = useRef(null);
+	const tabs = useRef<HTMLDivElement>(null);
 
 	const heightFix = () => {
-		if (tabs.current.children[tab]) {
-			tabs.current.style.height = tabs.current.children[tab - 1].offsetHeight + 'px';
+		if (tabs.current && tabs.current.children[tab]) {
+			tabs.current.style.height = (tabs.current.children[tab - 1] as HTMLElement).offsetHeight + 'px';
 		}
 	};
 

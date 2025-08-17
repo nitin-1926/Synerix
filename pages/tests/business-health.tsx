@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import Header from '../components/Header';
-import { businessDiagnosticQuestions } from '../data/questions';
+import Header from '../../components/Header';
+import { businessDiagnosticQuestions } from '../../data/questions';
 
 interface UserInfo {
 	name: string;
@@ -13,7 +13,7 @@ interface UserInfo {
 interface Answer {
 	questionId: string;
 	optionId: string;
-	weightage: number;
+	weightAge: number;
 }
 
 const BusinessHealthTest: React.FC = () => {
@@ -28,6 +28,7 @@ const BusinessHealthTest: React.FC = () => {
 	const [showCongratulations, setShowCongratulations] = useState(false);
 	const [showEmailForm, setShowEmailForm] = useState(false);
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [reportSent, setReportSent] = useState(false);
 	const [animationDirection, setAnimationDirection] = useState<'forward' | 'backward'>('forward');
 	const [inputValue, setInputValue] = useState('');
 
@@ -47,10 +48,10 @@ const BusinessHealthTest: React.FC = () => {
 		setInputValue(value);
 	};
 
-	const handleAnswerSelect = (questionId: string, optionId: string, weightage: number) => {
+	const handleAnswerSelect = (questionId: string, optionId: string, weightAge: number) => {
 		setAnswers(prev => {
 			const existing = prev.findIndex(a => a.questionId === questionId);
-			const newAnswer = { questionId, optionId, weightage };
+			const newAnswer = { questionId, optionId, weightAge };
 
 			if (existing >= 0) {
 				const updated = [...prev];
@@ -67,7 +68,7 @@ const BusinessHealthTest: React.FC = () => {
 	};
 
 	const calculateScore = () => {
-		const totalScore = answers.reduce((sum, answer) => sum + answer.weightage, 0);
+		const totalScore = answers.reduce((sum, answer) => sum + answer.weightAge, 0);
 		const maxPossibleScore = businessDiagnosticQuestions.length * 2;
 		return Math.round((totalScore / maxPossibleScore) * 100);
 	};
@@ -108,18 +109,78 @@ const BusinessHealthTest: React.FC = () => {
 		setShowEmailForm(true);
 	};
 
-	const handleEmailSubmit = () => {
+	const handleEmailSubmit = async () => {
 		if (!userInfo.email?.trim()) return;
 
 		setIsSubmitting(true);
-		setTimeout(() => {
+
+		try {
 			const score = calculateScore();
-			alert(
-				`🎉 Congratulations! Your Business Health Score is ${score}%\n\nBased on your responses, ${getScoreMessage(score)}`,
-			);
+
+			const response = await fetch('/api/send-test-report', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					email: userInfo.email,
+					name: userInfo.name,
+					businessName: userInfo.businessName,
+					businessDescription: userInfo.businessDescription,
+					testScore: score,
+					answers: answers,
+				}),
+			});
+
+			const result = await response.json();
+
+			if (response.ok && result.success) {
+				// Show success message with elegant UI
+				setReportSent(true);
+				setShowEmailForm(false);
+
+				// Navigate back to home after 5 seconds
+				setTimeout(() => {
+					try {
+						router.push('/');
+					} catch (error) {
+						console.error('Error during navigation:', error);
+						// Fallback to window.location if router fails
+						window.location.href = '/';
+					}
+				}, 5000);
+			} else {
+				console.error('API Error:', result);
+
+				// Handle specific error cases
+				let errorMessage = result.error || 'Something went wrong. Please try again.';
+
+				if (result.error === 'Email service not configured') {
+					errorMessage = 'Email service is currently unavailable. Please contact support or try again later.';
+				} else if (result.error === 'Email service configuration error') {
+					errorMessage = 'Email service configuration error. Please contact support.';
+				} else if (result.error && result.error.includes('Invalid email')) {
+					errorMessage = 'Please enter a valid email address and try again.';
+				} else if (result.error && result.error.includes('cannot receive emails')) {
+					errorMessage = 'This email address cannot receive emails. Please use a different email address.';
+				}
+
+				alert(`Error sending report: ${errorMessage}\n\nPlease check the console for more details.`);
+			}
+		} catch (error) {
+			console.error('Error sending report:', error);
+
+			// Handle network errors more gracefully
+			let errorMessage = 'Failed to send report. Please check your internet connection and try again.';
+
+			if (error instanceof TypeError && error.message.includes('fetch')) {
+				errorMessage = 'Network error. Please check your internet connection and try again.';
+			}
+
+			alert(`${errorMessage}\n\nError details logged to console.`);
+		} finally {
 			setIsSubmitting(false);
-			router.push('/');
-		}, 1500);
+		}
 	};
 
 	const getScoreMessage = (score: number) => {
@@ -205,57 +266,96 @@ const BusinessHealthTest: React.FC = () => {
 
 							{/* Congratulations Text */}
 							<div className="space-y-4">
-								<h1 className="text-2xl sm:text-3xl font-bold text-gray-900">🎉 Well done!</h1>
-								<p className="text-base sm:text-lg text-gray-600 leading-relaxed">
-									You've successfully completed the Business Health Assessment. Your insights are
-									ready!
-								</p>
+								{reportSent ? (
+									<>
+										<h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+											📧 Report Sent Successfully!
+										</h1>
+										<div className="space-y-3">
+											<p className="text-base sm:text-lg text-gray-600 leading-relaxed">
+												🎉 Congratulations! Your Business Health Score is {calculateScore()}%
+											</p>
+											<p className="text-base text-gray-600 leading-relaxed">
+												Your detailed report has been sent to <strong>{userInfo.email}</strong>
+											</p>
+											<p className="text-sm text-gray-500 leading-relaxed">
+												Based on your responses, {getScoreMessage(calculateScore())}
+											</p>
+											<div className="bg-green-50 border border-green-200 rounded-lg p-4 mt-4">
+												<p className="text-sm text-green-800">
+													📬 Please check your email (including spam folder) for your
+													comprehensive business health report.
+												</p>
+											</div>
+											<p className="text-xs text-gray-400 mt-4">
+												Redirecting to home page in 5 seconds...
+											</p>
+										</div>
+									</>
+								) : (
+									<>
+										<h1 className="text-2xl sm:text-3xl font-bold text-gray-900">🎉 Well done!</h1>
+										<p className="text-base sm:text-lg text-gray-600 leading-relaxed">
+											You've successfully completed the Business Health Assessment. Your insights
+											are ready!
+										</p>
+									</>
+								)}
 							</div>
 
 							{/* Email Form or Success Button */}
-							{!showEmailForm ? (
-								<div className="space-y-4">
-									<p className="text-gray-700">
-										Get your detailed analysis report and personalized recommendations.
-									</p>
-									<button
-										onClick={handleFinishTest}
-										className="w-full bg-gradient-to-r from-primary-500 to-secondary-500 text-white py-4 px-6 rounded-xl font-semibold hover:from-primary-600 hover:to-secondary-600 transform hover:scale-105 transition-all duration-200 shadow-lg"
-									>
-										Get My Detailed Report
-									</button>
-								</div>
-							) : (
-								<div className="space-y-6">
-									<div className="text-left">
-										<label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-3">
-											Email address
-										</label>
-										<input
-											type="email"
-											id="email"
-											className="w-full px-4 py-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent text-lg"
-											placeholder="your.email@example.com"
-											value={userInfo.email || ''}
-											onChange={e => setUserInfo(prev => ({ ...prev, email: e.target.value }))}
-											onKeyPress={e => e.key === 'Enter' && handleEmailSubmit()}
-										/>
-									</div>
-									<button
-										onClick={handleEmailSubmit}
-										disabled={isSubmitting || !userInfo.email?.trim()}
-										className="w-full bg-gradient-to-r from-primary-500 to-secondary-500 text-white py-4 px-6 rounded-xl font-semibold hover:from-primary-600 hover:to-secondary-600 transform hover:scale-105 transition-all duration-200 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-									>
-										{isSubmitting ? (
-											<div className="flex items-center justify-center">
-												<div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-												Generating Report...
+							{!reportSent && (
+								<>
+									{!showEmailForm ? (
+										<div className="space-y-4">
+											<p className="text-gray-700">
+												Get your detailed analysis report and personalized recommendations.
+											</p>
+											<button
+												onClick={handleFinishTest}
+												className="w-full bg-gradient-to-r from-primary-500 to-secondary-500 text-white py-4 px-6 rounded-xl font-semibold hover:from-primary-600 hover:to-secondary-600 transform hover:scale-105 transition-all duration-200 shadow-lg"
+											>
+												Get My Detailed Report
+											</button>
+										</div>
+									) : (
+										<div className="space-y-6">
+											<div className="text-left">
+												<label
+													htmlFor="email"
+													className="block text-sm font-medium text-gray-700 mb-3"
+												>
+													Email address
+												</label>
+												<input
+													type="email"
+													id="email"
+													className="w-full px-4 py-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent text-lg"
+													placeholder="your.email@example.com"
+													value={userInfo.email || ''}
+													onChange={e =>
+														setUserInfo(prev => ({ ...prev, email: e.target.value }))
+													}
+													onKeyPress={e => e.key === 'Enter' && handleEmailSubmit()}
+												/>
 											</div>
-										) : (
-											'Send My Report'
-										)}
-									</button>
-								</div>
+											<button
+												onClick={handleEmailSubmit}
+												disabled={isSubmitting || !userInfo.email?.trim()}
+												className="w-full bg-gradient-to-r from-primary-500 to-secondary-500 text-white py-4 px-6 rounded-xl font-semibold hover:from-primary-600 hover:to-secondary-600 transform hover:scale-105 transition-all duration-200 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+											>
+												{isSubmitting ? (
+													<div className="flex items-center justify-center">
+														<div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+														Generating Report...
+													</div>
+												) : (
+													'Send My Report'
+												)}
+											</button>
+										</div>
+									)}
+								</>
 							)}
 
 							{/* Return Link */}
@@ -402,7 +502,7 @@ const BusinessHealthTest: React.FC = () => {
 												handleAnswerSelect(
 													businessDiagnosticQuestions[currentStep - 3].id,
 													option.id,
-													parseInt(option.weightage),
+													parseInt(option.weightAge),
 												)
 											}
 											className={`w-full p-4 sm:p-5 text-left border-2 rounded-xl transition-all duration-200 hover:shadow-md group animate-stagger-in ${

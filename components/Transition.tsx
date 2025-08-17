@@ -43,7 +43,7 @@ function CSSTransition({
 		classes.length && node.classList.remove(...classes);
 	}
 
-	const nodeRef = React.useRef(null);
+	const nodeRef = React.useRef<HTMLElement>(null);
 	const Component = tag;
 
 	return (
@@ -53,29 +53,43 @@ function CSSTransition({
 			unmountOnExit={removeFromDom}
 			in={show}
 			addEndListener={done => {
-				nodeRef.current.addEventListener('transitionend', done, false);
+				if (nodeRef.current) {
+					nodeRef.current.addEventListener('transitionend', done, false);
+				}
 			}}
 			onEnter={() => {
-				if (!removeFromDom) nodeRef.current.style.display = null;
-				addClasses(nodeRef.current, [...enterClasses, ...enterStartClasses]);
+				if (nodeRef.current) {
+					if (!removeFromDom) nodeRef.current.style.display = '';
+					addClasses(nodeRef.current, [...enterClasses, ...enterStartClasses]);
+				}
 			}}
 			onEntering={() => {
-				removeClasses(nodeRef.current, enterStartClasses);
-				addClasses(nodeRef.current, enterEndClasses);
+				if (nodeRef.current) {
+					removeClasses(nodeRef.current, enterStartClasses);
+					addClasses(nodeRef.current, enterEndClasses);
+				}
 			}}
 			onEntered={() => {
-				removeClasses(nodeRef.current, [...enterEndClasses, ...enterClasses]);
+				if (nodeRef.current) {
+					removeClasses(nodeRef.current, [...enterEndClasses, ...enterClasses]);
+				}
 			}}
 			onExit={() => {
-				addClasses(nodeRef.current, [...leaveClasses, ...leaveStartClasses]);
+				if (nodeRef.current) {
+					addClasses(nodeRef.current, [...leaveClasses, ...leaveStartClasses]);
+				}
 			}}
 			onExiting={() => {
-				removeClasses(nodeRef.current, leaveStartClasses);
-				addClasses(nodeRef.current, leaveEndClasses);
+				if (nodeRef.current) {
+					removeClasses(nodeRef.current, leaveStartClasses);
+					addClasses(nodeRef.current, leaveEndClasses);
+				}
 			}}
 			onExited={() => {
-				removeClasses(nodeRef.current, [...leaveEndClasses, ...leaveClasses]);
-				if (!removeFromDom) nodeRef.current.style.display = 'none';
+				if (nodeRef.current) {
+					removeClasses(nodeRef.current, [...leaveEndClasses, ...leaveClasses]);
+					if (!removeFromDom) nodeRef.current.style.display = 'none';
+				}
 			}}
 		>
 			{React.createElement(
