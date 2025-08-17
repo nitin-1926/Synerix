@@ -134,26 +134,50 @@ const BusinessHealthTest: React.FC = () => {
 
 			const result = await response.json();
 
-			if (response.ok) {
+			if (response.ok && result.success) {
 				// Show success message with elegant UI
 				setReportSent(true);
 				setShowEmailForm(false);
 
 				// Navigate back to home after 5 seconds
 				setTimeout(() => {
-					router.push('/');
+					try {
+						router.push('/');
+					} catch (error) {
+						console.error('Error during navigation:', error);
+						// Fallback to window.location if router fails
+						window.location.href = '/';
+					}
 				}, 5000);
 			} else {
 				console.error('API Error:', result);
-				alert(
-					`Error sending report: ${result.error || 'Something went wrong. Please try again.'}\n\nPlease check the console for more details.`,
-				);
+
+				// Handle specific error cases
+				let errorMessage = result.error || 'Something went wrong. Please try again.';
+
+				if (result.error === 'Email service not configured') {
+					errorMessage = 'Email service is currently unavailable. Please contact support or try again later.';
+				} else if (result.error === 'Email service configuration error') {
+					errorMessage = 'Email service configuration error. Please contact support.';
+				} else if (result.error && result.error.includes('Invalid email')) {
+					errorMessage = 'Please enter a valid email address and try again.';
+				} else if (result.error && result.error.includes('cannot receive emails')) {
+					errorMessage = 'This email address cannot receive emails. Please use a different email address.';
+				}
+
+				alert(`Error sending report: ${errorMessage}\n\nPlease check the console for more details.`);
 			}
 		} catch (error) {
 			console.error('Error sending report:', error);
-			alert(
-				'Failed to send report. Please check your internet connection and try again.\n\nError details logged to console.',
-			);
+
+			// Handle network errors more gracefully
+			let errorMessage = 'Failed to send report. Please check your internet connection and try again.';
+
+			if (error instanceof TypeError && error.message.includes('fetch')) {
+				errorMessage = 'Network error. Please check your internet connection and try again.';
+			}
+
+			alert(`${errorMessage}\n\nError details logged to console.`);
 		} finally {
 			setIsSubmitting(false);
 		}
