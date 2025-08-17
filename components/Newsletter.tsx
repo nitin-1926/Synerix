@@ -1,30 +1,45 @@
-import emailjs from '@emailjs/browser';
 import { useState } from 'react';
 
 function Newsletter() {
 	const [email, setEmail] = useState('');
 	const [emailSent, setEmailSent] = useState(false);
+	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [error, setError] = useState('');
 
-	function sendEmail(e) {
+	async function sendEnquiry(e) {
 		if (email.trim() === '') {
+			setError('Please enter your email address');
 			return;
 		}
-		e.preventDefault();
-		setEmailSent(true);
-		const templateParams = {
-			to_name: 'Synerix',
-			from_name: email,
-		};
 
-		emailjs.send('service_pvhk1dk', 'template_z32oftj', templateParams, 'cP7kxt5F88IIaqTgE').then(
-			function (response) {
-				console.log('SUCCESS!', response.status, response.text);
-			},
-			function (error) {
-				console.log('FAILED...', error);
-			},
-		);
-		setEmail('');
+		e.preventDefault();
+		setIsSubmitting(true);
+		setError('');
+
+		try {
+			const response = await fetch('/api/send-enquiry', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({ email: email.trim() }),
+			});
+
+			const result = await response.json();
+
+			if (response.ok && result.success) {
+				setEmailSent(true);
+				setEmail('');
+			} else {
+				console.error('API Error:', result);
+				setError(result.error || 'Something went wrong. Please try again.');
+			}
+		} catch (error) {
+			console.error('Error sending enquiry:', error);
+			setError('Failed to send enquiry. Please check your internet connection and try again.');
+		} finally {
+			setIsSubmitting(false);
+		}
 	}
 
 	return (
@@ -75,10 +90,10 @@ function Newsletter() {
 						<div className="relative flex flex-col lg:flex-row justify-between items-center">
 							{/* CTA content */}
 							<div className="text-center lg:text-left lg:max-w-xl">
-								<h3 className="h3 text-white mb-2">Unleash the power of your Business</h3>
+								<h3 className="h3 text-white mb-2">🚀 Ready to Transform Your Business?</h3>
 								<p className="text-gray-300 text-lg mb-6">
 									Ready to take your business to the next level? Start with our free Business Health
-									Test to identify your growth opportunities, or connect with us directly for
+									Test to identify your growth opportunities, or enquire with us directly for
 									personalized consulting services.
 								</p>
 
@@ -101,7 +116,7 @@ function Newsletter() {
 											</svg>
 										</div>
 										<span className="text-white font-semibold">
-											Free Business Health Assessment
+											🎯 Free Business Health Assessment
 										</span>
 									</div>
 									<p className="text-gray-200 text-sm mb-4">
@@ -128,14 +143,48 @@ function Newsletter() {
 									</a>
 								</div>
 
+								{/* Growth Consultation CTA */}
+								<div className="mb-6 p-4 bg-gradient-to-r from-primary-500 to-secondary-500 bg-opacity-20 rounded-lg backdrop-blur-sm border border-primary-400 border-opacity-30">
+									<div className="flex items-center mb-3">
+										<div className="w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center mr-3">
+											<svg
+												className="w-4 h-4 text-white"
+												fill="none"
+												stroke="currentColor"
+												viewBox="0 0 24 24"
+											>
+												<path
+													strokeLinecap="round"
+													strokeLinejoin="round"
+													strokeWidth={2}
+													d="M13 10V3L4 14h7v7l9-11h-7z"
+												/>
+											</svg>
+										</div>
+										<span className="text-white font-semibold">
+											💼 Personalized Growth Consultation
+										</span>
+									</div>
+									<p className="text-gray-200 text-sm mb-4">
+										Get expert guidance tailored to your business needs. Free initial consultation.
+									</p>
+									<div className="text-xs text-gray-300 mb-3">✨ What you'll get:</div>
+									<ul className="text-xs text-gray-300 mb-4 space-y-1">
+										<li>• Custom growth strategy roadmap</li>
+										<li>• Industry-specific insights</li>
+										<li>• Actionable recommendations</li>
+										<li>• Ongoing support framework</li>
+									</ul>
+								</div>
+
 								<p className="text-gray-300 text-lg mb-6">
-									Or reach out to us directly for personalized consulting services. Our team is
-									eagerly waiting to embark on this journey with you and help your MSME thrive in
+									Or enquire with us directly for personalized consulting services. Our team is
+									eagerly waiting to embark on this journey with you and help your business thrive in
 									today's competitive market.
 								</p>
 
 								{/* CTA form */}
-								<form className="w-full lg:w-auto">
+								<form className="w-full lg:w-auto" onSubmit={sendEnquiry}>
 									<div className="flex flex-col sm:flex-row justify-start max-w-xs mx-auto sm:max-w-md lg:mx-0">
 										{!emailSent && (
 											<input
@@ -143,20 +192,41 @@ function Newsletter() {
 												className="form-input w-full appearance-none bg-gray-800 border border-gray-700 focus:border-gray-600 rounded-sm px-4 py-3 mb-2 sm:mb-0 sm:mr-2 text-white placeholder-gray-500"
 												placeholder="Your email…"
 												aria-label="Your email…"
+												value={email}
 												onChange={e => setEmail(e.target.value)}
+												disabled={isSubmitting}
 											/>
 										)}
-										<a
-											className="btn text-white bg-gradient-to-r from-primary-500 to-secondary-500 hover:from-primary-600 hover:to-secondary-600 shadow"
-											href="#0"
-											onClick={sendEmail}
+										<button
+											type="submit"
+											className="btn text-white bg-gradient-to-r from-primary-500 to-secondary-500 hover:from-primary-600 hover:to-secondary-600 shadow disabled:opacity-50 disabled:cursor-not-allowed"
+											disabled={isSubmitting || emailSent}
 										>
-											{!emailSent ? 'Connect' : 'We will reach you back!'}
-										</a>
+											{isSubmitting ? (
+												<div className="flex items-center">
+													<div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+													Sending...
+												</div>
+											) : !emailSent ? (
+												'Enquire for Growth'
+											) : (
+												"Thank You! We'll Reach Out Soon"
+											)}
+										</button>
 									</div>
+									{/* Error message */}
+									{error && (
+										<p className="text-red-400 text-sm mt-3 text-center lg:text-left">{error}</p>
+									)}
 									{/* Success message */}
-									{/* <p className="text-sm text-gray-400 mt-3">Thanks for subscribing!</p> */}
-									{/* <p className="text-sm text-gray-400 mt-3">7 days free trial. No credit card required.</p> */}
+									{emailSent && (
+										<div className="mt-4 p-3 bg-green-900 bg-opacity-50 border border-green-500 rounded-lg">
+											<p className="text-green-300 text-sm text-center lg:text-left">
+												✅ Thank you! We've received your enquiry and will reach out within 24
+												hours.
+											</p>
+										</div>
+									)}
 								</form>
 							</div>
 						</div>
