@@ -33,6 +33,21 @@ function generateEnquiryNotificationEmail(userEmail: string) {
 				@media only screen and (max-width: 600px) {
 					.container { width: 100% !important; }
 					.content { padding: 20px !important; }
+					.cta-buttons td {
+						display: block !important;
+						width: 100% !important;
+						margin-bottom: 10px !important;
+					}
+					.cta-buttons a {
+						width: 100% !important;
+						font-size: 16px !important;
+						padding: 18px 20px !important;
+					}
+					.contact-table td {
+						display: block !important;
+						width: 100% !important;
+						margin-bottom: 10px !important;
+					}
 				}
 			</style>
 		</head>
@@ -73,12 +88,25 @@ function generateEnquiryNotificationEmail(userEmail: string) {
 					</div>
 
 					<div style="text-align: center; margin-top: 30px;">
-						<a href="mailto:${userEmail}?subject=Thank you for your interest in Synerix&body=Hi there,%0A%0AThank you for reaching out to Synerix! We're excited to learn more about your business and how we can help you grow.%0A%0AOur team will be in touch within 24 hours to schedule a consultation.%0A%0ABest regards,%0AThe Synerix Team" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 25px; font-weight: 600; margin-right: 15px;">
-							✉️ Reply Now
-						</a>
-						<a href="https://pinataconsulting.com/" style="display: inline-block; background: #f1f5f9; color: #374151; padding: 15px 30px; text-decoration: none; border-radius: 25px; font-weight: 600; border: 2px solid #e2e8f0;">
-							🌐 View Website
-						</a>
+						<table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="cta-buttons" style="border-collapse: separate; border-spacing: 15px 15px; max-width: 600px; margin: 0 auto;">
+							<tr>
+								<td style="text-align: center; vertical-align: top; width: 33.33%;">
+									<a href="mailto:${userEmail}?subject=Thank you for your interest in Synerix&body=Hi there,%0A%0AThank you for reaching out to Synerix! We're excited to learn more about your business and how we can help you grow.%0A%0AOur team will be in touch within 24 hours to schedule a consultation.%0A%0ABest regards,%0AThe Synerix Team" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 20px; text-decoration: none; border-radius: 25px; font-weight: 600; width: 100%; box-sizing: border-box; font-size: 14px;">
+										✉️ Reply via<br/>Email
+									</a>
+								</td>
+								<td style="text-align: center; vertical-align: top; width: 33.33%;">
+									<a href="https://wa.me/${process.env.WHATSAPP_NUMBER}?text=Hi,%20I%20received%20a%20new%20enquiry%20from%20${userEmail}%20through%20the%20website.%20Please%20help%20me%20follow%20up." style="display: inline-block; background: #25d366; color: white; padding: 15px 20px; text-decoration: none; border-radius: 25px; font-weight: 600; width: 100%; box-sizing: border-box; font-size: 14px;">
+										📱 WhatsApp<br/>Team
+									</a>
+								</td>
+								<td style="text-align: center; vertical-align: top; width: 33.33%;">
+									<a href=${process.env.WEBSITE_URL} style="display: inline-block; background: #f1f5f9; color: #374151; padding: 15px 20px; text-decoration: none; border-radius: 25px; font-weight: 600; border: 2px solid #e2e8f0; width: 100%; box-sizing: border-box; font-size: 14px;">
+										🌐 View<br/>Website
+									</a>
+								</td>
+							</tr>
+						</table>
 					</div>
 				</div>
 
@@ -127,7 +155,8 @@ Someone has submitted an enquiry through your website contact form.
 3. Prepare a customized proposal based on their requirements
 4. Follow up with additional resources and case studies
 
-Quick Reply: mailto:${userEmail}?subject=Thank you for your interest in Synerix
+📧 Quick Reply: mailto:${userEmail}?subject=Thank you for your interest in Synerix
+📱 WhatsApp Team: https://wa.me/${process.env.WHATSAPP_NUMBER}?text=New%20enquiry%20from%20${userEmail}
 
 ═══════════════════════════════════════════════════════════════
 Synerix Business Solutions
@@ -157,6 +186,21 @@ function generateUserConfirmationEmail(userEmail: string) {
 				@media only screen and (max-width: 600px) {
 					.container { width: 100% !important; }
 					.content { padding: 20px !important; }
+					.cta-buttons td {
+						display: block !important;
+						width: 100% !important;
+						margin-bottom: 10px !important;
+					}
+					.cta-buttons a {
+						width: 100% !important;
+						font-size: 16px !important;
+						padding: 18px 20px !important;
+					}
+					.contact-table td {
+						display: block !important;
+						width: 100% !important;
+						margin-bottom: 10px !important;
+					}
 				}
 			</style>
 		</head>
@@ -192,7 +236,7 @@ function generateUserConfirmationEmail(userEmail: string) {
 						<p style="margin: 0 0 15px 0; color: #374151;">
 							Want to get started right away? Take our free <strong>Business Health Assessment</strong> to identify your growth opportunities:
 						</p>
-						<a href="https://pinataconsulting.com/tests/business-health" style="display: inline-block; background: #059669; color: white; padding: 12px 24px; text-decoration: none; border-radius: 20px; font-weight: 600;">
+						<a href="${process.env.WEBSITE_URL}tests/business-health" style="display: inline-block; background: #059669; color: white; padding: 12px 24px; text-decoration: none; border-radius: 20px; font-weight: 600;">
 							Take Free Business Health Test
 						</a>
 					</div>
@@ -201,9 +245,20 @@ function generateUserConfirmationEmail(userEmail: string) {
 						<p style="color: #6b7280; font-size: 14px; margin-bottom: 20px;">
 							Have questions? Feel free to reach out to us directly:
 						</p>
-						<a href="mailto:devenderldh@gmail.com" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 25px; font-weight: 600;">
-							✉️ Email Us Directly
-						</a>
+						<table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="cta-buttons" style="border-collapse: separate; border-spacing: 15px 15px; max-width: 400px; margin: 0 auto;">
+							<tr>
+								<td style="text-align: center; vertical-align: top; width: 50%;">
+									<a href="mailto:${process.env.GMAIL_USERNAME}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 25px; text-decoration: none; border-radius: 25px; font-weight: 600; width: 100%; box-sizing: border-box; font-size: 14px;">
+										✉️ Email Us<br/>Directly
+									</a>
+								</td>
+								<td style="text-align: center; vertical-align: top; width: 50%;">
+									<a href="https://wa.me/${process.env.WHATSAPP_NUMBER}?text=Hi%20Synerix%20Team,%20I%20submitted%20an%20enquiry%20and%20have%20some%20questions." style="display: inline-block; background: #25d366; color: white; padding: 15px 25px; text-decoration: none; border-radius: 25px; font-weight: 600; width: 100%; box-sizing: border-box; font-size: 14px;">
+										📱 WhatsApp Us<br/>Instantly
+									</a>
+								</td>
+							</tr>
+						</table>
 					</div>
 				</div>
 
@@ -212,8 +267,28 @@ function generateUserConfirmationEmail(userEmail: string) {
 					<h3 style="color: white; margin-bottom: 15px; font-size: 20px; font-weight: 700;">Synerix Business Solutions</h3>
 					<p style="margin: 0 0 15px 0; font-size: 16px; opacity: 0.9;">Empowering businesses with data-driven insights and strategic solutions</p>
 					<div style="margin-top: 20px;">
-						<a href="https://pinataconsulting.com/" style="color: #94a3b8; text-decoration: none; margin: 0 15px; font-size: 14px;">🌐 Visit Our Website</a>
-						<a href="mailto:devenderldh@gmail.com" style="color: #94a3b8; text-decoration: none; margin: 0 15px; font-size: 14px;">📧 Contact Us</a>
+						<table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="contact-table" style="margin: 0 0 20px 0; border-collapse: separate; border-spacing: 0; max-width: 400px; margin: 20px auto 0 auto;">
+							<tr>
+								<td style="width: 33.33%; padding: 10px 5px; vertical-align: top; text-align: center;">
+									<div style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2);">
+										<div style="font-size: 12px; margin-bottom: 3px;">🌐</div>
+										<a href=${process.env.WEBSITE_URL} style="color: #94a3b8; text-decoration: none; font-size: 12px;">Website</a>
+									</div>
+								</td>
+								<td style="width: 33.33%; padding: 10px 5px; vertical-align: top; text-align: center;">
+									<div style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2);">
+										<div style="font-size: 12px; margin-bottom: 3px;">📧</div>
+										<a href="mailto:${process.env.GMAIL_USERNAME}" style="color: #94a3b8; text-decoration: none; font-size: 12px;">Email</a>
+									</div>
+								</td>
+								<td style="width: 33.33%; padding: 10px 5px; vertical-align: top; text-align: center;">
+									<div style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2);">
+										<div style="font-size: 12px; margin-bottom: 3px;">📱</div>
+										<a href="https://wa.me/${process.env.WHATSAPP_NUMBER}" style="color: #25d366; text-decoration: none; font-size: 12px;">WhatsApp</a>
+									</div>
+								</td>
+							</tr>
+						</table>
 					</div>
 					<p style="margin: 20px 0 0 0; font-size: 12px; opacity: 0.7; font-style: italic;">
 						"Looking forward to helping your business achieve remarkable growth!"
@@ -244,19 +319,21 @@ Your enquiry has been received and we're excited to help you take your business 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Want to get started right away? Take our free Business Health Assessment to identify your growth opportunities:
 
-Take Free Business Health Test: https://pinataconsulting.com/tests/business-health
+Take Free Business Health Test: ${process.env.WEBSITE_URL}tests/business-health
 
 📧 CONTACT US
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Have questions? Feel free to reach out to us directly:
-Email: devenderldh@gmail.com
+📧 Email: ${process.env.GMAIL_USERNAME}
+📱 WhatsApp: ${process.env.WHATSAPP_NUMBER}
 
 ═══════════════════════════════════════════════════════════════
 Synerix Business Solutions
 Empowering businesses with data-driven insights and strategic solutions
 
-Website: https://pinataconsulting.com/
-Contact: devenderldh@gmail.com
+Website: ${process.env.WEBSITE_URL}
+Email: ${process.env.GMAIL_USERNAME}
+WhatsApp: ${process.env.WHATSAPP_NUMBER}
 
 "Looking forward to helping your business achieve remarkable growth!"
 ═══════════════════════════════════════════════════════════════
@@ -297,7 +374,7 @@ export async function POST(req: NextRequest) {
 				name: 'Synerix Website Enquiry',
 				address: process.env.GMAIL_USERNAME!,
 			},
-			to: 'devenderldh@gmail.com',
+			to: process.env.GMAIL_USERNAME,
 			subject: `New Website Enquiry - ${email}`,
 			html: notificationEmail.html,
 			text: notificationEmail.text,
@@ -314,7 +391,7 @@ export async function POST(req: NextRequest) {
 			subject: 'Thank you for your enquiry - Synerix',
 			html: confirmationEmail.html,
 			text: confirmationEmail.text,
-			replyTo: 'devenderldh@gmail.com',
+			replyTo: process.env.GMAIL_USERNAME,
 		};
 
 		try {
@@ -325,7 +402,7 @@ export async function POST(req: NextRequest) {
 			]);
 
 			console.log('Enquiry emails sent successfully:');
-			console.log('Notification sent to devenderldh@gmail.com:', notificationInfo.messageId);
+			console.log(`Notification sent to ${process.env.GMAIL_USERNAME}:`, notificationInfo.messageId);
 			console.log('Confirmation sent to user:', confirmationInfo.messageId);
 			console.log(`Enquiry from: ${email}`);
 

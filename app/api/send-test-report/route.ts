@@ -109,6 +109,21 @@ function generateBusinessHealthReport(
 						width: 100% !important;
 						border-spacing: 0 !important;
 					}
+					.cta-buttons td {
+						display: block !important;
+						width: 100% !important;
+						margin-bottom: 10px !important;
+					}
+					.cta-buttons a {
+						width: 100% !important;
+						font-size: 16px !important;
+						padding: 18px 20px !important;
+					}
+					.contact-table td {
+						display: block !important;
+						width: 100% !important;
+						margin-bottom: 10px !important;
+					}
 				}
 			</style>
 		</head>
@@ -451,16 +466,21 @@ function generateBusinessHealthReport(
 						<p style="margin-bottom: 35px; font-size: 17px; opacity: 0.95; line-height: 1.6; font-style: italic;">
 							"Let us know a suitable time for you to connect and take ${businessName} to new heights of success!"
 						</p>
-						<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse: separate; border-spacing: 20px 0;">
+						<table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="cta-buttons" style="border-collapse: separate; border-spacing: 15px 15px;">
 							<tr>
-								<td style="width: 50%; text-align: center; vertical-align: top;">
-									<a href="https://pinataconsulting.com/" style="display: inline-block; background: white; color: #667eea; padding: 18px 35px; text-decoration: none; border-radius: 30px; font-weight: 700; font-size: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); border: 2px solid white;">
-										📅 Schedule Your Free Strategy Session
+								<td style="text-align: center; vertical-align: top; width: 33.33%;">
+									<a href=${process.env.WEBSITE_URL} style="display: inline-block; background: white; color: #667eea; padding: 15px 25px; text-decoration: none; border-radius: 25px; font-weight: 700; font-size: 14px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); border: 2px solid white; width: 100%; box-sizing: border-box; min-height: 50px; line-height: 1.2;">
+										📅 Schedule Free<br/>Strategy Session
 									</a>
 								</td>
-								<td style="width: 50%; text-align: center; vertical-align: top;">
-									<a href="mailto:devenderldh@gmail.com?subject=Business Health Report Discussion - ${businessName}&body=Hi Synerix Team,%0A%0AI've reviewed my business health report and would like to discuss the next steps for ${businessName}.%0A%0APlease let me know your availability for a consultation.%0A%0AThank you!" style="display: inline-block; background: rgba(255,255,255,0.2); color: white; padding: 18px 35px; text-decoration: none; border-radius: 30px; font-weight: 700; font-size: 16px; border: 2px solid rgba(255,255,255,0.3);">
-										✉️ Email Us Directly
+								<td style="text-align: center; vertical-align: top; width: 33.33%;">
+									<a href="mailto:${process.env.GMAIL_USERNAME}?subject=Business Health Report Discussion - ${businessName}&body=Hi Synerix Team,%0A%0AI've reviewed my business health report and would like to discuss the next steps for ${businessName}.%0A%0APlease let me know your availability for a consultation.%0A%0AThank you!" style="display: inline-block; background: rgba(255,255,255,0.2); color: white; padding: 15px 25px; text-decoration: none; border-radius: 25px; font-weight: 700; font-size: 14px; border: 2px solid rgba(255,255,255,0.3); width: 100%; box-sizing: border-box; min-height: 50px; line-height: 1.2;">
+										✉️ Email Us<br/>Directly
+									</a>
+								</td>
+								<td style="text-align: center; vertical-align: top; width: 33.33%;">
+									<a href="https://wa.me/${process.env.WHATSAPP_NUMBER}?text=Hi%20Synerix%20Team,%20I%20received%20my%20business%20health%20report%20and%20would%20like%20to%20discuss%20the%20next%20steps%20for%20my%20business." style="display: inline-block; background: #25d366; color: white; padding: 15px 25px; text-decoration: none; border-radius: 25px; font-weight: 700; font-size: 14px; border: 2px solid #25d366; width: 100%; box-sizing: border-box; min-height: 50px; line-height: 1.2;">
+										📱 WhatsApp Us<br/>Instantly
 									</a>
 								</td>
 							</tr>
@@ -501,20 +521,37 @@ function generateBusinessHealthReport(
 								})}.
 							</p>
 							<p style="margin: 0 0 20px 0; font-size: 14px; opacity: 0.8;">
-								For questions about this report or to schedule a consultation, contact us at 
-								<a href="mailto:devenderldh@gmail.com" style="color: #60a5fa; text-decoration: none; font-weight: 600;">devenderldh@gmail.com</a>
+								For questions about this report or to schedule a consultation, contact us:
 							</p>
+							<table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="contact-table" style="margin: 0 0 20px 0; border-collapse: separate; border-spacing: 0;">
+								<tr>
+									<td style="width: 50%; padding: 10px 5px; vertical-align: top; text-align: center;">
+										<div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2);">
+											<div style="font-size: 16px; margin-bottom: 8px;">📧</div>
+											<div style="font-size: 12px; opacity: 0.7; margin-bottom: 5px;">Email</div>
+											<a href="mailto:${process.env.GMAIL_USERNAME}" style="color: #60a5fa; text-decoration: none; font-weight: 600; font-size: 13px; word-break: break-all;">${process.env.GMAIL_USERNAME}</a>
+										</div>
+									</td>
+									<td style="width: 50%; padding: 10px 5px; vertical-align: top; text-align: center;">
+										<div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2);">
+											<div style="font-size: 16px; margin-bottom: 8px;">📱</div>
+											<div style="font-size: 12px; opacity: 0.7; margin-bottom: 5px;">WhatsApp</div>
+											<a href="https://wa.me/${process.env.WHATSAPP_NUMBER}?text=Hi%20Synerix%20Team,%20I%20received%20my%20business%20health%20report%20and%20would%20like%20to%20discuss%20the%20next%20steps." style="color: #25d366; text-decoration: none; font-weight: 600; font-size: 13px;">${process.env.WHATSAPP_NUMBER}</a>
+										</div>
+									</td>
+								</tr>
+							</table>
 							<div style="text-align: center; font-size: 13px;">
 								<table style="margin: 0 auto; border-collapse: collapse;">
 									<tr>
 										<td style="padding: 0 10px;">
-											<a href="https://pinataconsulting.com" style="color: #94a3b8; text-decoration: none; transition: color 0.3s ease;">🌐 Visit Our Website</a>
+											<a href=${process.env.WEBSITE_URL} style="color: #94a3b8; text-decoration: none; transition: color 0.3s ease;">🌐 Visit Our Website</a>
 										</td>
 										<td style="padding: 0 10px;">
-											<a href="https://pinataconsulting.com/privacy" style="color: #94a3b8; text-decoration: none; transition: color 0.3s ease;">🔒 Privacy Policy</a>
+											<a href="${process.env.WEBSITE_URL}" style="color: #94a3b8; text-decoration: none; transition: color 0.3s ease;">🔒 Privacy Policy</a>
 										</td>
 										<td style="padding: 0 10px;">
-											<a href="https://pinataconsulting.com/terms" style="color: #94a3b8; text-decoration: none; transition: color 0.3s ease;">📋 Terms of Service</a>
+											<a href="${process.env.WEBSITE_URL}" style="color: #94a3b8; text-decoration: none; transition: color 0.3s ease;">📋 Terms of Service</a>
 										</td>
 									</tr>
 								</table>
@@ -591,8 +628,9 @@ ${recommendations.map((rec, i) => `${i + 1}. ${rec.title}\n   ${rec.description}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 We're all set to move forward with detailed discussions about your business growth strategy.
 
-📅 Schedule your free consultation: https://pinataconsulting.com/
-📧 Email us directly: devenderldh@gmail.com
+📅 Schedule your free consultation: ${process.env.WEBSITE_URL}
+📧 Email us directly: ${process.env.GMAIL_USERNAME}
+📱 WhatsApp us: ${process.env.WHATSAPP_NUMBER}
 
 Let us know a suitable time for you to connect and take ${businessName} to new heights of success!
 
@@ -803,17 +841,17 @@ export async function POST(req: NextRequest) {
 				address: process.env.GMAIL_USERNAME!,
 			},
 			to: email,
-			bcc: 'devenderldh@gmail.com', // Send copy to business owner
+			bcc: process.env.GMAIL_USERNAME, // Send copy to business owner
 			subject: `Your Comprehensive Business Health Report - ${businessName}`,
 			html: reportData.html,
 			text: reportData.text,
-			replyTo: 'devenderldh@gmail.com',
+			replyTo: process.env.GMAIL_USERNAME,
 		};
 
 		try {
 			const info = await transporter.sendMail(mailOptions);
 			console.log('Business health report sent successfully:', info.messageId);
-			console.log(`Report sent to: ${email} with copy to devenderldh@gmail.com`);
+			console.log(`Report sent to: ${email} with copy to ${process.env.GMAIL_USERNAME}`);
 			console.log(`Business: ${businessName}, Score: ${testScore}%, Risk: ${riskLevel}`);
 
 			return NextResponse.json({
