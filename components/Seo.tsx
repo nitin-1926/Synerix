@@ -12,8 +12,8 @@ const defaultMeta = {
 	title: 'Synerix - Your Digital Innovation Partner',
 	description:
 		'Synerix helps businesses transform their digital presence with cutting-edge solutions, expert consulting, and innovative technology services.',
-	image: '/images/SynergyLogoCropped.png', // You'll need to add this image
-	url: 'https://pinataconsulting.com', // Replace with your actual domain
+	image: '/images/SynergyLogoCropped.png',
+	url: 'https://synerix.in',
 };
 
 export default function Seo({
