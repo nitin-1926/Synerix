@@ -3,6 +3,146 @@ import { z } from 'zod';
 import nodemailer from 'nodemailer';
 import { businessDiagnosticQuestions } from '../../../data/questions';
 import { generateCategoryChart, generateRadarChart, generatePieChart } from './chart-generator';
+import { prisma } from '../../../lib/prisma';
+
+// Generate HTML for admin report with detailed test results
+function generateAdminReportHtml(
+	name: string,
+	phoneNumber: string,
+	email: string,
+	businessName: string,
+	businessDescription: string,
+	testScore: number,
+	answers: Array<{ questionId: string; optionId: string; weightAge: number }>,
+	categoryAnalysis: Array<{ category: string; percentage: number; score: number; total: number; questions: any[] }>,
+) {
+	// Generate detailed answers section
+	const detailedAnswers = answers
+		.map(answer => {
+			const question = businessDiagnosticQuestions.find(q => q.id === answer.questionId);
+			const selectedOption = question?.options.find(opt => opt.id === answer.optionId);
+
+			return `
+			<div style="background: #f8fafc; padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 4px solid #3b82f6;">
+				<h4 style="margin: 0 0 10px 0; color: #1e293b; font-size: 16px; font-weight: 600;">
+					${question?.question}
+				</h4>
+				<p style="margin: 0 0 5px 0; color: #059669; font-weight: 500;">
+					Selected Answer: ${selectedOption?.content}
+				</p>
+				<p style="margin: 0 0 5px 0; color: #7c3aed; font-weight: 500;">
+					Score: ${answer.weightAge}/2
+				</p>
+				<p style="margin: 0; color: #6b7280; font-size: 14px;">
+					Category: ${question?.category}
+				</p>
+			</div>
+		`;
+		})
+		.join('');
+
+	// Generate category summary
+	const categorySummary = categoryAnalysis
+		.map(
+			cat => `
+		<tr>
+			<td style="padding: 12px; border-bottom: 1px solid #e5e7eb; font-weight: 500;">${cat.category}</td>
+			<td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">${cat.percentage}%</td>
+			<td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">${cat.score}/${cat.total}</td>
+		</tr>
+	`,
+		)
+		.join('');
+
+	const html = `
+		<!DOCTYPE html>
+		<html>
+		<head>
+			<meta charset="utf-8">
+			<meta name="viewport" content="width=device-width, initial-scale=1.0">
+			<title>New Test Results - ${businessName}</title>
+		</head>
+		<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f1f5f9; color: #1f2937; line-height: 1.6;">
+			<div style="max-width: 800px; margin: 0 auto; background-color: #ffffff; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); border-radius: 16px; overflow: hidden;">
+
+				<!-- Header -->
+				<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%); color: white; padding: 40px 30px; text-align: center;">
+					<h1 style="margin: 0; font-size: 28px; font-weight: 700;">📊 New Test Results</h1>
+					<p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Business Health Assessment Completed</p>
+				</div>
+
+				<!-- Customer Information -->
+				<div style="padding: 30px;">
+					<h2 style="color: #1e293b; margin-bottom: 20px; font-size: 24px; font-weight: 700;">👤 Customer Information</h2>
+					<table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+						<tr>
+							<td style="padding: 10px 0; font-weight: 600; width: 150px;">Name:</td>
+							<td style="padding: 10px 0;">${name}</td>
+						</tr>
+						<tr>
+							<td style="padding: 10px 0; font-weight: 600;">Phone:</td>
+							<td style="padding: 10px 0;">${phoneNumber}</td>
+						</tr>
+						<tr>
+							<td style="padding: 10px 0; font-weight: 600;">Email:</td>
+							<td style="padding: 10px 0;">${email}</td>
+						</tr>
+						<tr>
+							<td style="padding: 10px 0; font-weight: 600;">Business:</td>
+							<td style="padding: 10px 0;">${businessName}</td>
+						</tr>
+						<tr>
+							<td style="padding: 10px 0; font-weight: 600;">Description:</td>
+							<td style="padding: 10px 0;">${businessDescription}</td>
+						</tr>
+						<tr>
+							<td style="padding: 10px 0; font-weight: 600;">Test Score:</td>
+							<td style="padding: 10px 0; font-weight: 700; color: ${testScore >= 80 ? '#059669' : testScore >= 60 ? '#d97706' : testScore >= 40 ? '#dc2626' : '#7c2d12'};">${testScore}%</td>
+						</tr>
+					</table>
+
+					<!-- Category Performance -->
+					<h2 style="color: #1e293b; margin-bottom: 20px; font-size: 24px; font-weight: 700;">📈 Category Performance</h2>
+					<table style="width: 100%; border-collapse: collapse; margin-bottom: 30px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+						<thead>
+							<tr style="background: #f9fafb;">
+								<th style="padding: 15px; text-align: left; font-weight: 600; border-bottom: 1px solid #e5e7eb;">Category</th>
+								<th style="padding: 15px; text-align: center; font-weight: 600; border-bottom: 1px solid #e5e7eb;">Score</th>
+								<th style="padding: 15px; text-align: center; font-weight: 600; border-bottom: 1px solid #e5e7eb;">Raw Score</th>
+							</tr>
+						</thead>
+						<tbody>
+							${categorySummary}
+						</tbody>
+					</table>
+
+					<!-- Detailed Answers -->
+					<h2 style="color: #1e293b; margin-bottom: 20px; font-size: 24px; font-weight: 700;">📝 Detailed Answers</h2>
+					${detailedAnswers}
+
+					<!-- Action Items -->
+					<div style="background: #fef3c7; padding: 20px; border-radius: 8px; margin-top: 30px; border-left: 4px solid #f59e0b;">
+						<h3 style="margin: 0 0 10px 0; color: #92400e; font-size: 18px; font-weight: 600;">🎯 Action Required</h3>
+						<p style="margin: 0; color: #78350f;">
+							Review the test results and consider reaching out to ${name} for personalized consulting services.
+							Business: ${businessName} | Score: ${testScore}% | Contact: ${phoneNumber} | ${email}
+						</p>
+					</div>
+				</div>
+
+				<!-- Footer -->
+				<div style="background: #f9fafb; padding: 20px 30px; text-align: center; border-top: 1px solid #e5e7eb;">
+					<p style="margin: 0; color: #6b7280; font-size: 14px;">
+						This is an automated notification from the Business Health Assessment system.
+					</p>
+				</div>
+			</div>
+		</body>
+		</html>
+	`;
+
+	return html;
+}
 
 // Generate comprehensive business health report
 function generateBusinessHealthReport(
@@ -747,10 +887,12 @@ function generateRecommendations(
 // Schema for validation
 const emailSchema = z.object({
 	email: z.string().email('Invalid email address'),
+	phoneNumber: z.string().min(1, 'Phone number is required'),
 	name: z.string().min(1, 'Name is required'),
 	businessName: z.string().min(1, 'Business name is required'),
 	businessDescription: z.string().min(1, 'Business description is required'),
 	testScore: z.number().min(0, 'Test score is required'),
+	testId: z.string().min(1, 'Test ID is required'),
 	answers: z.array(
 		z.object({
 			questionId: z.string(),
@@ -776,7 +918,27 @@ const createTransporter = () => {
 export async function POST(req: NextRequest) {
 	try {
 		const body = await req.json();
-		const { email, name, businessName, businessDescription, testScore, answers } = emailSchema.parse(body);
+		const { email, phoneNumber, name, businessName, businessDescription, testScore, testId, answers } =
+			emailSchema.parse(body);
+
+		// Check if user has already taken the test with this exact phone number and email combination
+		const existingTest = await prisma.testResult.findFirst({
+			where: {
+				AND: [{ phoneNumber: phoneNumber }, { email: email }],
+			},
+		});
+
+		if (existingTest) {
+			return NextResponse.json(
+				{
+					error: 'Test already completed',
+					message: 'You have already taken this test with these credentials.',
+					testDate: existingTest.createdAt,
+					testScore: existingTest.testScore,
+				},
+				{ status: 409 }, // Conflict status code
+			);
+		}
 
 		// Check if Gmail credentials are configured
 		if (!process.env.GMAIL_USERNAME || !process.env.GMAIL_PASSWORD) {
@@ -834,6 +996,28 @@ export async function POST(req: NextRequest) {
 		// Generate comprehensive business health report
 		const reportData = generateBusinessHealthReport(name, businessName, businessDescription, testScore, answers);
 
+		// Store test results in database
+		try {
+			await prisma.testResult.create({
+				data: {
+					phoneNumber,
+					email,
+					name,
+					businessName,
+					businessDescription,
+					testScore,
+					testId,
+					answers,
+					categoryAnalysis,
+					recommendations,
+				},
+			});
+			console.log('Test results stored in database successfully');
+		} catch (dbError) {
+			console.error('Error storing test results in database:', dbError);
+			// Continue with email sending even if database storage fails
+		}
+
 		// Send business health report email to customer
 		const mailOptions = {
 			from: {
@@ -853,6 +1037,37 @@ export async function POST(req: NextRequest) {
 			console.log('Business health report sent successfully:', info.messageId);
 			console.log(`Report sent to: ${email} with copy to ${process.env.GMAIL_USERNAME}`);
 			console.log(`Business: ${businessName}, Score: ${testScore}%, Risk: ${riskLevel}`);
+
+			// Send detailed test results to admin
+			try {
+				const adminEmailHtml = generateAdminReportHtml(
+					name,
+					phoneNumber,
+					email,
+					businessName,
+					businessDescription,
+					testScore,
+					answers,
+					categoryAnalysis,
+				);
+
+				const adminMailOptions = {
+					from: {
+						name: 'Synerix Test Results',
+						address: process.env.GMAIL_USERNAME!,
+					},
+					to: process.env.GMAIL_USERNAME!,
+					subject: `NEW TEST RESULTS: ${businessName} - ${name} (${testScore}%)`,
+					html: adminEmailHtml,
+					replyTo: email, // Allow admin to reply directly to customer
+				};
+
+				const adminInfo = await transporter.sendMail(adminMailOptions);
+				console.log('Admin test results email sent successfully:', adminInfo.messageId);
+			} catch (adminError) {
+				console.error('Error sending admin email:', adminError);
+				// Don't fail the whole request if admin email fails
+			}
 
 			return NextResponse.json({
 				success: true,

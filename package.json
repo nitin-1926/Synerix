@@ -11,10 +11,12 @@
 		"start": "next start",
 		"lint": "next lint",
 		"format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,css,scss,md}\"",
-		"format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,json,css,scss,md}\""
+		"format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,json,css,scss,md}\"",
+		"migrate:questions": "npx tsx scripts/migrate-questions.ts"
 	},
 	"dependencies": {
 		"@emailjs/browser": "^3.10.0",
+		"@prisma/client": "^6.16.1",
 		"@tailwindcss/forms": "^0.5.2",
 		"@types/nodemailer": "^6.4.17",
 		"@vercel/analytics": "^1.5.0",
@@ -23,8 +25,11 @@
 		"critters": "^0.0.25",
 		"framer-motion": "^10.18.0",
 		"next": "^14.0.0",
+		"node-fetch": "^3.3.2",
 		"nodemailer": "^6.10.1",
+		"pg": "^8.16.3",
 		"prettier-eslint": "^15.0.1",
+		"prisma": "^6.16.1",
 		"react": "^18.2.0",
 		"react-dom": "^18.2.0",
 		"react-flatpickr": "^3.10.13",

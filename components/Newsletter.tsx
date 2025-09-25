@@ -123,7 +123,7 @@ function Newsletter() {
 										Discover your business strengths and get actionable insights in just 5 minutes.
 									</p>
 									<a
-										href="/tests/business-health"
+										href="/tests/business-health?testId=cmfjv3jsj0000o68f591sdr03"
 										className="inline-flex items-center px-6 py-2 bg-white text-gray-900 font-semibold rounded-lg hover:bg-gray-100 transition-colors duration-200"
 									>
 										Take Free Test

@@ -1,0 +1,52 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model TestResult {
+  id                  String   @id @default(cuid())
+  testId              String   // Foreign key to reference which test was taken
+  phoneNumber         String
+  email               String
+  name                String
+  businessName        String
+  businessDescription String
+  testScore           Int
+  answers             Json     // Array of {questionId, optionId, weightAge}
+  categoryAnalysis    Json     // Analysis by categories
+  recommendations     Json     // Generated recommendations
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  // Relation to Test model
+  test                Test     @relation("TestResults", fields: [testId], references: [id], onDelete: Cascade)
+
+  @@map("test_results")
+}
+
+model Test {
+  id          String   @id @default(cuid())
+  name        String
+  type        String   // 'paid' or 'free'
+  description String?
+  questions   Json     // Array of questions with options and weightage
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Minimal relation field (won't eagerly load unless explicitly requested)
+  testResults TestResult[] @relation("TestResults")
+
+  @@map("tests")
+}

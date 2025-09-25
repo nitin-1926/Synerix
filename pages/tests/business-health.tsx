@@ -1,13 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Header from '../../components/Header';
-import { businessDiagnosticQuestions } from '../../data/questions';
+
+interface Question {
+	id: string;
+	question: string;
+	options: {
+		id: string;
+		content: string;
+		weightAge: string | number;
+	}[];
+	category: string;
+}
+
+interface Test {
+	id: string;
+	name: string;
+	type: string;
+	description: string;
+	questions: Question[];
+}
 
 interface UserInfo {
 	name: string;
+	phoneNumber: string;
+	email: string;
 	businessName: string;
 	businessDescription: string;
-	email?: string;
 }
 
 interface Answer {
@@ -19,33 +38,120 @@ interface Answer {
 const BusinessHealthTest: React.FC = () => {
 	const router = useRouter();
 	const [currentStep, setCurrentStep] = useState(0);
+	const [testData, setTestData] = useState<Test | null>(null);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState('');
 	const [userInfo, setUserInfo] = useState<UserInfo>({
 		name: '',
+		phoneNumber: '',
+		email: '',
 		businessName: '',
 		businessDescription: '',
 	});
 	const [answers, setAnswers] = useState<Answer[]>([]);
 	const [showCongratulations, setShowCongratulations] = useState(false);
-	const [showEmailForm, setShowEmailForm] = useState(false);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [reportSent, setReportSent] = useState(false);
+	const [isCheckingUser, setIsCheckingUser] = useState(false);
+	const [existingUser, setExistingUser] = useState<any>(null);
 	const [animationDirection, setAnimationDirection] = useState<'forward' | 'backward'>('forward');
 	const [inputValue, setInputValue] = useState('');
+	const [validationErrors, setValidationErrors] = useState<{ [key: string]: string }>({});
 
-	// Total steps: 3 user info + business diagnostic questions
-	const totalSteps = 3 + businessDiagnosticQuestions.length;
+	// Fetch test data on component mount
+	useEffect(() => {
+		const fetchTestData = async () => {
+			// Wait for router to be ready and get testId from query params
+			if (!router.isReady) return;
+
+			const testId = (router.query.testId as string) || 'cmfjv3jsj0000o68f591sdr03'; // fallback to default
+
+			try {
+				const response = await fetch(`/api/test?testId=${testId}`);
+				const result = await response.json();
+
+				if (response.ok && result.success) {
+					setTestData(result.data);
+				} else {
+					setError(result.error || 'Failed to load test');
+				}
+			} catch (err) {
+				setError('Failed to load test data');
+				console.error('Error fetching test:', err);
+			} finally {
+				setLoading(false);
+			}
+		};
+
+		fetchTestData();
+	}, [router.isReady, router.query.testId]);
+
+	// Total steps: 5 user info + questions from database
+	const totalSteps = 5 + (testData?.questions?.length || 0);
 	const progress = ((currentStep + 1) / totalSteps) * 100;
 
 	useEffect(() => {
 		// Set initial input value based on current step
 		if (currentStep === 0) setInputValue(userInfo.name);
-		else if (currentStep === 1) setInputValue(userInfo.businessName);
-		else if (currentStep === 2) setInputValue(userInfo.businessDescription);
+		else if (currentStep === 1) setInputValue(userInfo.phoneNumber);
+		else if (currentStep === 2) setInputValue(userInfo.email);
+		else if (currentStep === 3) setInputValue(userInfo.businessName);
+		else if (currentStep === 4) setInputValue(userInfo.businessDescription);
 		else setInputValue('');
 	}, [currentStep, userInfo]);
 
+	// Validation functions
+	const validateEmail = (email: string): boolean => {
+		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+		return emailRegex.test(email);
+	};
+
+	const validatePhoneNumber = (phone: string): boolean => {
+		// Remove all non-digit characters
+		const digitsOnly = phone.replace(/\D/g, '');
+		// Check if it's between 10-15 digits (international format)
+		return digitsOnly.length >= 10 && digitsOnly.length <= 15;
+	};
+
+	const validateCurrentStep = (): boolean => {
+		const errors: { [key: string]: string } = {};
+
+		if (currentStep === 0 && !inputValue.trim()) {
+			errors.name = 'Name is required';
+		}
+
+		if (currentStep === 1) {
+			if (!inputValue.trim()) {
+				errors.phoneNumber = 'Phone number is required';
+			} else if (!validatePhoneNumber(inputValue)) {
+				errors.phoneNumber = 'Please enter a valid phone number (10-15 digits)';
+			}
+		}
+
+		if (currentStep === 2) {
+			if (!inputValue.trim()) {
+				errors.email = 'Email is required';
+			} else if (!validateEmail(inputValue)) {
+				errors.email = 'Please enter a valid email address';
+			}
+		}
+
+		if (currentStep === 3 && !inputValue.trim()) {
+			errors.businessName = 'Business name is required';
+		}
+
+		if (currentStep === 4 && !inputValue.trim()) {
+			errors.businessDescription = 'Business description is required';
+		}
+
+		setValidationErrors(errors);
+		return Object.keys(errors).length === 0;
+	};
+
 	const handleInputChange = (value: string) => {
 		setInputValue(value);
+		// Clear validation errors when user starts typing
+		setValidationErrors({});
 	};
 
 	const handleAnswerSelect = (questionId: string, optionId: string, weightAge: number) => {
@@ -68,18 +174,72 @@ const BusinessHealthTest: React.FC = () => {
 	};
 
 	const calculateScore = () => {
+		if (!testData?.questions?.length) return 0;
+
 		const totalScore = answers.reduce((sum, answer) => sum + answer.weightAge, 0);
-		const maxPossibleScore = businessDiagnosticQuestions.length * 2;
+		const maxPossibleScore = testData.questions.length * 2;
 		return Math.round((totalScore / maxPossibleScore) * 100);
 	};
 
+	const checkExistingUser = async (email: string) => {
+		if (!userInfo.phoneNumber.trim()) return;
+
+		setIsCheckingUser(true);
+		try {
+			const response = await fetch('/api/check-user', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					phoneNumber: userInfo.phoneNumber,
+					email: email,
+				}),
+			});
+
+			const result = await response.json();
+
+			if (response.ok) {
+				if (result.hasTakenTest) {
+					setExistingUser(result);
+				} else {
+					// User doesn't exist, proceed to next step
+					setAnimationDirection('forward');
+					setCurrentStep(prev => prev + 1);
+				}
+			} else {
+				console.error('Check user error:', result);
+				// Show error message instead of proceeding
+				setError('Unable to verify user information. Please try again.');
+			}
+		} catch (error) {
+			console.error('Error checking user:', error);
+			// Show error message instead of proceeding
+			setError('Network error occurred while checking user information. Please try again.');
+		} finally {
+			setIsCheckingUser(false);
+		}
+	};
+
 	const handleNext = () => {
+		// Validate current step before proceeding
+		if (!validateCurrentStep()) {
+			return;
+		}
+
 		// Save user info based on current step
 		if (currentStep === 0) {
 			setUserInfo(prev => ({ ...prev, name: inputValue }));
 		} else if (currentStep === 1) {
-			setUserInfo(prev => ({ ...prev, businessName: inputValue }));
+			setUserInfo(prev => ({ ...prev, phoneNumber: inputValue }));
 		} else if (currentStep === 2) {
+			setUserInfo(prev => ({ ...prev, email: inputValue }));
+			// Check if user already exists after entering email
+			checkExistingUser(inputValue);
+			return; // Don't proceed until check is complete
+		} else if (currentStep === 3) {
+			setUserInfo(prev => ({ ...prev, businessName: inputValue }));
+		} else if (currentStep === 4) {
 			setUserInfo(prev => ({ ...prev, businessDescription: inputValue }));
 		}
 
@@ -106,16 +266,15 @@ const BusinessHealthTest: React.FC = () => {
 	};
 
 	const handleFinishTest = () => {
-		setShowEmailForm(true);
+		handleEmailSubmit();
 	};
 
 	const handleEmailSubmit = async () => {
-		if (!userInfo.email?.trim()) return;
-
 		setIsSubmitting(true);
 
 		try {
 			const score = calculateScore();
+			const testId = (router.query.testId as string) || 'cmfjv3jsj0000o68f591sdr03'; // fallback to default
 
 			const response = await fetch('/api/send-test-report', {
 				method: 'POST',
@@ -124,10 +283,12 @@ const BusinessHealthTest: React.FC = () => {
 				},
 				body: JSON.stringify({
 					email: userInfo.email,
+					phoneNumber: userInfo.phoneNumber,
 					name: userInfo.name,
 					businessName: userInfo.businessName,
 					businessDescription: userInfo.businessDescription,
 					testScore: score,
+					testId: testId,
 					answers: answers,
 				}),
 			});
@@ -137,7 +298,7 @@ const BusinessHealthTest: React.FC = () => {
 			if (response.ok && result.success) {
 				// Show success message with elegant UI
 				setReportSent(true);
-				setShowEmailForm(false);
+				setShowCongratulations(true);
 
 				// Navigate back to home after 5 seconds
 				setTimeout(() => {
@@ -155,7 +316,16 @@ const BusinessHealthTest: React.FC = () => {
 				// Handle specific error cases
 				let errorMessage = result.error || 'Something went wrong. Please try again.';
 
-				if (result.error === 'Email service not configured') {
+				if (result.error === 'Test already completed') {
+					// Handle duplicate test submission - show existing user interface
+					setExistingUser({
+						hasTakenTest: true,
+						message: result.message,
+						testDate: result.testDate,
+						testScore: result.testScore,
+					});
+					return; // Exit early to show existing user UI
+				} else if (result.error === 'Email service not configured') {
 					errorMessage = 'Email service is currently unavailable. Please contact support or try again later.';
 				} else if (result.error === 'Email service configuration error') {
 					errorMessage = 'Email service configuration error. Please contact support.';
@@ -191,10 +361,10 @@ const BusinessHealthTest: React.FC = () => {
 	};
 
 	const canProceed = () => {
-		if (currentStep <= 2) return inputValue.trim() !== '';
-		if (currentStep >= 3) {
-			const questionIndex = currentStep - 3;
-			const questionId = businessDiagnosticQuestions[questionIndex]?.id;
+		if (currentStep <= 4) return inputValue.trim() !== '' && Object.keys(validationErrors).length === 0;
+		if (currentStep >= 5 && testData?.questions) {
+			const questionIndex = currentStep - 5;
+			const questionId = testData.questions[questionIndex]?.id;
 			return answers.some(a => a.questionId === questionId);
 		}
 		return false;
@@ -305,57 +475,25 @@ const BusinessHealthTest: React.FC = () => {
 
 							{/* Email Form or Success Button */}
 							{!reportSent && (
-								<>
-									{!showEmailForm ? (
-										<div className="space-y-4">
-											<p className="text-gray-700">
-												Get your detailed analysis report and personalized recommendations.
-											</p>
-											<button
-												onClick={handleFinishTest}
-												className="w-full bg-gradient-to-r from-primary-500 to-secondary-500 text-white py-4 px-6 rounded-xl font-semibold hover:from-primary-600 hover:to-secondary-600 transform hover:scale-105 transition-all duration-200 shadow-lg"
-											>
-												Get My Detailed Report
-											</button>
-										</div>
-									) : (
-										<div className="space-y-6">
-											<div className="text-left">
-												<label
-													htmlFor="email"
-													className="block text-sm font-medium text-gray-700 mb-3"
-												>
-													Email address
-												</label>
-												<input
-													type="email"
-													id="email"
-													className="w-full px-4 py-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent text-lg"
-													placeholder="your.email@example.com"
-													value={userInfo.email || ''}
-													onChange={e =>
-														setUserInfo(prev => ({ ...prev, email: e.target.value }))
-													}
-													onKeyPress={e => e.key === 'Enter' && handleEmailSubmit()}
-												/>
+								<div className="space-y-4">
+									<p className="text-gray-700">
+										Get your detailed analysis report and personalized recommendations.
+									</p>
+									<button
+										onClick={handleFinishTest}
+										disabled={isSubmitting}
+										className="w-full bg-gradient-to-r from-primary-500 to-secondary-500 text-white py-4 px-6 rounded-xl font-semibold hover:from-primary-600 hover:to-secondary-600 transform hover:scale-105 transition-all duration-200 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+									>
+										{isSubmitting ? (
+											<div className="flex items-center justify-center">
+												<div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+												Generating Report...
 											</div>
-											<button
-												onClick={handleEmailSubmit}
-												disabled={isSubmitting || !userInfo.email?.trim()}
-												className="w-full bg-gradient-to-r from-primary-500 to-secondary-500 text-white py-4 px-6 rounded-xl font-semibold hover:from-primary-600 hover:to-secondary-600 transform hover:scale-105 transition-all duration-200 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-											>
-												{isSubmitting ? (
-													<div className="flex items-center justify-center">
-														<div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-														Generating Report...
-													</div>
-												) : (
-													'Send My Report'
-												)}
-											</button>
-										</div>
-									)}
-								</>
+										) : (
+											'Send My Report'
+										)}
+									</button>
+								</div>
 							)}
 
 							{/* Return Link */}
@@ -382,12 +520,26 @@ const BusinessHealthTest: React.FC = () => {
 			};
 		} else if (currentStep === 1) {
 			return {
+				question: "What's your phone number?",
+				type: 'input' as const,
+				placeholder: 'Enter your phone number (e.g., +91 9876543210)',
+				subtitle: 'We need this to connect with you',
+			};
+		} else if (currentStep === 2) {
+			return {
+				question: "What's your email address?",
+				type: 'input' as const,
+				placeholder: 'Enter your email address',
+				subtitle: 'Your detailed report will be sent here',
+			};
+		} else if (currentStep === 3) {
+			return {
 				question: "What's your business name?",
 				type: 'input' as const,
 				placeholder: 'Enter your business name',
 				subtitle: 'Tell us about your business',
 			};
-		} else if (currentStep === 2) {
+		} else if (currentStep === 4) {
 			return {
 				question: 'What does your business do?',
 				type: 'textarea' as const,
@@ -395,8 +547,15 @@ const BusinessHealthTest: React.FC = () => {
 				subtitle: 'Help us understand your business better',
 			};
 		} else {
-			const questionIndex = currentStep - 3;
-			const question = businessDiagnosticQuestions[questionIndex];
+			const questionIndex = currentStep - 5;
+			if (!testData?.questions || questionIndex >= testData.questions.length) {
+				return {
+					question: 'Loading...',
+					type: 'options' as const,
+					options: [],
+				};
+			}
+			const question = testData.questions[questionIndex];
 			return {
 				question: question.question,
 				type: 'options' as const,
@@ -408,7 +567,146 @@ const BusinessHealthTest: React.FC = () => {
 
 	const currentQuestion = getCurrentQuestion();
 	const selectedAnswer =
-		currentStep >= 3 ? answers.find(a => a.questionId === businessDiagnosticQuestions[currentStep - 3]?.id) : null;
+		currentStep >= 5 && testData?.questions
+			? answers.find(a => a.questionId === testData.questions[currentStep - 5]?.id)
+			: null;
+
+	// Show loading state
+	if (loading) {
+		return (
+			<div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-secondary-50 flex flex-col">
+				<Header />
+				<div className="flex-1 flex items-center justify-center">
+					<div className="text-center">
+						<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto"></div>
+						<p className="mt-4 text-gray-600">Loading test...</p>
+					</div>
+				</div>
+			</div>
+		);
+	}
+
+	// Show error state
+	if (error) {
+		return (
+			<div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-secondary-50 flex flex-col">
+				<Header />
+				<div className="flex-1 flex items-center justify-center p-4">
+					<div className="text-center max-w-md">
+						<div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+							<svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path
+									strokeLinecap="round"
+									strokeLinejoin="round"
+									strokeWidth={2}
+									d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
+								/>
+							</svg>
+						</div>
+						<h3 className="text-lg font-semibold text-gray-900 mb-2">Unable to Load Test</h3>
+						<p className="text-gray-600 mb-4">{error}</p>
+						<button
+							onClick={() => window.location.reload()}
+							className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
+						>
+							Try Again
+						</button>
+					</div>
+				</div>
+			</div>
+		);
+	}
+
+	// Show existing user message
+	if (existingUser) {
+		return (
+			<div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-secondary-50 flex flex-col">
+				{/* Header */}
+				<Header />
+
+				{/* Main Content */}
+				<div className="flex-1 flex items-center justify-center p-4 sm:p-6 pt-24 md:pt-28">
+					<div className="max-w-md w-full">
+						<div className="text-center space-y-6 sm:space-y-8 animate-fade-in">
+							{/* Warning Icon */}
+							<div className="relative">
+								<div className="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto animate-scale-in">
+									<svg
+										className="w-10 h-10 text-yellow-600"
+										fill="none"
+										stroke="currentColor"
+										viewBox="0 0 24 24"
+									>
+										<path
+											strokeLinecap="round"
+											strokeLinejoin="round"
+											strokeWidth={2}
+											d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
+										/>
+									</svg>
+								</div>
+							</div>
+
+							{/* Message */}
+							<div className="space-y-4">
+								<h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+									You've Already Taken This Test! 🎯
+								</h1>
+								<div className="space-y-3">
+									<p className="text-base sm:text-lg text-gray-600 leading-relaxed">
+										We found that you've already completed the Business Health Assessment on{' '}
+										<strong>{new Date(existingUser.testDate).toLocaleDateString()}</strong> with a
+										score of <strong>{existingUser.testScore}%</strong>.
+									</p>
+									<p className="text-base text-gray-600 leading-relaxed">{existingUser.message}</p>
+									<div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mt-4">
+										<p className="text-sm text-amber-800">
+											📋 <strong>One Test Per User Policy:</strong> To ensure data integrity and
+											prevent duplicate assessments, each phone number and email combination can
+											only take the test once.
+										</p>
+									</div>
+									<div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-2">
+										<p className="text-sm text-blue-800">
+											💼 Ready for personalized consulting? Our experts can help you implement the
+											recommendations from your previous assessment.
+										</p>
+									</div>
+								</div>
+							</div>
+
+							{/* Action Buttons */}
+							<div className="space-y-4">
+								<button
+									onClick={() => {
+										// Trigger the connect functionality from the main page
+										window.location.href = '/#services';
+									}}
+									className="w-full bg-gradient-to-r from-primary-500 to-secondary-500 text-white py-4 px-6 rounded-xl font-semibold hover:from-primary-600 hover:to-secondary-600 transform hover:scale-105 transition-all duration-200 shadow-lg"
+								>
+									Connect for Personalized Consulting
+								</button>
+								<button
+									onClick={() => router.push('/')}
+									className="w-full bg-white border-2 border-gray-300 text-gray-700 py-4 px-6 rounded-xl font-semibold hover:bg-gray-50 transition-all duration-200"
+								>
+									Return to Home
+								</button>
+							</div>
+
+							{/* Return Link */}
+							<button
+								onClick={() => router.push('/')}
+								className="text-gray-500 hover:text-gray-700 text-sm underline"
+							>
+								← Return to Homepage
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		);
+	}
 
 	return (
 		<div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-primary-50 flex flex-col">
@@ -465,14 +763,36 @@ const BusinessHealthTest: React.FC = () => {
 							{currentQuestion.type === 'input' && (
 								<div className="px-2">
 									<input
-										type="text"
-										className="w-full px-4 py-4 text-base sm:text-lg border-2 border-gray-200 rounded-xl focus:border-primary-500 focus:ring-0 transition-colors duration-200 bg-white"
+										type={currentStep === 2 ? 'email' : currentStep === 1 ? 'tel' : 'text'}
+										className={`w-full px-4 py-4 text-base sm:text-lg border-2 rounded-xl focus:ring-0 transition-colors duration-200 bg-white ${
+											validationErrors[Object.keys(validationErrors)[0]]
+												? 'border-red-500 focus:border-red-500'
+												: 'border-gray-200 focus:border-primary-500'
+										}`}
 										placeholder={currentQuestion.placeholder}
 										value={inputValue}
 										onChange={e => handleInputChange(e.target.value)}
 										onKeyPress={handleKeyPress}
 										autoFocus
 									/>
+									{validationErrors[Object.keys(validationErrors)[0]] && (
+										<div className="mt-2 text-sm text-red-600 flex items-center">
+											<svg
+												className="w-4 h-4 mr-1"
+												fill="none"
+												stroke="currentColor"
+												viewBox="0 0 24 24"
+											>
+												<path
+													strokeLinecap="round"
+													strokeLinejoin="round"
+													strokeWidth={2}
+													d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
+												/>
+											</svg>
+											{validationErrors[Object.keys(validationErrors)[0]]}
+										</div>
+									)}
 								</div>
 							)}
 
@@ -480,58 +800,85 @@ const BusinessHealthTest: React.FC = () => {
 								<div className="px-2">
 									<textarea
 										rows={4}
-										className="w-full px-4 py-4 text-base sm:text-lg border-2 border-gray-200 rounded-xl focus:border-primary-500 focus:ring-0 transition-colors duration-200 resize-none bg-white"
+										className={`w-full px-4 py-4 text-base sm:text-lg border-2 rounded-xl focus:ring-0 transition-colors duration-200 resize-none bg-white ${
+											validationErrors[Object.keys(validationErrors)[0]]
+												? 'border-red-500 focus:border-red-500'
+												: 'border-gray-200 focus:border-primary-500'
+										}`}
 										placeholder={currentQuestion.placeholder}
 										value={inputValue}
 										onChange={e => handleInputChange(e.target.value)}
 										onKeyPress={handleKeyPress}
 										autoFocus
 									/>
+									{validationErrors[Object.keys(validationErrors)[0]] && (
+										<div className="mt-2 text-sm text-red-600 flex items-center">
+											<svg
+												className="w-4 h-4 mr-1"
+												fill="none"
+												stroke="currentColor"
+												viewBox="0 0 24 24"
+											>
+												<path
+													strokeLinecap="round"
+													strokeLinejoin="round"
+													strokeWidth={2}
+													d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
+												/>
+											</svg>
+											{validationErrors[Object.keys(validationErrors)[0]]}
+										</div>
+									)}
 									<div className="text-xs text-gray-500 mt-2 text-right">
 										{inputValue.length}/500 characters
 									</div>
 								</div>
 							)}
 
-							{currentQuestion.type === 'options' && (
+							{currentQuestion.type === 'options' && testData?.questions && (
 								<div className="space-y-3 px-2">
-									{currentQuestion.options?.map((option, index) => (
-										<button
-											key={option.id}
-											onClick={() =>
-												handleAnswerSelect(
-													businessDiagnosticQuestions[currentStep - 3].id,
-													option.id,
-													parseInt(option.weightAge),
-												)
-											}
-											className={`w-full p-4 sm:p-5 text-left border-2 rounded-xl transition-all duration-200 hover:shadow-md group animate-stagger-in ${
-												selectedAnswer?.optionId === option.id
-													? 'border-primary-500 bg-primary-50 shadow-md'
-													: 'border-gray-200 hover:border-gray-300'
-											}`}
-											style={{ animationDelay: `${index * 150}ms` }}
-										>
-											<div className="flex items-start">
-												<div
-													className={`w-5 h-5 rounded-full border-2 mt-0.5 mr-3 sm:mr-4 flex-shrink-0 ${
-														selectedAnswer?.optionId === option.id
-															? 'border-primary-500 bg-primary-500'
-															: 'border-gray-300 group-hover:border-gray-400'
-													}`}
-												>
-													{selectedAnswer?.optionId === option.id && (
-														<div className="w-full h-full rounded-full bg-primary-500 flex items-center justify-center">
-															<div className="w-2 h-2 rounded-full bg-white"></div>
-														</div>
-													)}
+									{currentQuestion.options?.map((option, index) => {
+										const questionIndex = currentStep - 5;
+										const questionId = testData.questions[questionIndex]?.id;
+
+										return (
+											<button
+												key={option.id}
+												onClick={() =>
+													handleAnswerSelect(
+														questionId,
+														option.id,
+														parseInt(String(option.weightAge)),
+													)
+												}
+												className={`w-full p-4 sm:p-5 text-left border-2 rounded-xl transition-all duration-200 hover:shadow-md group animate-stagger-in ${
+													selectedAnswer?.optionId === option.id
+														? 'border-primary-500 bg-primary-50 shadow-md'
+														: 'border-gray-200 hover:border-gray-300'
+												}`}
+												style={{ animationDelay: `${index * 150}ms` }}
+											>
+												<div className="flex items-start">
+													<div
+														className={`w-5 h-5 rounded-full border-2 mt-0.5 mr-3 sm:mr-4 flex-shrink-0 ${
+															selectedAnswer?.optionId === option.id
+																? 'border-primary-500 bg-primary-500'
+																: 'border-gray-300 group-hover:border-gray-400'
+														}`}
+													>
+														{selectedAnswer?.optionId === option.id && (
+															<div className="w-full h-full rounded-full bg-primary-500 flex items-center justify-center">
+																<div className="w-2 h-2 rounded-full bg-white"></div>
+															</div>
+														)}
+													</div>
+													<span className="text-gray-800 leading-relaxed text-sm sm:text-base">
+														{option.content}
+													</span>
 												</div>
-												<span className="text-gray-800 leading-relaxed text-sm sm:text-base">
-													{option.content}
-												</span>
-											</div>
-										</button>
-									))}
+											</button>
+										);
+									})}
 								</div>
 							)}
 						</div>
