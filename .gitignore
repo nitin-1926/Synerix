@@ -52,3 +52,8 @@ next-env.d.ts
 ehthumbs.db
 Thumbs.db
 /app/generated/prisma
+
+# generated (synerix studio stack)
+src/generated/
+graphify-out/
+.trigger
