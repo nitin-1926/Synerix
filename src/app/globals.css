@@ -1,0 +1,187 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "../styles/themes.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* Map the active theme's custom properties (set in themes.css) onto Tailwind
+   tokens. Switching theme = swap the .theme-* class on <html>; every token
+   below re-resolves automatically. */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --font-sans: var(--font-sans);
+  --font-serif: var(--font-serif);
+  --font-mono: var(--font-mono);
+  --font-heading: var(--font-sans);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 16px);
+
+  --tracking-tighter: calc(var(--tracking-normal) - 0.05em);
+  --tracking-tight: calc(var(--tracking-normal) - 0.025em);
+  --tracking-normal: var(--tracking-normal);
+  --tracking-wide: calc(var(--tracking-normal) + 0.025em);
+  --tracking-wider: calc(var(--tracking-normal) + 0.05em);
+  --tracking-widest: calc(var(--tracking-normal) + 0.1em);
+
+  --shadow-2xs: var(--shadow-2xs);
+  --shadow-xs: var(--shadow-xs);
+  --shadow-sm: var(--shadow-sm);
+  --shadow: var(--shadow);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-xl: var(--shadow-xl);
+  --shadow-2xl: var(--shadow-2xl);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+  }
+  body {
+    @apply bg-background text-foreground;
+    letter-spacing: var(--tracking-normal);
+  }
+}
+
+@layer components {
+  /* Elegant serif display (the theme's Lora), for hero/marketing headings. */
+  .font-display {
+    font-family: var(--font-serif);
+    font-optical-sizing: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ====================================================================
+   Synerix marketing site tokens (scoped to the (marketing) route group).
+   "The consulting report, electrified": ink-navy surfaces, luminous cyan,
+   serif display (Fraunces), mono numerals. Independent of the app theme.
+   ==================================================================== */
+@theme {
+  --color-mk-ink: #050f2c; /* deepest navy-ink — hero surfaces */
+  --color-mk-navy: #0b1f4e; /* panel navy */
+  --color-mk-navy-soft: #16306b; /* raised navy surface */
+  --color-mk-cyan: #00c6c9; /* Synerix cyan — primary accent */
+  --color-mk-cyan-bright: #2ee6e9; /* hover / glow */
+  --color-mk-cyan-deep: #007e97; /* cyan on light surfaces */
+  --color-mk-paper: #fafaf6; /* warm off-white sections */
+  --color-mk-paper-dim: #f1f1ea; /* alt paper */
+  --color-mk-slate: #44506b; /* body text on paper */
+  --color-mk-mist: #9fb0d0; /* body text on ink */
+  --color-mk-line: #d9dbd2; /* hairlines on paper */
+  --color-mk-line-dark: #1d2f5e; /* hairlines on ink */
+}
+
+@layer components {
+  .mk-display {
+    font-family: var(--font-fraunces), var(--font-serif), Georgia, serif;
+    font-optical-sizing: auto;
+  }
+  .mk-mono {
+    font-family: var(--font-mono);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+  /* Subtle blueprint grid + radial cyan glow for ink surfaces. */
+  .mk-hero-bg {
+    background-image:
+      radial-gradient(ellipse 80% 60% at 70% -10%, rgba(0, 198, 201, 0.16), transparent 60%),
+      radial-gradient(ellipse 50% 40% at 10% 110%, rgba(0, 198, 201, 0.08), transparent 60%),
+      linear-gradient(rgba(159, 176, 208, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(159, 176, 208, 0.05) 1px, transparent 1px);
+    background-size: 100% 100%, 100% 100%, 56px 56px, 56px 56px;
+  }
+  /* Grain overlay for depth on ink surfaces. */
+  .mk-grain::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.05;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  }
+  /* Staggered page-load reveal. */
+  .mk-reveal {
+    opacity: 0;
+    transform: translateY(14px);
+    animation: mk-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+  @keyframes mk-rise {
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  /* Skeleton shimmer sweep — a diagonal highlight moving across a placeholder. */
+  .mk-shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+  .mk-shimmer::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      100deg,
+      transparent 20%,
+      rgba(255, 255, 255, 0.55) 50%,
+      transparent 80%
+    );
+    animation: mk-shimmer 1.8s ease-in-out infinite;
+  }
+  @keyframes mk-shimmer {
+    to {
+      transform: translateX(100%);
+    }
+  }
+}
