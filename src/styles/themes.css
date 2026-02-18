@@ -1,0 +1,186 @@
+/* =============================================================================
+   Theme registry — token blocks.
+
+   Each theme = a light block (.theme-<id>) + a dark override (.theme-<id>.dark).
+   The active theme class lives on <html> (see src/lib/themes.ts + layout.tsx);
+   next-themes adds the `.dark` class for dark mode. globals.css maps these
+   custom properties onto Tailwind tokens via `@theme inline`.
+
+   To add a theme: paste a new pair of blocks here, register it in themes.ts.
+   ============================================================================= */
+
+/* ---- Violet Bloom (default) — tweakcn.com/r/themes/violet-bloom ---- */
+.theme-violet-bloom {
+  --background: oklch(0.994 0 0);
+  --foreground: oklch(0 0 0);
+  --card: oklch(0.994 0 0);
+  --card-foreground: oklch(0 0 0);
+  --popover: oklch(0.9911 0 0);
+  --popover-foreground: oklch(0 0 0);
+  --primary: oklch(0.5393 0.2713 286.7462);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.954 0.0063 255.4755);
+  --secondary-foreground: oklch(0.1344 0 0);
+  --muted: oklch(0.9702 0 0);
+  --muted-foreground: oklch(0.4386 0 0);
+  --accent: oklch(0.9393 0.0288 266.368);
+  --accent-foreground: oklch(0.5445 0.1903 259.4848);
+  --destructive: oklch(0.629 0.1902 23.0704);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.93 0.0094 286.2156);
+  --input: oklch(0.9401 0 0);
+  --ring: oklch(0 0 0);
+  --chart-1: oklch(0.7459 0.1483 156.4499);
+  --chart-2: oklch(0.5393 0.2713 286.7462);
+  --chart-3: oklch(0.7336 0.1758 50.5517);
+  --chart-4: oklch(0.5828 0.1809 259.7276);
+  --chart-5: oklch(0.559 0 0);
+  --sidebar: oklch(0.9777 0.0051 247.8763);
+  --sidebar-foreground: oklch(0 0 0);
+  --sidebar-primary: oklch(0 0 0);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.9401 0 0);
+  --sidebar-accent-foreground: oklch(0 0 0);
+  --sidebar-border: oklch(0.9401 0 0);
+  --sidebar-ring: oklch(0 0 0);
+
+  --radius: 1.4rem;
+  --tracking-normal: -0.025em;
+
+  --font-sans: var(--font-plus-jakarta-sans), "Plus Jakarta Sans", ui-sans-serif,
+    system-ui, sans-serif;
+  --font-serif: var(--font-lora), "Lora", ui-serif, Georgia, serif;
+  --font-mono: var(--font-ibm-plex-mono), "IBM Plex Mono", ui-monospace, monospace;
+
+  --shadow-2xs: 0px 2px 3px 0px hsl(0 0% 0% / 0.08);
+  --shadow-xs: 0px 2px 3px 0px hsl(0 0% 0% / 0.08);
+  --shadow-sm: 0px 2px 3px 0px hsl(0 0% 0% / 0.16), 0px 1px 2px -1px hsl(0 0% 0% / 0.16);
+  --shadow: 0px 2px 3px 0px hsl(0 0% 0% / 0.16), 0px 1px 2px -1px hsl(0 0% 0% / 0.16);
+  --shadow-md: 0px 2px 3px 0px hsl(0 0% 0% / 0.16), 0px 2px 4px -1px hsl(0 0% 0% / 0.16);
+  --shadow-lg: 0px 2px 3px 0px hsl(0 0% 0% / 0.16), 0px 4px 6px -1px hsl(0 0% 0% / 0.16);
+  --shadow-xl: 0px 2px 3px 0px hsl(0 0% 0% / 0.16), 0px 8px 10px -1px hsl(0 0% 0% / 0.16);
+  --shadow-2xl: 0px 2px 3px 0px hsl(0 0% 0% / 0.4);
+}
+
+.theme-violet-bloom.dark {
+  --background: oklch(0.2223 0.006 271.1393);
+  --foreground: oklch(0.9551 0 0);
+  --card: oklch(0.2568 0.0076 274.6528);
+  --card-foreground: oklch(0.9551 0 0);
+  --popover: oklch(0.2568 0.0076 274.6528);
+  --popover-foreground: oklch(0.9551 0 0);
+  --primary: oklch(0.6132 0.2294 291.7437);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.294 0.013 272.9312);
+  --secondary-foreground: oklch(0.9551 0 0);
+  --muted: oklch(0.294 0.013 272.9312);
+  --muted-foreground: oklch(0.7058 0 0);
+  --accent: oklch(0.2795 0.0368 260.031);
+  --accent-foreground: oklch(0.7857 0.1153 246.6596);
+  --destructive: oklch(0.7106 0.1661 22.2162);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.3289 0.0092 268.3843);
+  --input: oklch(0.3289 0.0092 268.3843);
+  --ring: oklch(0.6132 0.2294 291.7437);
+  --chart-1: oklch(0.8003 0.1821 151.711);
+  --chart-2: oklch(0.6132 0.2294 291.7437);
+  --chart-3: oklch(0.8077 0.1035 19.5706);
+  --chart-4: oklch(0.6691 0.1569 260.1063);
+  --chart-5: oklch(0.7058 0 0);
+  --sidebar: oklch(0.2011 0.0039 286.0396);
+  --sidebar-foreground: oklch(0.9551 0 0);
+  --sidebar-primary: oklch(0.6132 0.2294 291.7437);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.294 0.013 272.9312);
+  --sidebar-accent-foreground: oklch(0.6132 0.2294 291.7437);
+  --sidebar-border: oklch(0.3289 0.0092 268.3843);
+  --sidebar-ring: oklch(0.6132 0.2294 291.7437);
+}
+
+/* ---- Synerix (default) — brand navy/cyan, matched to the marketing site ---- */
+.theme-synerix {
+  --background: oklch(0.991 0.002 106.4);
+  --foreground: oklch(0.205 0.042 265.9);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.205 0.042 265.9);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.205 0.042 265.9);
+  --primary: oklch(0.317 0.092 266.4);
+  --primary-foreground: oklch(0.985 0.005 196);
+  --secondary: oklch(0.955 0.008 240);
+  --secondary-foreground: oklch(0.28 0.06 266);
+  --muted: oklch(0.963 0.004 106.4);
+  --muted-foreground: oklch(0.465 0.028 262);
+  --accent: oklch(0.945 0.036 196.5);
+  --accent-foreground: oklch(0.46 0.078 210);
+  --destructive: oklch(0.604 0.205 24.1);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.918 0.008 240);
+  --input: oklch(0.93 0.006 240);
+  --ring: oklch(0.317 0.092 266.4);
+  --chart-1: oklch(0.317 0.092 266.4);
+  --chart-2: oklch(0.745 0.131 194.8);
+  --chart-3: oklch(0.768 0.144 71.1);
+  --chart-4: oklch(0.708 0.135 156.8);
+  --chart-5: oklch(0.554 0.024 262);
+  --sidebar: oklch(0.972 0.005 240);
+  --sidebar-foreground: oklch(0.24 0.045 265.9);
+  --sidebar-primary: oklch(0.317 0.092 266.4);
+  --sidebar-primary-foreground: oklch(0.985 0.005 196);
+  --sidebar-accent: oklch(0.93 0.012 240);
+  --sidebar-accent-foreground: oklch(0.24 0.045 265.9);
+  --sidebar-border: oklch(0.908 0.01 240);
+  --sidebar-ring: oklch(0.317 0.092 266.4);
+
+  --radius: 1.1rem;
+  --tracking-normal: -0.02em;
+
+  --font-sans: var(--font-plus-jakarta-sans), "Plus Jakarta Sans", ui-sans-serif,
+    system-ui, sans-serif;
+  --font-serif: var(--font-lora), "Lora", ui-serif, Georgia, serif;
+  --font-mono: var(--font-ibm-plex-mono), "IBM Plex Mono", ui-monospace, monospace;
+
+  --shadow-2xs: 0px 2px 3px 0px hsl(222 60% 12% / 0.06);
+  --shadow-xs: 0px 2px 3px 0px hsl(222 60% 12% / 0.06);
+  --shadow-sm: 0px 2px 3px 0px hsl(222 60% 12% / 0.1), 0px 1px 2px -1px hsl(222 60% 12% / 0.1);
+  --shadow: 0px 2px 3px 0px hsl(222 60% 12% / 0.1), 0px 1px 2px -1px hsl(222 60% 12% / 0.1);
+  --shadow-md: 0px 2px 3px 0px hsl(222 60% 12% / 0.1), 0px 2px 4px -1px hsl(222 60% 12% / 0.1);
+  --shadow-lg: 0px 2px 3px 0px hsl(222 60% 12% / 0.12), 0px 4px 6px -1px hsl(222 60% 12% / 0.12);
+  --shadow-xl: 0px 2px 3px 0px hsl(222 60% 12% / 0.12), 0px 8px 10px -1px hsl(222 60% 12% / 0.12);
+  --shadow-2xl: 0px 2px 3px 0px hsl(222 60% 12% / 0.3);
+}
+
+.theme-synerix.dark {
+  --background: oklch(0.208 0.032 265.8);
+  --foreground: oklch(0.955 0.005 240);
+  --card: oklch(0.243 0.038 266.5);
+  --card-foreground: oklch(0.955 0.005 240);
+  --popover: oklch(0.243 0.038 266.5);
+  --popover-foreground: oklch(0.955 0.005 240);
+  --primary: oklch(0.778 0.126 194.8);
+  --primary-foreground: oklch(0.205 0.042 265.9);
+  --secondary: oklch(0.285 0.04 266);
+  --secondary-foreground: oklch(0.955 0.005 240);
+  --muted: oklch(0.285 0.04 266);
+  --muted-foreground: oklch(0.72 0.022 250);
+  --accent: oklch(0.305 0.052 230);
+  --accent-foreground: oklch(0.82 0.11 195);
+  --destructive: oklch(0.704 0.17 22.5);
+  --destructive-foreground: oklch(0.205 0.042 265.9);
+  --border: oklch(0.318 0.04 266);
+  --input: oklch(0.318 0.04 266);
+  --ring: oklch(0.778 0.126 194.8);
+  --chart-1: oklch(0.778 0.126 194.8);
+  --chart-2: oklch(0.66 0.12 260);
+  --chart-3: oklch(0.81 0.13 71);
+  --chart-4: oklch(0.78 0.13 157);
+  --chart-5: oklch(0.72 0.022 250);
+  --sidebar: oklch(0.183 0.03 265.8);
+  --sidebar-foreground: oklch(0.955 0.005 240);
+  --sidebar-primary: oklch(0.778 0.126 194.8);
+  --sidebar-primary-foreground: oklch(0.205 0.042 265.9);
+  --sidebar-accent: oklch(0.265 0.038 266);
+  --sidebar-accent-foreground: oklch(0.82 0.11 195);
+  --sidebar-border: oklch(0.275 0.038 266);
+  --sidebar-ring: oklch(0.778 0.126 194.8);
+}
