@@ -1,0 +1,902 @@
+[
+  {
+    "slug": "makar-sankranti",
+    "name": "Makar Sankranti",
+    "nameHindi": "मकर संक्रांति",
+    "category": "RELIGIOUS",
+    "regionTags": ["north", "pan-india"],
+    "relevanceTags": ["sweets", "food-beverage", "apparel", "gifting", "groceries"],
+    "creativeContext": {
+      "imageryMotifs": ["colourful kites against blue sky", "til-gud (sesame jaggery) ladoos", "earthen pots of khichdi", "rooftop kite flying", "sugarcane and harvest produce"],
+      "colorMotifs": ["sky blue", "harvest gold", "sunrise orange", "kite-paper pink"],
+      "emotionalThemes": ["new harvest abundance", "joyful community celebration", "fresh start", "warmth of winter sun"],
+      "greetingPhrases": { "en": "Happy Makar Sankranti", "hi": "मकर संक्रांति की हार्दिक शुभकामनाएँ", "hinglish": "Makar Sankranti ki shubhkamnayein" }
+    },
+    "defaultLeadTimeDays": 10,
+    "occurrences": [
+      { "year": 2026, "date": "2026-01-14", "isApproximate": false },
+      { "year": 2027, "date": "2027-01-14", "isApproximate": false },
+      { "year": 2028, "date": "2028-01-15", "isApproximate": false }
+    ]
+  },
+  {
+    "slug": "lohri",
+    "name": "Lohri",
+    "nameHindi": "लोहड़ी",
+    "category": "RELIGIOUS",
+    "regionTags": ["north"],
+    "relevanceTags": ["sweets", "food-beverage", "festive-fashion", "apparel", "groceries"],
+    "creativeContext": {
+      "imageryMotifs": ["roaring bonfire at dusk", "people in phulkari throwing offerings into fire", "popcorn, peanuts and rewari", "bhangra and gidda dancers", "winter dholak drum"],
+      "colorMotifs": ["flame orange", "ember red", "phulkari pink", "mustard yellow"],
+      "emotionalThemes": ["harvest gratitude", "Punjabi pride", "community warmth", "festive togetherness"],
+      "greetingPhrases": { "en": "Happy Lohri", "hi": "लोहड़ी की लख-लख बधाइयाँ", "hinglish": "Lohri diyan lakh lakh vadhaiyan" }
+    },
+    "defaultLeadTimeDays": 7,
+    "occurrences": [
+      { "year": 2026, "date": "2026-01-13", "isApproximate": false },
+      { "year": 2027, "date": "2027-01-13", "isApproximate": false },
+      { "year": 2028, "date": "2028-01-13", "isApproximate": false }
+    ]
+  },
+  {
+    "slug": "vasant-panchami",
+    "name": "Basant Panchami / Saraswati Puja",
+    "nameHindi": "बसंत पंचमी",
+    "category": "RELIGIOUS",
+    "regionTags": ["north", "pan-india"],
+    "relevanceTags": ["education", "apparel", "festive-fashion", "beauty", "gifting"],
+    "creativeContext": {
+      "imageryMotifs": ["Goddess Saraswati with veena", "fields of yellow mustard flowers", "students placing books before the deity", "white swan motif", "yellow marigold decorations"],
+      "colorMotifs": ["mustard yellow", "spring green", "ivory white", "saffron"],
+      "emotionalThemes": ["knowledge and learning", "arrival of spring", "creative inspiration", "auspicious new beginnings"],
+      "greetingPhrases": { "en": "Happy Basant Panchami", "hi": "बसंत पंचमी की हार्दिक शुभकामनाएँ", "hinglish": "Basant Panchami ki shubhkamnayein" }
+    },
+    "defaultLeadTimeDays": 7,
+    "occurrences": [
+      { "year": 2026, "date": "2026-01-23", "isApproximate": false },
+      { "year": 2027, "date": "2027-02-10", "isApproximate": false },
+      { "year": 2028, "date": "2028-01-31", "isApproximate": false }
+    ]
+  },
+  {
+    "slug": "maha-shivratri",
+    "name": "Maha Shivratri",
+    "nameHindi": "महाशिवरात्रि",
+    "category": "RELIGIOUS",
+    "regionTags": ["north", "pan-india"],
+    "relevanceTags": ["gifting", "food-beverage", "groceries", "b2b-services"],
+    "creativeContext": {
+      "imageryMotifs": ["Shivlinga with flowing milk abhishek", "bel leaves and datura flowers", "oil lamps glowing in a temple at night", "trishul and damru", "devotees in night-long vigil"],
+      "colorMotifs": ["midnight blue", "ash grey", "saffron", "sacred white"],
+      "emotionalThemes": ["devotion and surrender", "inner stillness", "spiritual awakening", "victory over darkness"],
+      "greetingPhrases": { "en": "Happy Maha Shivratri", "hi": "महाशिवरात्रि की हार्दिक शुभकामनाएँ", "hinglish": "Maha Shivratri ki shubhkamnayein" }
+    },
+    "defaultLeadTimeDays": 7,
+    "occurrences": [
+      { "year": 2026, "date": "2026-02-15", "isApproximate": false },
+      { "year": 2027, "date": "2027-03-06", "isApproximate": false },
+      { "year": 2028, "date": "2028-02-23", "isApproximate": false }
+    ]
+  },
+  {
+    "slug": "holi",
+    "name": "Holi",
+    "nameHindi": "होली",
+    "category": "RELIGIOUS",
+    "regionTags": ["north", "pan-india"],
+    "relevanceTags": ["apparel", "festive-fashion", "beauty", "food-beverage", "sweets", "restaurants"],
+    "creativeContext": {
+      "imageryMotifs": ["clouds of coloured gulal in the air", "friends drenched in colours laughing", "pichkari water guns and water balloons", "thandai and gujiya platter", "white kurta splashed with colour"],
+      "colorMotifs": ["vivid magenta", "electric blue", "bright yellow", "grass green", "hot pink"],
+      "emotionalThemes": ["uninhibited joy", "friendship and bonding", "letting go", "playful renewal"],
+      "greetingPhrases": { "en": "Happy Holi", "hi": "होली की हार्दिक शुभकामनाएँ", "hinglish": "Holi ki shubhkamnayein" }
+    },
+    "defaultLeadTimeDays": 14,
+    "occurrences": [
+      { "year": 2026, "date": "2026-03-04", "isApproximate": false },
+      { "year": 2027, "date": "2027-03-22", "isApproximate": false },
+      { "year": 2028, "date": "2028-03-11", "isApproximate": false }
+    ]
+  },
+  {
+    "slug": "ram-navami",
+    "name": "Ram Navami",
+    "nameHindi": "राम नवमी",
+    "category": "RELIGIOUS",
+    "regionTags": ["north", "pan-india"],
+    "relevanceTags": ["gifting", "food-beverage", "groceries", "b2b-services"],
+    "creativeContext": {
+      "imageryMotifs": ["Lord Rama with bow holding court", "temple decorated with marigold and tulsi", "Ramayana recital scene", "saffron flags fluttering", "shobha yatra procession"],
+      "colorMotifs": ["saffron", "royal gold", "leaf green", "temple maroon"],
+      "emotionalThemes": ["righteousness and dharma", "devotion", "ideal family values", "divine protection"],
+      "greetingPhrases": { "en": "Happy Ram Navami", "hi": "राम नवमी की हार्दिक शुभकामनाएँ", "hinglish": "Ram Navami ki shubhkamnayein" }
+    },
+    "defaultLeadTimeDays": 7,
+    "occurrences": [
+      { "year": 2026, "date": "2026-03-26", "isApproximate": false },
+      { "year": 2027, "date": "2027-04-15", "isApproximate": false },
+      { "year": 2028, "date": "2028-04-03", "isApproximate": false }
+    ]
+  },
+  {
+    "slug": "mahavir-jayanti",
+    "name": "Mahavir Jayanti",
+    "nameHindi": "महावीर जयंती",
+    "category": "RELIGIOUS",
+    "regionTags": ["north", "pan-india"],
+    "relevanceTags": ["gifting", "b2b-services", "food-beverage"],
+    "creativeContext": {
+      "imageryMotifs": ["serene meditating Mahavira idol", "lotus flower in still water", "Jain temple white marble carvings", "ahimsa peace symbol", "ceremonial chariot procession"],
+      "colorMotifs": ["pure white", "soft saffron", "gentle gold", "lotus pink"],
+      "emotionalThemes": ["non-violence and compassion", "inner peace", "spiritual purity", "self-discipline"],
+      "greetingPhrases": { "en": "Happy Mahavir Jayanti", "hi": "महावीर जयंती की हार्दिक शुभकामनाएँ", "hinglish": "Mahavir Jayanti ki shubhkamnayein" }
+    },
+    "defaultLeadTimeDays": 5,
+    "occurrences": [
+      { "year": 2026, "date": "2026-03-31", "isApproximate": false },
+      { "year": 2027, "date": "2027-04-19", "isApproximate": false },
+      { "year": 2028, "date": "2028-04-07", "isApproximate": false }
+    ]
+  },
+  {
+    "slug": "hanuman-jayanti",
+    "name": "Hanuman Jayanti",
+    "nameHindi": "हनुमान जयंती",
+    "category": "RELIGIOUS",
+    "regionTags": ["north", "pan-india"],
+    "relevanceTags": ["gifting", "fitness", "food-beverage", "groceries"],
+    "creativeContext": {
+      "imageryMotifs": ["mighty Hanuman carrying the mountain", "sindoor-coated idol with marigold mala", "Hanuman Chalisa recital", "saffron flag with Bajrangbali", "temple bell and diya"],
+      "colorMotifs": ["sindoor red-orange", "saffron", "deep gold", "strong crimson"],
+      "emotionalThemes": ["strength and courage", "unwavering devotion", "protection from adversity", "loyalty"],
+      "greetingPhrases": { "en": "Happy Hanuman Jayanti", "hi": "हनुमान जयंती की हार्दिक शुभकामनाएँ", "hinglish": "Hanuman Jayanti ki shubhkamnayein" }
+    },
+    "defaultLeadTimeDays": 5,
+    "occurrences": [
+      { "year": 2026, "date": "2026-04-02", "isApproximate": false },
+      { "year": 2027, "date": "2027-04-20", "isApproximate": false },
+      { "year": 2028, "date": "2028-04-09", "isApproximate": false }
+    ]
+  },
+  {
+    "slug": "baisakhi",
+    "name": "Baisakhi",
+    "nameHindi": "बैसाखी",
+    "category": "RELIGIOUS",
+    "regionTags": ["north"],
+    "relevanceTags": ["festive-fashion", "apparel", "food-beverage", "sweets", "groceries"],
+    "creativeContext": {
+      "imageryMotifs": ["golden wheat fields ready for harvest", "bhangra dancers with dhol", "Nishan Sahib at a gurudwara", "farmers celebrating in turbans and phulkari", "langar community meal"],
+      "colorMotifs": ["wheat gold", "Punjabi orange", "bright turquoise", "festive pink"],
+      "emotionalThemes": ["harvest prosperity", "Punjabi cultural pride", "gratitude", "new year vitality"],
+      "greetingPhrases": { "en": "Happy Baisakhi", "hi": "बैसाखी की लख-लख बधाइयाँ", "hinglish": "Baisakhi diyan lakh lakh vadhaiyan" }
+    },
+    "defaultLeadTimeDays": 7,
+    "occurrences": [
+      { "year": 2026, "date": "2026-04-14", "isApproximate": false },
+      { "year": 2027, "date": "2027-04-14", "isApproximate": false },
+      { "year": 2028, "date": "2028-04-13", "isApproximate": false }
+    ]
+  },
+  {
+    "slug": "akshaya-tritiya",
+    "name": "Akshaya Tritiya",
+    "nameHindi": "अक्षय तृतीया",
+    "category": "RELIGIOUS",
+    "regionTags": ["north", "pan-india"],
+    "relevanceTags": ["jewellery", "gifting", "b2b-services", "home-decor", "electronics"],
+    "creativeContext": {
+      "imageryMotifs": ["gleaming gold coins and bangles", "kalash overflowing with prosperity", "Lakshmi and Kubera motifs", "gold jewellery on velvet display", "fresh new account ledger"],
+      "colorMotifs": ["radiant gold", "deep emerald", "royal red", "cream"],
+      "emotionalThemes": ["eternal prosperity", "auspicious investment", "wealth and abundance", "lasting fortune"],
+      "greetingPhrases": { "en": "Happy Akshaya Tritiya", "hi": "अक्षय तृतीया की हार्दिक शुभकामनाएँ", "hinglish": "Akshaya Tritiya ki shubhkamnayein" }
+    },
+    "defaultLeadTimeDays": 10,
+    "occurrences": [
+      { "year": 2026, "date": "2026-04-19", "isApproximate": false },
+      { "year": 2027, "date": "2027-05-09", "isApproximate": false },
+      { "year": 2028, "date": "2028-04-27", "isApproximate": false }
+    ]
+  },
+  {
+    "slug": "buddha-purnima",
+    "name": "Buddha Purnima",
+    "nameHindi": "बुद्ध पूर्णिमा",
+    "category": "RELIGIOUS",
+    "regionTags": ["pan-india"],
+    "relevanceTags": ["gifting", "b2b-services", "travel"],
+    "creativeContext": {
+      "imageryMotifs": ["meditating Buddha under a bodhi tree", "full moon over a still lake", "lotus flowers floating on water", "prayer flags and butter lamps", "monks in saffron robes"],
+      "colorMotifs": ["serene saffron", "moonlit white", "soft gold", "lotus pink"],
+      "emotionalThemes": ["enlightenment", "inner peace", "compassion", "mindful living"],
+      "greetingPhrases": { "en": "Happy Buddha Purnima", "hi": "बुद्ध पूर्णिमा की हार्दिक शुभकामनाएँ", "hinglish": "Buddha Purnima ki shubhkamnayein" }
+    },
+    "defaultLeadTimeDays": 5,
+    "occurrences": [
+      { "year": 2026, "date": "2026-05-01", "isApproximate": false },
+      { "year": 2027, "date": "2027-05-20", "isApproximate": false },
+      { "year": 2028, "date": "2028-05-08", "isApproximate": false }
+    ]
+  },
+  {
+    "slug": "hariyali-teej",
+    "name": "Hariyali Teej",
+    "nameHindi": "हरियाली तीज",
+    "category": "RELIGIOUS",
+    "regionTags": ["north"],
+    "relevanceTags": ["festive-fashion", "apparel", "jewellery", "beauty", "gifting"],
+    "creativeContext": {
+      "imageryMotifs": ["women in green lehenga on flower swings", "mehndi-adorned hands", "monsoon greenery and peacocks", "green glass bangles and bindis", "swing decorated with marigolds"],
+      "colorMotifs": ["monsoon green", "henna brown", "festive red", "gold accents"],
+      "emotionalThemes": ["marital love and devotion", "feminine celebration", "monsoon romance", "togetherness"],
+      "greetingPhrases": { "en": "Happy Hariyali Teej", "hi": "हरियाली तीज की हार्दिक शुभकामनाएँ", "hinglish": "Hariyali Teej ki shubhkamnayein" }
+    },
+    "defaultLeadTimeDays": 10,
+    "occurrences": [
+      { "year": 2026, "date": "2026-08-15", "isApproximate": false },
+      { "year": 2027, "date": "2027-08-05", "isApproximate": false },
+      { "year": 2028, "date": "2028-07-24", "isApproximate": false }
+    ]
+  },
+  {
+    "slug": "raksha-bandhan",
+    "name": "Raksha Bandhan",
+    "nameHindi": "रक्षाबंधन",
+    "category": "RELIGIOUS",
+    "regionTags": ["north", "pan-india"],
+    "relevanceTags": ["gifting", "sweets", "jewellery", "apparel", "festive-fashion", "beauty"],
+    "creativeContext": {
+      "imageryMotifs": ["sister tying ornate rakhi on brother's wrist", "thali with diya, roli and sweets", "stacked gift boxes with ribbons", "colourful rakhi threads close-up", "siblings sharing a hug"],
+      "colorMotifs": ["festive red", "warm gold", "rakhi pink", "royal blue"],
+      "emotionalThemes": ["sibling love and bond", "protection and promise", "nostalgia", "family togetherness"],
+      "greetingPhrases": { "en": "Happy Raksha Bandhan", "hi": "रक्षाबंधन की हार्दिक शुभकामनाएँ", "hinglish": "Raksha Bandhan ki shubhkamnayein" }
+    },
+    "defaultLeadTimeDays": 14,
+    "occurrences": [
+      { "year": 2026, "date": "2026-08-28", "isApproximate": false },
+      { "year": 2027, "date": "2027-08-17", "isApproximate": false },
+      { "year": 2028, "date": "2028-08-05", "isApproximate": false }
+    ]
+  },
+  {
+    "slug": "janmashtami",
+    "name": "Janmashtami",
+    "nameHindi": "जन्माष्टमी",
+    "category": "RELIGIOUS",
+    "regionTags": ["north", "pan-india"],
+    "relevanceTags": ["gifting", "sweets", "food-beverage", "kids", "festive-fashion"],
+    "creativeContext": {
+      "imageryMotifs": ["baby Krishna in a decorated cradle (jhula)", "dahi handi human pyramid", "peacock feather and flute", "matki of butter (makhan)", "children dressed as Krishna and Radha"],
+      "colorMotifs": ["peacock blue", "marigold yellow", "Krishna teal", "festive gold"],
+      "emotionalThemes": ["divine playfulness", "devotional joy", "childhood innocence", "community spirit"],
+      "greetingPhrases": { "en": "Happy Janmashtami", "hi": "जन्माष्टमी की हार्दिक शुभकामनाएँ", "hinglish": "Janmashtami ki shubhkamnayein" }
+    },
+    "defaultLeadTimeDays": 10,
+    "occurrences": [
+      { "year": 2026, "date": "2026-09-04", "isApproximate": false },
+      { "year": 2027, "date": "2027-08-25", "isApproximate": false },
+      { "year": 2028, "date": "2028-08-13", "isApproximate": false }
+    ]
+  },
+  {
+    "slug": "ganesh-chaturthi",
+    "name": "Ganesh Chaturthi",
+    "nameHindi": "गणेश चतुर्थी",
+    "category": "RELIGIOUS",
+    "regionTags": ["pan-india", "north"],
+    "relevanceTags": ["gifting", "sweets", "home-decor", "food-beverage", "festive-fashion"],
+    "creativeContext": {
+      "imageryMotifs": ["ornately decorated Ganesha idol", "plate of modak sweets", "red hibiscus and durva grass", "festive pandal lighting", "visarjan procession by the water"],
+      "colorMotifs": ["vermilion red", "marigold orange", "festive gold", "leaf green"],
+      "emotionalThemes": ["removing obstacles", "new beginnings", "prosperity", "community celebration"],
+      "greetingPhrases": { "en": "Happy Ganesh Chaturthi", "hi": "गणेश चतुर्थी की हार्दिक शुभकामनाएँ", "hinglish": "Ganpati Bappa Morya" }
+    },
+    "defaultLeadTimeDays": 12,
+    "occurrences": [
+      { "year": 2026, "date": "2026-09-14", "isApproximate": false },
+      { "year": 2027, "date": "2027-09-04", "isApproximate": false },
+      { "year": 2028, "date": "2028-08-23", "isApproximate": false }
+    ]
+  },
+  {
+    "slug": "navratri",
+    "name": "Navratri (Sharad)",
+    "nameHindi": "शारदीय नवरात्रि",
+    "category": "RELIGIOUS",
+    "regionTags": ["north", "pan-india"],
+    "relevanceTags": ["festive-fashion", "apparel", "jewellery", "beauty", "food-beverage", "gifting"],
+    "creativeContext": {
+      "imageryMotifs": ["Goddess Durga idol with ten arms", "dandiya and garba dancers in chaniya choli", "nine days of colourful attire", "kalash with coconut and mango leaves", "decorated puja pandal"],
+      "colorMotifs": ["royal red", "festive orange", "regal purple", "emerald green", "bright pink"],
+      "emotionalThemes": ["divine feminine power", "festive dance and energy", "spiritual devotion", "community celebration"],
+      "greetingPhrases": { "en": "Happy Navratri", "hi": "नवरात्रि की हार्दिक शुभकामनाएँ", "hinglish": "Navratri ki shubhkamnayein" }
+    },
+    "defaultLeadTimeDays": 14,
+    "occurrences": [
+      { "year": 2026, "date": "2026-10-11", "endDate": "2026-10-19", "isApproximate": false },
+      { "year": 2027, "date": "2027-10-07", "endDate": "2027-10-15", "isApproximate": false },
+      { "year": 2028, "date": "2028-09-18", "endDate": "2028-09-26", "isApproximate": true }
+    ]
+  },
+  {
+    "slug": "dussehra",
+    "name": "Dussehra / Vijayadashami",
+    "nameHindi": "दशहरा",
+    "category": "RELIGIOUS",
+    "regionTags": ["north", "pan-india"],
+    "relevanceTags": ["festive-fashion", "apparel", "electronics", "gifting", "home-decor"],
+    "creativeContext": {
+      "imageryMotifs": ["towering Ravana effigy ablaze", "Ramlila stage performance", "bow and arrow of Lord Rama", "Durga idol immersion", "festive crowds at the maidan"],
+      "colorMotifs": ["victorious saffron", "fiery red", "royal gold", "deep maroon"],
+      "emotionalThemes": ["victory of good over evil", "triumph and valour", "auspicious new ventures", "festive build-up to Diwali"],
+      "greetingPhrases": { "en": "Happy Dussehra", "hi": "दशहरा की हार्दिक शुभकामनाएँ", "hinglish": "Dussehra ki shubhkamnayein" }
+    },
+    "defaultLeadTimeDays": 12,
+    "occurrences": [
+      { "year": 2026, "date": "2026-10-20", "isApproximate": false },
+      { "year": 2027, "date": "2027-10-09", "isApproximate": false },
+      { "year": 2028, "date": "2028-09-27", "isApproximate": false }
+    ]
+  },
+  {
+    "slug": "karwa-chauth",
+    "name": "Karwa Chauth",
+    "nameHindi": "करवा चौथ",
+    "category": "RELIGIOUS",
+    "regionTags": ["north"],
+    "relevanceTags": ["jewellery", "beauty", "festive-fashion", "apparel", "gifting"],
+    "creativeContext": {
+      "imageryMotifs": ["woman viewing the moon through a sieve", "decorated karwa pot and thali", "intricate bridal mehndi", "solah shringar jewellery and red bangles", "couple's first sip after fast"],
+      "colorMotifs": ["bridal red", "henna maroon", "rich gold", "moonlit silver"],
+      "emotionalThemes": ["marital love and longevity", "romance and devotion", "feminine grace", "togetherness"],
+      "greetingPhrases": { "en": "Happy Karwa Chauth", "hi": "करवा चौथ की हार्दिक शुभकामनाएँ", "hinglish": "Karwa Chauth ki shubhkamnayein" }
+    },
+    "defaultLeadTimeDays": 10,
+    "occurrences": [
+      { "year": 2026, "date": "2026-10-29", "isApproximate": false },
+      { "year": 2027, "date": "2027-10-18", "isApproximate": false },
+      { "year": 2028, "date": "2028-10-07", "isApproximate": false }
+    ]
+  },
+  {
+    "slug": "dhanteras",
+    "name": "Dhanteras",
+    "nameHindi": "धनतेरस",
+    "category": "RELIGIOUS",
+    "regionTags": ["north", "pan-india"],
+    "relevanceTags": ["jewellery", "electronics", "home-decor", "gifting", "b2b-services"],
+    "creativeContext": {
+      "imageryMotifs": ["new gold and silver coins on display", "shiny steel and brass utensils", "Goddess Lakshmi and Lord Dhanvantari", "diyas at a shop entrance", "freshly polished kitchenware"],
+      "colorMotifs": ["lustrous gold", "silver shimmer", "auspicious red", "deep maroon"],
+      "emotionalThemes": ["wealth and prosperity", "auspicious buying", "good fortune", "abundance"],
+      "greetingPhrases": { "en": "Happy Dhanteras", "hi": "धनतेरस की हार्दिक शुभकामनाएँ", "hinglish": "Dhanteras ki shubhkamnayein" }
+    },
+    "defaultLeadTimeDays": 12,
+    "occurrences": [
+      { "year": 2026, "date": "2026-11-06", "isApproximate": false },
+      { "year": 2027, "date": "2027-10-27", "isApproximate": false },
+      { "year": 2028, "date": "2028-10-15", "isApproximate": false }
+    ]
+  },
+  {
+    "slug": "diwali",
+    "name": "Diwali",
+    "nameHindi": "दीपावली",
+    "category": "RELIGIOUS",
+    "regionTags": ["north", "pan-india"],
+    "relevanceTags": ["sweets", "gifting", "apparel", "electronics", "home-decor", "jewellery"],
+    "creativeContext": {
+      "imageryMotifs": ["rows of glowing diyas (oil lamps)", "intricate rangoli patterns", "marigold garlands on doorways", "fireworks lighting the night sky", "family gathered for Lakshmi puja"],
+      "colorMotifs": ["deep gold", "saffron orange", "royal purple", "warm red", "festive magenta"],
+      "emotionalThemes": ["prosperity", "new beginnings", "family togetherness", "light over darkness"],
+      "greetingPhrases": { "en": "Happy Diwali", "hi": "दीपावली की हार्दिक शुभकामनाएँ", "hinglish": "Diwali ki shubhkamnayein" }
+    },
+    "defaultLeadTimeDays": 21,
+    "occurrences": [
+      { "year": 2026, "date": "2026-11-08", "isApproximate": false },
+      { "year": 2027, "date": "2027-10-29", "isApproximate": false },
+      { "year": 2028, "date": "2028-10-17", "isApproximate": false }
+    ]
+  },
+  {
+    "slug": "bhai-dooj",
+    "name": "Bhai Dooj",
+    "nameHindi": "भाई दूज",
+    "category": "RELIGIOUS",
+    "regionTags": ["north", "pan-india"],
+    "relevanceTags": ["gifting", "sweets", "apparel", "jewellery", "beauty"],
+    "creativeContext": {
+      "imageryMotifs": ["sister applying tilak on brother's forehead", "aarti thali with sweets and roli", "wrapped gift exchange between siblings", "festive home with diyas still lit", "brother-sister sharing a meal"],
+      "colorMotifs": ["festive red", "warm gold", "tilak vermilion", "celebration pink"],
+      "emotionalThemes": ["sibling affection", "blessings and protection", "family bonding", "post-Diwali warmth"],
+      "greetingPhrases": { "en": "Happy Bhai Dooj", "hi": "भाई दूज की हार्दिक शुभकामनाएँ", "hinglish": "Bhai Dooj ki shubhkamnayein" }
+    },
+    "defaultLeadTimeDays": 7,
+    "occurrences": [
+      { "year": 2026, "date": "2026-11-11", "isApproximate": false },
+      { "year": 2027, "date": "2027-10-31", "isApproximate": false },
+      { "year": 2028, "date": "2028-10-19", "isApproximate": false }
+    ]
+  },
+  {
+    "slug": "chhath-puja",
+    "name": "Chhath Puja",
+    "nameHindi": "छठ पूजा",
+    "category": "RELIGIOUS",
+    "regionTags": ["north"],
+    "relevanceTags": ["groceries", "food-beverage", "apparel", "gifting"],
+    "creativeContext": {
+      "imageryMotifs": ["devotees offering arghya in a river at sunrise", "bamboo soop baskets with fruits and thekua", "women in traditional sarees standing in water", "rising sun over the ghat", "earthen lamps along the riverbank"],
+      "colorMotifs": ["sunrise orange", "river blue", "saree yellow", "auspicious red"],
+      "emotionalThemes": ["gratitude to the Sun God", "purity and discipline", "family devotion", "cultural rootedness"],
+      "greetingPhrases": { "en": "Happy Chhath Puja", "hi": "छठ पूजा की हार्दिक शुभकामनाएँ", "hinglish": "Chhath Puja ki shubhkamnayein" }
+    },
+    "defaultLeadTimeDays": 10,
+    "occurrences": [
+      { "year": 2026, "date": "2026-11-15", "isApproximate": false },
+      { "year": 2027, "date": "2027-11-04", "isApproximate": false },
+      { "year": 2028, "date": "2028-10-23", "isApproximate": true }
+    ]
+  },
+  {
+    "slug": "guru-nanak-jayanti",
+    "name": "Guru Nanak Jayanti",
+    "nameHindi": "गुरु नानक जयंती",
+    "category": "RELIGIOUS",
+    "regionTags": ["north", "pan-india"],
+    "relevanceTags": ["gifting", "food-beverage", "groceries", "b2b-services"],
+    "creativeContext": {
+      "imageryMotifs": ["illuminated Golden Temple at night", "Nishan Sahib against the sky", "Guru Granth Sahib palki procession (nagar kirtan)", "langar seva community kitchen", "candles and diyas at a gurudwara"],
+      "colorMotifs": ["sacred saffron", "Khalsa blue", "pure white", "warm gold"],
+      "emotionalThemes": ["equality and humility", "service and seva", "spiritual enlightenment", "community unity"],
+      "greetingPhrases": { "en": "Happy Gurpurab", "hi": "गुरु नानक जयंती की हार्दिक शुभकामनाएँ", "hinglish": "Gurpurab diyan lakh lakh vadhaiyan" }
+    },
+    "defaultLeadTimeDays": 7,
+    "occurrences": [
+      { "year": 2026, "date": "2026-11-24", "isApproximate": false },
+      { "year": 2027, "date": "2027-11-14", "isApproximate": false },
+      { "year": 2028, "date": "2028-11-02", "isApproximate": false }
+    ]
+  },
+  {
+    "slug": "eid-ul-fitr",
+    "name": "Eid ul-Fitr",
+    "nameHindi": "ईद उल-फ़ितर",
+    "category": "RELIGIOUS",
+    "regionTags": ["north", "pan-india"],
+    "relevanceTags": ["apparel", "festive-fashion", "gifting", "sweets", "food-beverage", "restaurants", "beauty"],
+    "creativeContext": {
+      "imageryMotifs": ["crescent moon over a mosque silhouette", "plate of sevaiyan and dates", "people embracing in new clothes after namaz", "ornate lanterns (fanoos)", "henna-decorated hands holding gifts"],
+      "colorMotifs": ["festive green", "moonlit silver", "royal gold", "ivory white"],
+      "emotionalThemes": ["joy after devotion", "family reunion", "gratitude and charity", "festive feasting"],
+      "greetingPhrases": { "en": "Eid Mubarak", "hi": "ईद मुबारक", "hinglish": "Eid Mubarak" }
+    },
+    "defaultLeadTimeDays": 12,
+    "occurrences": [
+      { "year": 2026, "date": "2026-03-21", "isApproximate": true },
+      { "year": 2027, "date": "2027-03-10", "isApproximate": true },
+      { "year": 2028, "date": "2028-02-27", "isApproximate": true }
+    ]
+  },
+  {
+    "slug": "eid-ul-adha",
+    "name": "Eid ul-Adha (Bakrid)",
+    "nameHindi": "ईद उल-अज़हा (बकरीद)",
+    "category": "RELIGIOUS",
+    "regionTags": ["north", "pan-india"],
+    "relevanceTags": ["apparel", "festive-fashion", "gifting", "food-beverage", "restaurants", "groceries"],
+    "creativeContext": {
+      "imageryMotifs": ["mosque dome under a crescent moon", "family feast spread on a dastarkhwan", "men in crisp kurta-pyjama after prayers", "ornate Islamic geometric patterns", "dates, sweets and biryani platter"],
+      "colorMotifs": ["deep festive green", "rich gold", "royal maroon", "ivory"],
+      "emotionalThemes": ["sacrifice and faith", "community sharing", "charity and generosity", "family togetherness"],
+      "greetingPhrases": { "en": "Eid Mubarak", "hi": "ईद मुबारक", "hinglish": "Bakrid Mubarak" }
+    },
+    "defaultLeadTimeDays": 12,
+    "occurrences": [
+      { "year": 2026, "date": "2026-05-27", "isApproximate": true },
+      { "year": 2027, "date": "2027-05-17", "isApproximate": true },
+      { "year": 2028, "date": "2028-05-05", "isApproximate": true }
+    ]
+  },
+  {
+    "slug": "good-friday",
+    "name": "Good Friday & Easter",
+    "nameHindi": "गुड फ़्राइडे और ईस्टर",
+    "category": "RELIGIOUS",
+    "regionTags": ["pan-india"],
+    "relevanceTags": ["apparel", "gifting", "food-beverage", "restaurants", "kids"],
+    "creativeContext": {
+      "imageryMotifs": ["church with stained-glass windows", "wooden cross with white lilies", "decorated Easter eggs and bunny", "lit candles in a quiet chapel", "family Easter brunch table"],
+      "colorMotifs": ["solemn purple", "pure white", "pastel yellow", "soft lavender"],
+      "emotionalThemes": ["reflection and faith", "renewal and resurrection", "hope", "family gathering"],
+      "greetingPhrases": { "en": "Blessed Easter", "hi": "ईस्टर की शुभकामनाएँ", "hinglish": "Happy Easter" }
+    },
+    "defaultLeadTimeDays": 10,
+    "occurrences": [
+      { "year": 2026, "date": "2026-04-03", "endDate": "2026-04-05", "isApproximate": false },
+      { "year": 2027, "date": "2027-03-26", "endDate": "2027-03-28", "isApproximate": false },
+      { "year": 2028, "date": "2028-04-14", "endDate": "2028-04-16", "isApproximate": false }
+    ]
+  },
+  {
+    "slug": "christmas",
+    "name": "Christmas",
+    "nameHindi": "क्रिसमस",
+    "category": "RELIGIOUS",
+    "regionTags": ["pan-india"],
+    "relevanceTags": ["gifting", "apparel", "festive-fashion", "food-beverage", "restaurants", "kids", "home-decor"],
+    "creativeContext": {
+      "imageryMotifs": ["decorated Christmas tree with twinkling lights", "Santa with a sack of gifts", "wreaths, baubles and candy canes", "nativity scene", "family by a cosy fireplace"],
+      "colorMotifs": ["Christmas red", "pine green", "snow white", "shimmering gold"],
+      "emotionalThemes": ["joy and giving", "family warmth", "festive cheer", "magic and wonder"],
+      "greetingPhrases": { "en": "Merry Christmas", "hi": "क्रिसमस की हार्दिक शुभकामनाएँ", "hinglish": "Merry Christmas" }
+    },
+    "defaultLeadTimeDays": 21,
+    "occurrences": [
+      { "year": 2026, "date": "2026-12-25", "isApproximate": false },
+      { "year": 2027, "date": "2027-12-25", "isApproximate": false },
+      { "year": 2028, "date": "2028-12-25", "isApproximate": false }
+    ]
+  },
+  {
+    "slug": "republic-day",
+    "name": "Republic Day",
+    "nameHindi": "गणतंत्र दिवस",
+    "category": "NATIONAL",
+    "regionTags": ["pan-india"],
+    "relevanceTags": ["b2b-services", "apparel", "electronics", "gifting", "education"],
+    "creativeContext": {
+      "imageryMotifs": ["Indian tricolour flag unfurling", "Rajpath parade with marching contingents", "India Gate backdrop", "Ashoka Chakra emblem", "saluting soldiers and air-show jets"],
+      "colorMotifs": ["saffron", "white", "India green", "navy blue"],
+      "emotionalThemes": ["national pride", "unity in diversity", "patriotism", "democratic strength"],
+      "greetingPhrases": { "en": "Happy Republic Day", "hi": "गणतंत्र दिवस की हार्दिक शुभकामनाएँ", "hinglish": "Republic Day ki shubhkamnayein" }
+    },
+    "defaultLeadTimeDays": 10,
+    "occurrences": [
+      { "year": 2026, "date": "2026-01-26", "isApproximate": false },
+      { "year": 2027, "date": "2027-01-26", "isApproximate": false },
+      { "year": 2028, "date": "2028-01-26", "isApproximate": false }
+    ]
+  },
+  {
+    "slug": "independence-day",
+    "name": "Independence Day",
+    "nameHindi": "स्वतंत्रता दिवस",
+    "category": "NATIONAL",
+    "regionTags": ["pan-india"],
+    "relevanceTags": ["b2b-services", "apparel", "electronics", "gifting", "education"],
+    "creativeContext": {
+      "imageryMotifs": ["tricolour flag against the sky", "Red Fort ramparts", "kite flying in tricolour", "children waving small flags", "freedom-fighter silhouettes"],
+      "colorMotifs": ["saffron", "white", "India green", "sky blue"],
+      "emotionalThemes": ["freedom and pride", "patriotism", "gratitude to heroes", "national unity"],
+      "greetingPhrases": { "en": "Happy Independence Day", "hi": "स्वतंत्रता दिवस की हार्दिक शुभकामनाएँ", "hinglish": "Independence Day ki shubhkamnayein" }
+    },
+    "defaultLeadTimeDays": 10,
+    "occurrences": [
+      { "year": 2026, "date": "2026-08-15", "isApproximate": false },
+      { "year": 2027, "date": "2027-08-15", "isApproximate": false },
+      { "year": 2028, "date": "2028-08-15", "isApproximate": false }
+    ]
+  },
+  {
+    "slug": "gandhi-jayanti",
+    "name": "Gandhi Jayanti",
+    "nameHindi": "गांधी जयंती",
+    "category": "NATIONAL",
+    "regionTags": ["pan-india"],
+    "relevanceTags": ["b2b-services", "education", "gifting"],
+    "creativeContext": {
+      "imageryMotifs": ["Mahatma Gandhi's iconic round glasses", "charkha (spinning wheel)", "white khadi cloth texture", "Raj Ghat memorial with flowers", "three wise monkeys motif"],
+      "colorMotifs": ["khadi white", "earthy beige", "peaceful saffron", "soft grey"],
+      "emotionalThemes": ["peace and non-violence", "truth and simplicity", "self-reliance", "moral leadership"],
+      "greetingPhrases": { "en": "Gandhi Jayanti greetings", "hi": "गांधी जयंती की शुभकामनाएँ", "hinglish": "Gandhi Jayanti ki shubhkamnayein" }
+    },
+    "defaultLeadTimeDays": 7,
+    "occurrences": [
+      { "year": 2026, "date": "2026-10-02", "isApproximate": false },
+      { "year": 2027, "date": "2027-10-02", "isApproximate": false },
+      { "year": 2028, "date": "2028-10-02", "isApproximate": false }
+    ]
+  },
+  {
+    "slug": "new-year",
+    "name": "New Year's Day",
+    "nameHindi": "नववर्ष",
+    "category": "COMMERCIAL",
+    "regionTags": ["pan-india"],
+    "relevanceTags": ["apparel", "gifting", "restaurants", "fitness", "travel", "beauty", "electronics"],
+    "creativeContext": {
+      "imageryMotifs": ["midnight fireworks over a city skyline", "champagne toast and confetti", "glittering 'Happy New Year' signage", "countdown clock at 12", "party streamers and balloons"],
+      "colorMotifs": ["midnight black", "champagne gold", "sparkling silver", "festive blue"],
+      "emotionalThemes": ["fresh start and resolutions", "celebration and optimism", "new possibilities", "togetherness"],
+      "greetingPhrases": { "en": "Happy New Year", "hi": "नववर्ष की हार्दिक शुभकामनाएँ", "hinglish": "Happy New Year" }
+    },
+    "defaultLeadTimeDays": 14,
+    "occurrences": [
+      { "year": 2026, "date": "2026-01-01", "isApproximate": false },
+      { "year": 2027, "date": "2027-01-01", "isApproximate": false },
+      { "year": 2028, "date": "2028-01-01", "isApproximate": false }
+    ]
+  },
+  {
+    "slug": "valentines-day",
+    "name": "Valentine's Day",
+    "nameHindi": "वैलेंटाइन डे",
+    "category": "COMMERCIAL",
+    "regionTags": ["pan-india"],
+    "relevanceTags": ["gifting", "jewellery", "apparel", "beauty", "restaurants", "food-beverage", "travel"],
+    "creativeContext": {
+      "imageryMotifs": ["red roses bouquet", "heart-shaped chocolates and balloons", "couple at a candlelit dinner", "love letter and gift box", "fairy lights and bokeh hearts"],
+      "colorMotifs": ["romantic red", "blush pink", "soft white", "rose gold"],
+      "emotionalThemes": ["romance and love", "affection and intimacy", "thoughtful gifting", "celebration of couples"],
+      "greetingPhrases": { "en": "Happy Valentine's Day", "hi": "वैलेंटाइन डे की शुभकामनाएँ", "hinglish": "Happy Valentine's Day" }
+    },
+    "defaultLeadTimeDays": 14,
+    "occurrences": [
+      { "year": 2026, "date": "2026-02-14", "isApproximate": false },
+      { "year": 2027, "date": "2027-02-14", "isApproximate": false },
+      { "year": 2028, "date": "2028-02-14", "isApproximate": false }
+    ]
+  },
+  {
+    "slug": "womens-day",
+    "name": "International Women's Day",
+    "nameHindi": "अंतर्राष्ट्रीय महिला दिवस",
+    "category": "COMMERCIAL",
+    "regionTags": ["pan-india"],
+    "relevanceTags": ["beauty", "apparel", "jewellery", "b2b-services", "fitness", "gifting"],
+    "creativeContext": {
+      "imageryMotifs": ["diverse confident women together", "female Venus symbol in bold type", "purple ribbon and mimosa flowers", "woman breaking a glass ceiling", "women across professions portraits"],
+      "colorMotifs": ["empowerment purple", "vibrant magenta", "white", "green accent"],
+      "emotionalThemes": ["women's empowerment", "celebration and recognition", "equality", "strength and inspiration"],
+      "greetingPhrases": { "en": "Happy Women's Day", "hi": "महिला दिवस की शुभकामनाएँ", "hinglish": "Happy Women's Day" }
+    },
+    "defaultLeadTimeDays": 10,
+    "occurrences": [
+      { "year": 2026, "date": "2026-03-08", "isApproximate": false },
+      { "year": 2027, "date": "2027-03-08", "isApproximate": false },
+      { "year": 2028, "date": "2028-03-08", "isApproximate": false }
+    ]
+  },
+  {
+    "slug": "mothers-day",
+    "name": "Mother's Day",
+    "nameHindi": "मातृ दिवस",
+    "category": "COMMERCIAL",
+    "regionTags": ["pan-india"],
+    "relevanceTags": ["gifting", "beauty", "apparel", "jewellery", "restaurants", "food-beverage"],
+    "creativeContext": {
+      "imageryMotifs": ["mother and child embracing", "bouquet of pink carnations", "breakfast in bed tray", "handmade card from a child", "three generations of women together"],
+      "colorMotifs": ["soft pink", "warm peach", "cream white", "gentle lavender"],
+      "emotionalThemes": ["love and gratitude", "nurturing bond", "appreciation", "tender memories"],
+      "greetingPhrases": { "en": "Happy Mother's Day", "hi": "मातृ दिवस की शुभकामनाएँ", "hinglish": "Happy Mother's Day" }
+    },
+    "defaultLeadTimeDays": 12,
+    "occurrences": [
+      { "year": 2026, "date": "2026-05-10", "isApproximate": false },
+      { "year": 2027, "date": "2027-05-09", "isApproximate": false },
+      { "year": 2028, "date": "2028-05-14", "isApproximate": false }
+    ]
+  },
+  {
+    "slug": "fathers-day",
+    "name": "Father's Day",
+    "nameHindi": "पितृ दिवस",
+    "category": "COMMERCIAL",
+    "regionTags": ["pan-india"],
+    "relevanceTags": ["gifting", "apparel", "electronics", "fitness", "restaurants", "b2b-services"],
+    "creativeContext": {
+      "imageryMotifs": ["father lifting a laughing child", "necktie and watch gift set", "father-and-kid playing together", "'Best Dad' mug and card", "dad teaching a skill"],
+      "colorMotifs": ["denim blue", "slate grey", "warm brown", "deep teal"],
+      "emotionalThemes": ["respect and gratitude", "father-child bond", "appreciation", "guidance and strength"],
+      "greetingPhrases": { "en": "Happy Father's Day", "hi": "पितृ दिवस की शुभकामनाएँ", "hinglish": "Happy Father's Day" }
+    },
+    "defaultLeadTimeDays": 12,
+    "occurrences": [
+      { "year": 2026, "date": "2026-06-21", "isApproximate": false },
+      { "year": 2027, "date": "2027-06-20", "isApproximate": false },
+      { "year": 2028, "date": "2028-06-18", "isApproximate": false }
+    ]
+  },
+  {
+    "slug": "yoga-day",
+    "name": "International Day of Yoga",
+    "nameHindi": "अंतर्राष्ट्रीय योग दिवस",
+    "category": "COMMERCIAL",
+    "regionTags": ["pan-india"],
+    "relevanceTags": ["fitness", "beauty", "apparel", "b2b-services", "education"],
+    "creativeContext": {
+      "imageryMotifs": ["person in tree pose at sunrise", "yoga mats arranged in a park", "lotus meditation silhouette", "om symbol over calm landscape", "group sun-salutation session"],
+      "colorMotifs": ["calm teal", "sunrise orange", "earthy green", "serene white"],
+      "emotionalThemes": ["wellness and balance", "mindfulness", "vitality", "holistic health"],
+      "greetingPhrases": { "en": "Happy Yoga Day", "hi": "योग दिवस की शुभकामनाएँ", "hinglish": "Happy Yoga Day" }
+    },
+    "defaultLeadTimeDays": 10,
+    "occurrences": [
+      { "year": 2026, "date": "2026-06-21", "isApproximate": false },
+      { "year": 2027, "date": "2027-06-21", "isApproximate": false },
+      { "year": 2028, "date": "2028-06-21", "isApproximate": false }
+    ]
+  },
+  {
+    "slug": "doctors-day",
+    "name": "National Doctors' Day",
+    "nameHindi": "राष्ट्रीय चिकित्सक दिवस",
+    "category": "COMMERCIAL",
+    "regionTags": ["pan-india"],
+    "relevanceTags": ["b2b-services", "gifting", "education"],
+    "creativeContext": {
+      "imageryMotifs": ["doctor in a white coat with stethoscope", "caring hands holding a red heart", "medical caduceus symbol", "thank-you note to a doctor", "hospital corridor with warm light"],
+      "colorMotifs": ["clinical white", "trust blue", "care red", "soft teal"],
+      "emotionalThemes": ["gratitude and respect", "trust and care", "service to humanity", "appreciation"],
+      "greetingPhrases": { "en": "Happy Doctors' Day", "hi": "चिकित्सक दिवस की शुभकामनाएँ", "hinglish": "Happy Doctors' Day" }
+    },
+    "defaultLeadTimeDays": 7,
+    "occurrences": [
+      { "year": 2026, "date": "2026-07-01", "isApproximate": false },
+      { "year": 2027, "date": "2027-07-01", "isApproximate": false },
+      { "year": 2028, "date": "2028-07-01", "isApproximate": false }
+    ]
+  },
+  {
+    "slug": "friendship-day",
+    "name": "Friendship Day",
+    "nameHindi": "मित्रता दिवस",
+    "category": "COMMERCIAL",
+    "regionTags": ["pan-india"],
+    "relevanceTags": ["gifting", "apparel", "restaurants", "food-beverage", "beauty", "kids"],
+    "creativeContext": {
+      "imageryMotifs": ["friends tying friendship bands", "group of friends laughing together", "colourful friendship bracelets close-up", "friends on a road trip", "shared selfie moment"],
+      "colorMotifs": ["cheerful yellow", "vibrant orange", "friendship multicolour", "fresh teal"],
+      "emotionalThemes": ["friendship and loyalty", "shared memories", "fun and bonding", "belonging"],
+      "greetingPhrases": { "en": "Happy Friendship Day", "hi": "मित्रता दिवस की शुभकामनाएँ", "hinglish": "Happy Friendship Day" }
+    },
+    "defaultLeadTimeDays": 10,
+    "occurrences": [
+      { "year": 2026, "date": "2026-08-02", "isApproximate": false },
+      { "year": 2027, "date": "2027-08-01", "isApproximate": false },
+      { "year": 2028, "date": "2028-08-06", "isApproximate": false }
+    ]
+  },
+  {
+    "slug": "teachers-day",
+    "name": "Teachers' Day",
+    "nameHindi": "शिक्षक दिवस",
+    "category": "COMMERCIAL",
+    "regionTags": ["pan-india"],
+    "relevanceTags": ["education", "gifting", "b2b-services", "kids"],
+    "creativeContext": {
+      "imageryMotifs": ["teacher at a chalkboard with students", "apple and books on a desk", "thank-you card and flowers for a teacher", "graduation cap and open book", "classroom celebration"],
+      "colorMotifs": ["scholarly blue", "chalkboard green", "warm gold", "apple red"],
+      "emotionalThemes": ["gratitude and respect", "mentorship", "learning and growth", "appreciation"],
+      "greetingPhrases": { "en": "Happy Teachers' Day", "hi": "शिक्षक दिवस की शुभकामनाएँ", "hinglish": "Happy Teachers' Day" }
+    },
+    "defaultLeadTimeDays": 7,
+    "occurrences": [
+      { "year": 2026, "date": "2026-09-05", "isApproximate": false },
+      { "year": 2027, "date": "2027-09-05", "isApproximate": false },
+      { "year": 2028, "date": "2028-09-05", "isApproximate": false }
+    ]
+  },
+  {
+    "slug": "childrens-day",
+    "name": "Children's Day",
+    "nameHindi": "बाल दिवस",
+    "category": "COMMERCIAL",
+    "regionTags": ["pan-india"],
+    "relevanceTags": ["kids", "education", "gifting", "apparel", "food-beverage", "restaurants"],
+    "creativeContext": {
+      "imageryMotifs": ["children playing joyfully", "Nehru with a rose and kids", "colourful balloons and toys", "crayons, drawings and storybooks", "school cultural-day performance"],
+      "colorMotifs": ["playful primary red", "sunny yellow", "sky blue", "grass green"],
+      "emotionalThemes": ["childhood joy and wonder", "innocence and play", "nurturing the future", "fun and learning"],
+      "greetingPhrases": { "en": "Happy Children's Day", "hi": "बाल दिवस की शुभकामनाएँ", "hinglish": "Happy Children's Day" }
+    },
+    "defaultLeadTimeDays": 7,
+    "occurrences": [
+      { "year": 2026, "date": "2026-11-14", "isApproximate": false },
+      { "year": 2027, "date": "2027-11-14", "isApproximate": false },
+      { "year": 2028, "date": "2028-11-14", "isApproximate": false }
+    ]
+  },
+  {
+    "slug": "summer-sale-season",
+    "name": "Summer Sale Season",
+    "nameHindi": "ग्रीष्म सेल सीज़न",
+    "category": "SEASONAL",
+    "regionTags": ["pan-india"],
+    "relevanceTags": ["apparel", "electronics", "home-decor", "beauty", "travel", "food-beverage"],
+    "creativeContext": {
+      "imageryMotifs": ["bold 'SALE' and percentage-off badges", "summer wardrobe in bright cottons", "air-coolers, fans and ACs on display", "cold drinks and ice cream", "beach and sunglasses props"],
+      "colorMotifs": ["bright sale yellow", "cool aqua", "punchy coral", "fresh white"],
+      "emotionalThemes": ["beat-the-heat value", "smart savings", "summer refresh", "urgency to grab deals"],
+      "greetingPhrases": { "en": "Summer Sale is here", "hi": "गर्मी की सेल शुरू", "hinglish": "Summer Sale aa gaya hai" }
+    },
+    "defaultLeadTimeDays": 14,
+    "occurrences": [
+      { "year": 2026, "date": "2026-04-15", "isApproximate": true },
+      { "year": 2027, "date": "2027-04-15", "isApproximate": true },
+      { "year": 2028, "date": "2028-04-15", "isApproximate": true }
+    ]
+  },
+  {
+    "slug": "back-to-school",
+    "name": "Back-to-School Season",
+    "nameHindi": "बैक-टू-स्कूल सीज़न",
+    "category": "SEASONAL",
+    "regionTags": ["pan-india"],
+    "relevanceTags": ["education", "kids", "apparel", "electronics", "b2b-services"],
+    "creativeContext": {
+      "imageryMotifs": ["fresh stack of notebooks and stationery", "kid wearing a new backpack", "school shoes and uniform laid out", "geometry box, lunchbox and water bottle", "classroom-ready desk setup"],
+      "colorMotifs": ["notebook blue", "pencil yellow", "uniform navy", "eraser pink"],
+      "emotionalThemes": ["fresh academic start", "preparedness and confidence", "growing up", "parental pride"],
+      "greetingPhrases": { "en": "Back to School is here", "hi": "स्कूल फिर से शुरू", "hinglish": "Back to School ready ho jao" }
+    },
+    "defaultLeadTimeDays": 14,
+    "occurrences": [
+      { "year": 2026, "date": "2026-06-01", "isApproximate": true },
+      { "year": 2027, "date": "2027-06-01", "isApproximate": true },
+      { "year": 2028, "date": "2028-06-01", "isApproximate": true }
+    ]
+  },
+  {
+    "slug": "monsoon-season",
+    "name": "Monsoon Season",
+    "nameHindi": "मानसून सीज़न",
+    "category": "SEASONAL",
+    "regionTags": ["pan-india", "north"],
+    "relevanceTags": ["apparel", "food-beverage", "restaurants", "home-decor", "beauty", "travel"],
+    "creativeContext": {
+      "imageryMotifs": ["raindrops on a window pane", "colourful umbrellas in the rain", "chai and pakora by the window", "lush green rain-washed landscape", "rain boots and raincoats"],
+      "colorMotifs": ["rain grey", "lush green", "monsoon teal", "warm chai brown"],
+      "emotionalThemes": ["cosy comfort", "monsoon romance", "freshness and renewal", "indulgent cravings"],
+      "greetingPhrases": { "en": "Monsoon vibes are here", "hi": "मानसून का मज़ा शुरू", "hinglish": "Monsoon vibes on hai" }
+    },
+    "defaultLeadTimeDays": 10,
+    "occurrences": [
+      { "year": 2026, "date": "2026-07-01", "isApproximate": true },
+      { "year": 2027, "date": "2027-07-01", "isApproximate": true },
+      { "year": 2028, "date": "2028-07-01", "isApproximate": true }
+    ]
+  },
+  {
+    "slug": "festive-sale-season",
+    "name": "Festive Sale Season (E-commerce Mega Sale)",
+    "nameHindi": "त्योहारी सेल सीज़न",
+    "category": "SEASONAL",
+    "regionTags": ["pan-india"],
+    "relevanceTags": ["electronics", "apparel", "home-decor", "beauty", "festive-fashion", "gifting", "jewellery"],
+    "creativeContext": {
+      "imageryMotifs": ["giant glowing 'MEGA SALE' banner", "shopping cart overflowing with gadgets", "countdown timer and lightning-deal flashes", "festive bunting over discounted products", "phone screen with app deals"],
+      "colorMotifs": ["urgent sale red", "deal-alert yellow", "festive purple", "electric blue"],
+      "emotionalThemes": ["unbeatable festive deals", "shopping excitement", "urgency and FOMO", "big savings before Diwali"],
+      "greetingPhrases": { "en": "The Big Festive Sale is live", "hi": "बड़ी त्योहारी सेल शुरू", "hinglish": "Festive Sale live hai" }
+    },
+    "defaultLeadTimeDays": 14,
+    "occurrences": [
+      { "year": 2026, "date": "2026-09-25", "isApproximate": true },
+      { "year": 2027, "date": "2027-09-20", "isApproximate": true },
+      { "year": 2028, "date": "2028-09-15", "isApproximate": true }
+    ]
+  },
+  {
+    "slug": "wedding-season-kickoff",
+    "name": "Wedding Season Kickoff",
+    "nameHindi": "शादी का सीज़न",
+    "category": "SEASONAL",
+    "regionTags": ["north", "pan-india"],
+    "relevanceTags": ["festive-fashion", "jewellery", "apparel", "beauty", "gifting", "home-decor", "b2b-services"],
+    "creativeContext": {
+      "imageryMotifs": ["bride and groom in ornate wedding attire", "mandap decorated with marigold and drapes", "stacks of bridal bangles and jewellery sets", "sangeet and mehndi celebration", "lavish gift hamper and invitation card"],
+      "colorMotifs": ["bridal red", "rich gold", "royal maroon", "regal pink", "ivory"],
+      "emotionalThemes": ["once-in-a-lifetime celebration", "love and union", "grandeur and tradition", "family festivity"],
+      "greetingPhrases": { "en": "Wedding Season is here", "hi": "शादी का सीज़न शुरू", "hinglish": "Shaadi season aa gaya" }
+    },
+    "defaultLeadTimeDays": 21,
+    "occurrences": [
+      { "year": 2026, "date": "2026-11-20", "isApproximate": false },
+      { "year": 2027, "date": "2027-11-10", "isApproximate": false },
+      { "year": 2028, "date": "2028-10-28", "isApproximate": false }
+    ]
+  }
+]
