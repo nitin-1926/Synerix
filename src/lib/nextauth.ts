@@ -11,6 +11,11 @@ import { prisma } from "@/lib/db";
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },
+  // Trust the deployment host header. Auth.js auto-enables this on Vercel, but
+  // set it explicitly so a custom domain (www.synerix.in) behind a proxy never
+  // throws UntrustedHost, which surfaces as the generic "server configuration"
+  // error on the sign-in page.
+  trustHost: true,
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID,
