@@ -23,7 +23,6 @@
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "@sentry/nextjs": "^10.62.0",
-    "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.106.2",
     "@trigger.dev/react-hooks": "4.5.0",
     "@trigger.dev/sdk": "4.5.0",
