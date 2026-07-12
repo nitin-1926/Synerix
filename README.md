@@ -1,76 +1,57 @@
-# Synerix Consulting
+# Synerix
 
-Synerix Consulting is a professional business consulting firm specializing in MSME (Micro, Small & Medium Enterprises) services. Our platform is built with Next.js and offers comprehensive business solutions.
+One app, two offerings for Indian SMBs:
 
-## Features
+- **Marketing site + Consulting** — synerix.in: landing, consulting services, free
+  Business Health Check (scored email report, leads stored in DB).
+- **Synerix Studio** — an AI ad-creative SaaS: brand DNA ingestion, product
+  dissection, Indian festival calendar, evidence-grounded creative briefs, and
+  photoreal ad creatives with agency typography baked in (EN / Hindi / Hinglish /
+  Punjabi).
 
-- Modern, responsive design
-- SEO optimized
-- Performance-focused implementation
-- Interactive UI components
-- Contact form integration
-- Testimonials showcase
-- Expert profiles
-- Service descriptions
+## Stack
 
-## Tech Stack
+Next.js 16 (App Router, Turbopack) · React 19 · Tailwind 4 + shadcn (Base UI) ·
+Prisma 7 + Supabase Postgres/Storage · Trigger.dev v4 (background pipelines) ·
+NextAuth v5 (Google) · Anthropic Claude + Gemini (Nano Banana Pro) + Runware/FAL.
 
-- Next.js 14
-- TypeScript
-- Tailwind CSS
-- React 18
-- EmailJS for contact form
-- AOS for animations
-
-## Getting Started
-
-1. Clone the repository
-2. Install dependencies:
-    ```bash
-    npm install
-    ```
-3. Run the development server:
-    ```bash
-    npm run dev
-    ```
-4. Open [http://localhost:3000](http://localhost:3000) in your browser
-
-## Build
-
-To create a production build:
+## Develop
 
 ```bash
-npm run build
+npm install
+npx prisma generate
+npm run dev                  # web on :3000
+npx trigger.dev@v4 dev       # background worker (separate terminal)
 ```
 
-To start the production server:
+- Env lives in `.env.local` and must be mirrored to `.env` (the Trigger.dev
+  worker reads `.env`). See `.env.local` for the full variable list.
+- `DEV_AUTH_BYPASS=1` (dev only) signs you in as a seeded dev user with admin
+  access — remove once Google OAuth credentials are configured
+  (`GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`, redirect URI
+  `<origin>/api/auth/callback/google`).
+- `SUPER_ADMIN_EMAIL` gets the `/admin` console (all workspaces, credit grants,
+  business-health leads).
+
+## Checks
 
 ```bash
-npm start
+npm run build && npm run lint && npm test
 ```
 
-## Environment Variables
+## Map
 
-Create a `.env.local` file in the root directory and add the following variables:
+| Area | Where |
+| --- | --- |
+| Marketing site (landing, consulting, studio page, health check) | `src/app/(marketing)/` |
+| Studio app (dashboard, studio, library, products, brand, calendar) | `src/app/(app)/` |
+| Admin console (super-admin) | `src/app/(app)/admin/` |
+| Auth (NextAuth v5 + workspace resolution) | `src/lib/nextauth.ts`, `src/lib/auth.ts` |
+| Generation pipeline (briefs, baked typography, QA) | `src/lib/pipeline/`, `src/trigger/generation-run.ts` |
+| Brand Creative Intelligence (web-search research) | `src/lib/pipeline/brand-intel.ts` |
+| Credits ledger | `src/lib/credits.ts`, `/settings/credits` |
+| Legacy website data migration | `scripts/migrate-legacy-pinata.ts` |
 
-```env
-NEXT_PUBLIC_EMAILJS_SERVICE_ID=your_service_id
-NEXT_PUBLIC_EMAILJS_TEMPLATE_ID=your_template_id
-NEXT_PUBLIC_EMAILJS_USER_ID=your_user_id
-```
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Contact
-
-For any queries or support, please reach out to us at support@synerix.com
+`legacy/` holds the pre-merge Pinata website source for reference only — it is
+excluded from builds and lint and can be deleted once nothing else is needed
+from it.
