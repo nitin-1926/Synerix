@@ -35,15 +35,19 @@ import { persistCost } from "@/lib/pipeline/cost-log";
 import type { GenerationStatus, Prisma } from "@/generated/prisma/client";
 
 /** Serialized pipeline-JSON updates (concept workers run concurrently in-process). */
-let pipelineChain = Promise.resolve();
+let pipelineChain: Promise<unknown> = Promise.resolve();
 function updatePipeline(runId: string, mutate: (p: PipelineState) => void): Promise<void> {
-  pipelineChain = pipelineChain.then(async () => {
+  const next = pipelineChain.then(async () => {
     const run = await prisma.generationRun.findUniqueOrThrow({ where: { id: runId }, select: { pipeline: true } });
     const p = (run.pipeline ?? {}) as PipelineState;
     mutate(p);
     await prisma.generationRun.update({ where: { id: runId }, data: { pipeline: p as Prisma.InputJsonValue } });
   });
-  return pipelineChain;
+  // The caller sees this link's rejection, but the chain itself absorbs it —
+  // otherwise one transient DB error rejects every later update in this warm
+  // worker process (including future runs).
+  pipelineChain = next.catch(() => {});
+  return next;
 }
 
 async function setStatus(runId: string, status: GenerationStatus) {
