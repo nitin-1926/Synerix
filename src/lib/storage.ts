@@ -56,7 +56,7 @@ const signUrlsCached = unstable_cache(
   async (keys: string[], expiresInSeconds: number): Promise<Record<string, string>> => {
     const { data, error } = await admin()
       .storage.from(MEDIA_BUCKET)
-      .createSignedUrls(keys, expiresInSeconds);
+      .createSignedUrls(keys, expiresInSeconds + SIGNED_URL_VALIDITY_MARGIN);
     if (error || !data) throw new Error(`signed urls failed: ${error?.message}`);
     return Object.fromEntries(
       data.filter((d): d is typeof d & { path: string; signedUrl: string } => Boolean(d.path && d.signedUrl))
