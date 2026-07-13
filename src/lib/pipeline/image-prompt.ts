@@ -129,38 +129,13 @@ export function buildTypographyEditPrompt(opts: {
   return parts.join("\n\n").slice(0, 2500);
 }
 
-export function buildScenePrompt(opts: PlatePromptOpts): string {
-  const { concept, aspect, dissectionPrompt, intel, mode, hasProduct } = opts;
-  const parts: string[] = [];
-
-  if (hasProduct && mode === "in_scene") {
-    parts.push(
-      `Use the provided product photo as the EXACT product — reproduce it faithfully (same pack shape, label, colours, every printed detail). Do NOT redesign the packaging. Show the product only ONCE, naturally placed in the scene (held or presented).${dissectionPrompt ? ` Reference: ${dissectionPrompt}` : ""}`,
-    );
-  } else if (hasProduct && mode === "composite") {
-    parts.push(
-      `This is a PREMIUM STUDIO PACKSHOT BACKDROP, not a lifestyle scene. Do NOT place any product, pack, box, bag or jar anywhere. Build a clean, minimal product-photography set: one clear hero surface (a tabletop, pedestal or styled plane) shot slightly from above at an eye-pleasing product angle, soft even studio lighting with a gentle falloff, and a deliberate EMPTY hero spot at the focal centre (with a soft contact shadow already implied) where the real product will be composited. Keep it uncluttered — only a few subtle, out-of-focus complementary props at the edges, generous negative space, no busy food spreads, no hands, no crowd of objects. The empty centre is the point of the image.`,
-    );
-  }
-
-  parts.push(concept.sceneDescription);
-  const guard = usageGuard(intel);
-  if (guard) parts.push(guard);
-  parts.push(QUALITY);
-  parts.push(`Palette: lead with ${concept.paletteHexes.join(", ")} as the dominant tones.`);
-  parts.push(SAFE_ZONES[aspect]);
-  parts.push(
-    `No on-image text, letters, numbers, words, signage with writing, logos or watermarks${mode === "in_scene" && hasProduct ? " other than what is printed on the actual product pack" : ""}.`,
-  );
-  parts.push(FRAMING);
-
-  return parts.join("\n\n").slice(0, 2000);
-}
-
 /**
  * ON_MODEL: fuse an AI-model reference (image 1) with the real garment
  * (image 2) into one staged on-model shot. The garment-fidelity block is the
- * key guard against the model "restyling" the clothing (see ADR-0002).
+ * key guard against the model "restyling" the clothing (see ADR-0002). The
+ * direction preset (editorial vs clean catalog) and the quality floor are
+ * ALWAYS appended — photoshoot craft must not depend on what the concept LLM
+ * happened to write.
  */
 export function buildOnModelPrompt(opts: {
   concept: CreativeConcept;
