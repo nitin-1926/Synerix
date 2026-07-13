@@ -42,8 +42,9 @@ For EACH concept, check ONLY these failure classes:
 4. INVENTED CLAIMS: any copy block or prompt invents offers, discounts, prices, "free" anything, certifications, awards or statistics that the occasion brief did not explicitly state.
 5. BROKEN COPY: a headline over 8 words, a missing CTA, an em/en dash (— –) in any copy field, or copy in the wrong script for its language slot (hi must be Devanagari, pa must be Gurmukhi, hinglish must be Latin script).
 6. DUPLICATE CONCEPTS: two concepts in the set that are effectively the same scene/angle (flag the LATER one).
+7. OCCASION MISSING: the brief names a festival or occasion but the imagePrompt/sceneDescription contains nothing that visually reads as that occasion (its mood, setting, ritual objects, colours or motifs) — a generic scene that could run any day of the year. Only apply when the brief actually names an occasion.
 
-Judge against the brief you are given, not your own taste. If a concept passes all six checks, it is ok=true with no issues. Never invent an issue to seem thorough.`;
+Judge against the brief you are given, not your own taste. If a concept passes all seven checks, it is ok=true with no issues. Never invent an issue to seem thorough.`;
 
 const REPAIR_SYSTEM = `You are the senior creative director who wrote a concept brief that production QA flagged. Fix ONLY the flagged issues, keeping everything that worked: the concept's name, big idea, archetype and creative angle stay unless an issue forces a change. Preserve all standing rules: photoreal WORDLESS imagePrompt with an explicit reserved negative-space zone, correct product staging per productPlacement, brand palette leading, no invented offers or claims, no em/en dashes anywhere, headline ≤ 6 words in all four languages (en / hinglish Latin script / hi Devanagari / pa Gurmukhi). Return the complete corrected concept.`;
 
