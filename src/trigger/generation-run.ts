@@ -309,10 +309,13 @@ export const generationRun = task({
     await persistCost({ summary: cost, source: "generation", workspaceId: run.workspaceId, runId });
     logger.info("run cost", { ...cost, perCreativeUSD, creatives: succeeded });
 
-    await prisma.generationRun.update({
-      where: { id: runId },
+    const done = await prisma.generationRun.updateMany({
+      where: { id: runId, status: { notIn: TERMINAL } },
       data: { status: failed > 0 ? "PARTIAL" : "COMPLETE", finishedAt: new Date() },
     });
+    if (done.count === 0) {
+      logger.warn("run was closed terminally while executing (healer?) — finalize skipped", { runId });
+    }
     metadata.set("status", failed > 0 ? "PARTIAL" : "COMPLETE");
     return { succeeded, failed, cost: cost.totalUSD, perCreativeUSD };
   },
