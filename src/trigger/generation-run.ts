@@ -13,9 +13,11 @@ import {
   buildScenePassPrompt,
   buildDirectPrompt,
   buildOnModelPrompt,
+  type OnModelDirection,
 } from "@/lib/pipeline/image-prompt";
 import { checkOverlayPlacement } from "@/lib/pipeline/placement-qa";
 import { checkPackFidelity } from "@/lib/pipeline/pack-qa";
+import { checkOnModelFidelity } from "@/lib/pipeline/model-qa";
 import { buildOverlaySpec, plateFocusYFor, type LogoPosition } from "@/lib/composition/archetypes";
 import { renderOverlay } from "@/lib/composition/render";
 import { analyzePlate } from "@/lib/composition/analyze";
