@@ -271,13 +271,21 @@ export const generationRun = task({
     }
 
     // ---- Finalize ----
+    // Terminal writes are CONDITIONAL (status notIn terminal): the studio
+    // stall-healer may have flipped a queue-delayed run to FAILED and refunded
+    // it while we were still executing. An unconditional update here would
+    // resurrect that FAILED to COMPLETE, leaving the workspace with both the
+    // refund and the creatives. Whoever writes terminal first wins; the loser
+    // skips its own status write and refund. All run refunds route through
+    // reconcileRunRefund so concurrent refunders converge instead of stacking.
+    const TERMINAL: GenerationStatus[] = ["FAILED", "COMPLETE", "PARTIAL"];
     if (succeeded === 0) {
-      await prisma.generationRun.update({
-        where: { id: runId },
+      const flipped = await prisma.generationRun.updateMany({
+        where: { id: runId, status: { notIn: TERMINAL } },
         data: { status: "FAILED", finishedAt: new Date(), error: "All concepts failed" },
       });
-      if (Number(run.creditsDebited) > 0) {
-        await grantCredits({ workspaceId: run.workspaceId, amount: Number(run.creditsDebited), reason: "REFUND", generationRunId: runId, note: "Run failed — full refund" });
+      if (flipped.count > 0 && Number(run.creditsDebited) > 0) {
+        await reconcileRunRefund({ workspaceId: run.workspaceId, generationRunId: runId, owedRefund: Number(run.creditsDebited), note: "Run failed — full refund" });
       }
       metadata.set("status", "FAILED");
       return { succeeded, failed };
