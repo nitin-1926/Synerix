@@ -144,8 +144,11 @@ export function buildOnModelPrompt(opts: {
   garmentPrompt?: string | null;
   /** Optional pose direction; empty = let the scene/art-direction set the pose. */
   pose?: string | null;
+  /** Photoshoot treatment; defaults to the clean catalog showcase. */
+  direction?: OnModelDirection;
 }): string {
   const { concept, aspect, garmentPrompt, pose } = opts;
+  const direction = opts.direction ?? "catalog";
   const hasFullPrompt = Boolean(concept.imagePrompt?.trim());
   const parts: string[] = [];
   parts.push(
