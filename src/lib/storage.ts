@@ -86,7 +86,7 @@ const signThumbUrlCached = unstable_cache(
   async (key: string, width: number, expiresInSeconds: number): Promise<string> => {
     const { data, error } = await admin()
       .storage.from(MEDIA_BUCKET)
-      .createSignedUrl(key, expiresInSeconds, { transform: { width, resize: "contain" } });
+      .createSignedUrl(key, expiresInSeconds + SIGNED_URL_VALIDITY_MARGIN, { transform: { width, resize: "contain" } });
     if (error || !data?.signedUrl) throw new Error(`signed thumb url failed (${key}): ${error?.message}`);
     return data.signedUrl;
   },
