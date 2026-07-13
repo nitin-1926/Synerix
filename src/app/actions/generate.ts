@@ -99,6 +99,10 @@ export async function startGenerationRun(formData: FormData) {
   if (d.fidelityMode === "ON_MODEL") {
     if (!d.productId) return { error: "On-model mode needs a product (the garment) selected" };
     if (!d.aiModelId) return { error: "Pick an AI model for the on-model shoot" };
+    // The fusion needs a garment reference photo — without one the task can
+    // only hard-fail after credits were debited.
+    const garmentPhotos = await prisma.productImage.count({ where: { productId: d.productId } });
+    if (garmentPhotos === 0) return { error: "Add at least one photo of this garment before an on-model shoot" };
     const model = await prisma.aiModel.findFirst({
       where: {
         id: d.aiModelId,
