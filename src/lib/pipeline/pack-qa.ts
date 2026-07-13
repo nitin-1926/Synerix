@@ -46,7 +46,7 @@ export async function checkPackFidelity(opts: {
             { type: "image", image: opts.render },
             {
               type: "text",
-              text: `Compare ONLY the product/packaging in the generated image against the reference photo. Judge label text spelling word by word, plus colours, logo and pack design. Be strict: a single altered or misspelled word on the pack means labelTextCorrect=false. Ignore scene, people, lighting and the pack's angle/perspective.`,
+              text: `Compare ONLY the product/packaging in the generated image against the reference photo. Judge label text spelling word by word, plus colours, logo and pack design. Be strict: a single altered or misspelled word on the pack means labelTextCorrect=false. Ignore scene, people, lighting and the pack's angle/perspective. If the pack is rendered too small or distant for its label text to be legible at all, judge only the colours, shape, logo and overall design — illegible-at-this-scale text is NOT a failure.`,
             },
           ],
         },
