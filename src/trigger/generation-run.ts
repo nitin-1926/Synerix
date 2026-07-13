@@ -386,8 +386,9 @@ interface PlateResult {
   typographyMode: TypographyMode;
   /** Cost-model id of the image model that rendered the scene (provenance). */
   costModel: string;
-  /** EXACT_PRODUCT in-scene renders: verdict of the pack-vs-reference check. */
-  packQa?: { pass: boolean; issues: string; retried: boolean };
+  /** Fidelity-QA verdict: pack-vs-reference for EXACT_PRODUCT renders,
+   * garment+identity-vs-references for ON_MODEL renders. */
+  fidelityQa?: { pass: boolean; issues: string; retried: boolean };
 }
 
 /**
