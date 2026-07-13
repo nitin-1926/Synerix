@@ -32,5 +32,17 @@ export function rateLimit(
 }
 
 export function clientIp(req: Request): string {
-  return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  // x-real-ip is set by the platform (Vercel) from the actual connection and
+  // cannot be spoofed by the caller. The LEFTMOST x-forwarded-for value is
+  // client-controlled — trusting it lets an attacker rotate a header per
+  // request and bypass every limit — so it is only a last-resort fallback,
+  // and we take the RIGHTMOST hop there (appended by the trusted proxy).
+  const real = req.headers.get("x-real-ip")?.trim();
+  if (real) return real;
+  const xff = req.headers.get("x-forwarded-for");
+  if (xff) {
+    const hops = xff.split(",").map((h) => h.trim()).filter(Boolean);
+    if (hops.length) return hops[hops.length - 1];
+  }
+  return "unknown";
 }
