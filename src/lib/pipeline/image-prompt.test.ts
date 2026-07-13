@@ -9,27 +9,54 @@ const concept = {
   paletteHexes: ["#b83b5e", "#e8862e"],
 } as unknown as CreativeConcept;
 
-describe("buildScenePrompt", () => {
-  it("in-scene with product instructs faithful single placement + carries scene/quality/palette", () => {
-    const p = buildScenePrompt({ concept, aspect: "4:5", mode: "in_scene", hasProduct: true });
-    expect(p).toMatch(/EXACT product/i);
-    expect(p).toMatch(/only ONCE/i);
+const conceptWithPrompt = {
+  ...concept,
+  imagePrompt:
+    "Photograph a warm Indian living room at dusk, family gathered around a low table, golden window light, festive marigolds.",
+} as unknown as CreativeConcept;
+
+describe("buildScenePassPrompt", () => {
+  it("with product instructs faithful single placement and carries the scene", () => {
+    const p = buildScenePassPrompt({ concept, aspect: "4:5", hasProduct: true });
+    expect(p).toMatch(/exact product/i);
+    expect(p).toMatch(/shown only once/i);
     expect(p).toContain(concept.sceneDescription);
-    expect(p).toMatch(/Photoreal/);
-    expect(p).toContain("#b83b5e");
-    expect(p).toMatch(/No on-image text/i);
   });
 
-  it("composite mode forbids any product in the scene (product-less backdrop)", () => {
-    const p = buildScenePrompt({ concept, aspect: "4:5", mode: "composite", hasProduct: true });
-    expect(p).toMatch(/do NOT place any product/i);
-    expect(p).toMatch(/EMPTY hero spot/i);
-    expect(p).toMatch(/PACKSHOT BACKDROP/i);
+  it("prefers the concept's art-directed imagePrompt over sceneDescription", () => {
+    const p = buildScenePassPrompt({ concept: conceptWithPrompt, aspect: "4:5", hasProduct: false });
+    expect(p).toContain("golden window light");
+    expect(p).not.toContain(concept.sceneDescription);
   });
 
-  it("stays within the 2000-char cap", () => {
-    const p = buildScenePrompt({ concept, aspect: "9:16", mode: "in_scene", hasProduct: true });
-    expect(p.length).toBeLessThanOrEqual(2000);
+  it("always appends the quality floor and the per-aspect overlay safe-zone", () => {
+    const story = buildScenePassPrompt({ concept: conceptWithPrompt, aspect: "9:16", hasProduct: false });
+    expect(story).toMatch(/Photoreal/);
+    expect(story).toMatch(/top ~15%/); // 9:16 safe zone
+    const feed = buildScenePassPrompt({ concept: conceptWithPrompt, aspect: "4:5", hasProduct: false });
+    expect(feed).toMatch(/bottom ~32%/); // 4:5 safe zone
+  });
+
+  it("carries the framing guard against edge-cropped / split compositions", () => {
+    const p = buildScenePassPrompt({ concept, aspect: "4:5", hasProduct: true });
+    expect(p).toMatch(/never a split-screen, diptych/i);
+    expect(p).toMatch(/comfortable margin on all sides/i);
+    expect(p).toMatch(/cut off by any edge/i);
+  });
+
+  it("stays within the 4000-char cap", () => {
+    const p = buildScenePassPrompt({ concept, aspect: "9:16", hasProduct: true });
+    expect(p.length).toBeLessThanOrEqual(4000);
+  });
+
+  it("truncates an oversized concept body, never the guard blocks", () => {
+    const huge = { ...concept, imagePrompt: "A ".repeat(3000) + "END" } as unknown as CreativeConcept;
+    const p = buildScenePassPrompt({ concept: huge, aspect: "4:5", hasProduct: true });
+    expect(p.length).toBeLessThanOrEqual(4000);
+    expect(p).toMatch(/Photoreal/); // quality floor survives
+    expect(p).toMatch(/bottom ~32%/); // safe zone survives
+    expect(p).toMatch(/cut off by any edge/i); // framing guard survives
+    expect(p).toMatch(/exact product/i); // fidelity line survives
   });
 });
 
