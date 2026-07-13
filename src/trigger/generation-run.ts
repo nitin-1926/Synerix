@@ -174,7 +174,6 @@ export const generationRun = task({
       // apparel — every concept must read like a designer campaign, not a
       // commerce listing. Threaded into the brief so concepting, brief QA and
       // the prompt enhancer all inherit it.
-      const workspace = await prisma.workspace.findUnique({ where: { id: run.workspaceId }, select: { type: true } });
       if (workspace?.type === "FASHION_EDITORIAL") {
         occasionBrief += `\n\n## ACCOUNT STYLE (non-negotiable)\nThis is a HIGH-FASHION EDITORIAL account. Every concept must look like a premium designer campaign or magazine editorial photoshoot (Vogue India energy): dramatic yet tasteful lighting, striking styled sets or locations, confident editorial model poses, luxury art direction, restrained color stories. Never mass-market catalogue styling, never discount-retail energy, never busy commerce clutter.`;
       }
