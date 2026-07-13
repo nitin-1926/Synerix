@@ -169,11 +169,36 @@ export async function startGenerationRun(formData: FormData) {
     await prisma.generationRun.update({ where: { id: run.id }, data: { creditsDebited: cost } });
   }
 
-  const handle = await tasks.trigger<typeof generationRun>(
-    "generation-run",
-    { runId: run.id },
-    { tags: [`run:${run.id}`, `ws:${auth.workspaceId}`] },
-  );
+  let handle;
+  try {
+    handle = await tasks.trigger<typeof generationRun>(
+      "generation-run",
+      { runId: run.id },
+      { tags: [`run:${run.id}`, `ws:${auth.workspaceId}`] },
+    );
+  } catch (e) {
+    // Enqueue failed (Trigger.dev down, misconfigured key, or tasks not
+    // deployed). Refund and surface a real message instead of crashing the
+    // action into the generic error page.
+    console.error("[generate] failed to enqueue generation-run", e);
+    // Mark FAILED BEFORE refunding: if the enqueue actually succeeded and only
+    // the response timed out, a worker may pick the run up within milliseconds —
+    // its ghost-enqueue guard reads this status, so the terminal write must
+    // land first or the run executes after we've already refunded it.
+    await prisma.generationRun.update({
+      where: { id: run.id },
+      data: { status: "FAILED", error: `Queue failed: ${(e as Error).message?.slice(0, 300)}` },
+    });
+    if (cost > 0) {
+      await reconcileRunRefund({
+        workspaceId: auth.workspaceId,
+        generationRunId: run.id,
+        owedRefund: cost,
+        note: "Generation could not be queued — refunded",
+      });
+    }
+    return { error: "Generation service is unavailable right now — your credits were not spent. Please try again shortly." };
+  }
   await prisma.generationRun.update({
     where: { id: run.id },
     data: { triggerRunId: handle.id },
