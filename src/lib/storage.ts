@@ -19,10 +19,14 @@ function admin() {
   return adminClient;
 }
 
-// Signed URLs live `expiresInSeconds` (3600s+ everywhere); caching for slightly
-// less guarantees a cached URL is still valid when served. Storage keys are
-// immutable (a new version writes a new key), so caching per key is safe.
+// Storage keys are immutable (a new version writes a new key), so caching
+// signed URLs per key is safe. IMPORTANT: unstable_cache serves STALE entries
+// while revalidating in the background, so a cached URL can be handed to the
+// browser long after it was minted — the signature must outlive the entire
+// cache window plus browsing time, or images break mid-session ("expired
+// signature"). SIGNED_URL_VALIDITY_MARGIN buys that headroom.
 const SIGNED_URL_REVALIDATE_SECONDS = 3300;
+const SIGNED_URL_VALIDITY_MARGIN = SIGNED_URL_REVALIDATE_SECONDS * 2 + 3600;
 
 export async function uploadBuffer(
   key: string,
