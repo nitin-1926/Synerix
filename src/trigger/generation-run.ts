@@ -77,6 +77,15 @@ export const generationRun = task({
   run: async (payload: { runId: string }) => {
     const { runId } = payload;
     const run = await loadRun(runId);
+
+    // Ghost-enqueue guard: if the server action's tasks.trigger call timed out
+    // AFTER the API accepted the enqueue, the action already refunded and
+    // marked the run FAILED — executing it now would deliver a free
+    // generation. Same for a run the stall-healer already closed.
+    if (run.status === "FAILED" || run.status === "COMPLETE" || run.status === "PARTIAL") {
+      logger.warn("run already terminal — skipping ghost enqueue", { runId, status: run.status });
+      return { succeeded: 0, failed: 0, skipped: true };
+    }
     const tracker = new CostTracker();
 
     // Shared assets
