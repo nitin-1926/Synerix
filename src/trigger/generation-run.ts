@@ -116,10 +116,19 @@ export const generationRun = task({
       ? await downloadFromStorage(run.aiModel.storageKey)
       : null;
 
+    // Account type steers the on-model photoshoot treatment: high-fashion
+    // accounts get editorial campaign direction, everyone else gets the clean
+    // garment-forward showcase. Fetched once here so BOTH direct and guided
+    // runs inherit it (the brief-level editorial paragraph below reuses it).
+    const workspace = await prisma.workspace.findUnique({ where: { id: run.workspaceId }, select: { type: true } });
+    const onModelDirection: OnModelDirection =
+      workspace?.type === "FASHION_EDITORIAL" ? "editorial" : "catalog";
+
     const ctx: ConceptCtx = {
       runId, run, refBuffer, extraRefs, logoBuffer, logoAssetKey: logoAsset?.storageKey,
       aspects, masterAspect, language, intel, studioComposite, tracker,
       onModel, modelBuffer, modelMime: run.aiModel?.mimeType ?? "image/png",
+      onModelDirection,
       variantTag: "",
     };
 
