@@ -296,7 +296,7 @@ export const generationRun = task({
     if (failed > 0 && Number(run.creditsDebited) > 0) {
       const refund = failed * CREDIT_COSTS.perConcept;
       if (refund > 0) {
-        await grantCredits({ workspaceId: run.workspaceId, amount: refund, reason: "REFUND", generationRunId: runId, note: `${failed} concept(s) failed — partial refund` });
+        await reconcileRunRefund({ workspaceId: run.workspaceId, generationRunId: runId, owedRefund: refund, note: `${failed} concept(s) failed — partial refund` });
       }
     }
 
