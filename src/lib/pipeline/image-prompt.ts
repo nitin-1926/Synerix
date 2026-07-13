@@ -37,27 +37,35 @@ const FRAMING =
 const ON_MODEL_FRAMING =
   "Show ONE model in ONE single full-body view only — no front-and-back split, no repeated or mirrored figure, no catalogue grid. Frame the full figure from above the head to below the feet, centred and filling the frame naturally, with clear breathing room above the head and below the feet; do NOT crop the model, their head/feet or the garment at the top, bottom or sides.";
 
-// On-model fashion bar — aim for premium lookbook/campaign output, not flat catalog.
-const FASHION_EDITORIAL =
-  "Shoot it as a premium fashion campaign / lookbook: impeccably groomed model with styled hair, tasteful complementary styling and layering, confident editorial pose and natural body language, a real lifestyle setting with depth and atmosphere (textured walls, greenery, warm interiors, street, props) rather than a flat plain backdrop unless the scene says otherwise, premium directional light with warm tones, shallow depth of field, magazine-grade and aspirational. Tasteful accessories (e.g. sunglasses, watch) only where they fit the look.";
+/**
+ * On-model art direction, keyed by what the account sells. Both are ALWAYS
+ * appended after the concept's own prompt — they are the photographic craft
+ * floor (lens, light, grooming, pose energy) that turns "AI image of a person
+ * in clothes" into "frame from a real model photoshoot". Kept compact so they
+ * reinforce rather than fight the concept's art direction.
+ */
+export type OnModelDirection = "editorial" | "catalog";
 
-function usageGuard(intel?: ProductIntel | null): string {
-  if (!intel) return "";
-  return [
-    `Show the product used correctly: ${intel.finishedForm}; ${intel.preparation}.`,
-    intel.sceneDo.length ? `Where relevant include: ${intel.sceneDo.join(", ")}.` : "",
-    intel.sceneDont.length ? `NEVER show: ${intel.sceneDont.join(", ")}.` : "",
-  ].filter(Boolean).join(" ");
-}
+const ON_MODEL_DIRECTION: Record<OnModelDirection, string> = {
+  // High-end fashion accounts: designer-campaign / magazine-editorial energy.
+  editorial:
+    "PHOTOSHOOT DIRECTION (editorial): shoot it as a high-fashion campaign photograph — 85mm–105mm portrait compression, deliberate directional editorial lighting with sculpted shadows, a styled set or location with real depth and atmosphere, shallow depth of field. The model is impeccably groomed with styled hair and confident, expressive editorial posture and natural hands; styling and any accessories are tasteful and complementary. Restrained, sophisticated colour story. The result must read as a frame from a Vogue-grade designer campaign — never a flat catalogue listing, never mass-market retail energy.",
+  // Regular apparel shops: clean, garment-forward premium showcase.
+  catalog:
+    "PHOTOSHOOT DIRECTION (clean showcase): shoot it as a premium apparel lookbook photograph — the GARMENT is the hero. Soft, even, flattering key light with gentle falloff; a clean, uncluttered backdrop (seamless studio tone or a calm minimal setting with subtle depth) that never competes with the clothing; crisp focus on the garment's fabric, colour and cut. The model is well-groomed with a natural, confident, relaxed pose that presents the garment clearly — drape, fit and details all readable. Polished e-commerce-editorial quality: clean, premium, true to the garment.",
+};
 
-export interface PlatePromptOpts {
-  concept: CreativeConcept;
-  aspect: SceneAspect;
-  dissectionPrompt?: string | null;
-  intel?: ProductIntel | null;
-  /** "in_scene" → real product placed by the model; "composite" → product-less scene. */
-  mode: "in_scene" | "composite";
-  hasProduct: boolean;
+/**
+ * Join head (critical instructions) + body (LLM-authored scene, unbounded —
+ * the schema's length limits are describe-only) + tail (critical floors)
+ * under a char cap by truncating ONLY the body. A naive `.slice(cap)` on the
+ * joined string cuts the guards first, which are the whole point.
+ */
+function joinCapped(head: string[], body: string, tail: string[], cap: number): string {
+  const headStr = head.join("\n\n");
+  const tailStr = tail.join("\n\n");
+  const budget = Math.max(0, cap - headStr.length - tailStr.length - 4);
+  return [headStr, body.slice(0, budget), tailStr].filter(Boolean).join("\n\n");
 }
 
 /** Language → script descriptor for the baked-typography instruction. */
