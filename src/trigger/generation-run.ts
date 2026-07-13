@@ -363,6 +363,8 @@ interface ConceptCtx {
   onModel: boolean;
   modelBuffer: Buffer | null;
   modelMime: string;
+  /** Photoshoot treatment for ON_MODEL renders, resolved from the workspace type. */
+  onModelDirection: OnModelDirection;
   tracker: CostTracker;
   /** Bake-off / model pick: render on this variant. `soft` keeps the fallback
    * chain behind the preferred provider (user picks); bake-off never falls back. */
