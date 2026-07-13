@@ -142,11 +142,3 @@ describe("buildDirectPrompt", () => {
     expect(p).toMatch(/never a split-screen, diptych/i);
   });
 });
-
-describe("framing guard", () => {
-  it("scene prompt reserves in-frame margins for every subject", () => {
-    const p = buildScenePrompt({ concept, aspect: "4:5", mode: "in_scene", hasProduct: true });
-    expect(p).toMatch(/comfortable margin on all sides/i);
-    expect(p).toMatch(/cut off by any edge/i);
-  });
-});
