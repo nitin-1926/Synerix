@@ -165,22 +165,25 @@ export function buildOnModelPrompt(opts: {
   parts.push(
     `The scene below sets the location, mood, pose and styling. If it mentions a person, use that ONLY for pose and styling — the model's identity (face, gender, age, body, skin tone) ALWAYS comes from IMAGE 1, never from the scene text.${pose?.trim() ? " Where the scene's pose differs from the POSE above, the POSE above wins." : ""}`,
   );
-  // Trust-the-brief: the concept's imagePrompt carries the full art direction
-  // (incl. lookbook energy, palette, negative-space reservation, wordlessness).
-  // Legacy concepts without one fall back to the old assembled blocks.
-  parts.push(hasFullPrompt ? concept.imagePrompt.trim() : concept.sceneDescription);
+  // Trust-the-brief for the SCENE (location, mood, story): the concept's
+  // imagePrompt carries it. Legacy concepts without one fall back to the
+  // sceneDescription plus palette/wordlessness blocks. The scene body is the
+  // ONLY truncatable section — fidelity head and craft floors always survive.
+  const body = hasFullPrompt ? concept.imagePrompt.trim() : concept.sceneDescription;
+  const tail: string[] = [];
   if (!hasFullPrompt) {
-    parts.push(QUALITY);
-    parts.push(FASHION_EDITORIAL);
-    parts.push(`Palette: lead with ${concept.paletteHexes.join(", ")} as the dominant tones.`);
-    parts.push(SAFE_ZONES[aspect]);
-    parts.push(`No on-image text, letters, numbers, words, signage with writing, logos or watermarks.`);
+    tail.push(`Palette: lead with ${concept.paletteHexes.join(", ")} as the dominant tones.`);
+    tail.push(`No on-image text, letters, numbers, words, signage with writing, logos or watermarks.`);
   }
-  // Framing guards apply to BOTH paths — the trust-the-brief concept prompt does
-  // not reliably reserve a single-figure, fully-in-frame composition on its own.
-  parts.push(ON_MODEL_FRAMING);
-  parts.push(FRAMING);
-  return parts.join("\n\n").slice(0, 4000);
+  // Photographic craft floors apply to BOTH paths — the concept prompt is
+  // written for a generic scene and cannot be relied on for on-model
+  // photoshoot direction, quality, safe-zones or single-figure framing.
+  tail.push(ON_MODEL_DIRECTION[direction]);
+  tail.push(QUALITY);
+  tail.push(SAFE_ZONES[aspect]);
+  tail.push(ON_MODEL_FRAMING);
+  tail.push(FRAMING);
+  return joinCapped(parts, body, tail, 4500);
 }
 
 /** Literal direct-prompt mode: user's exact words become the scene, product preserved. */
