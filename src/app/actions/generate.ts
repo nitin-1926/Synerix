@@ -6,7 +6,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 import { CREDIT_COSTS, LIMITS } from "@/lib/ai/models";
-import { debitCredits, InsufficientCreditsError } from "@/lib/credits";
+import { debitCredits, reconcileRunRefund, InsufficientCreditsError } from "@/lib/credits";
 import type { generationRun } from "@/trigger/generation-run";
 
 const startSchema = z.object({
