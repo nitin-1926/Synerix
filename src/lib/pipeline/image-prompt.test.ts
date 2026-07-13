@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildScenePrompt, buildOnModelPrompt, buildDirectPrompt } from "./image-prompt";
+import { buildScenePassPrompt, buildOnModelPrompt, buildDirectPrompt } from "./image-prompt";
 import type { CreativeConcept } from "./schemas";
 
 const concept = {
