@@ -10,6 +10,11 @@ export function rateLimit(
   key: string,
   { limit, windowMs }: { limit: number; windowMs: number },
 ): boolean {
+  // No client IP resolvable (bare `next start`, no reverse proxy — dev and
+  // self-hosted smoke tests): every visitor would share one bucket and a
+  // 3/hour route would brick site-wide after three requests. Fail open there;
+  // on Vercel x-real-ip is always present so this branch never runs in prod.
+  if (key.endsWith(":unknown")) return true;
   const now = Date.now();
   if (buckets.size > MAX_KEYS) {
     for (const [k, hits] of buckets) {
