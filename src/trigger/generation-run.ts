@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { CREDIT_COSTS, LIMITS } from "@/lib/ai/models";
 import { generateScene, variantsForPref, BAKEOFF_VARIANTS, type BakeoffVariant, type SceneAspect } from "@/lib/image/provider";
 import { downloadFromStorage, storageKeys, uploadBuffer } from "@/lib/storage";
-import { grantCredits, reconcileRunRefund } from "@/lib/credits";
+import { reconcileRunRefund } from "@/lib/credits";
 import { assembleOccasionBrief } from "@/lib/pipeline/brief";
 import { generateConcepts } from "@/lib/pipeline/concepts";
 import { validateAndRepairConcepts, enhanceConceptPrompts } from "@/lib/pipeline/validate-concepts";
