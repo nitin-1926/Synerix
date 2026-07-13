@@ -217,11 +217,18 @@ export const generationRun = task({
         if (report.flagged) logger.warn("brief QA flagged concepts", { flagged: report.flagged, repaired: report.repaired, issues: report.issues });
       } catch (e) {
         logger.warn("brief QA unavailable — rendering authored concepts", { error: (e as Error).message });
+        // Marker write must never outrank the run it describes (fail-open²).
+        await updatePipeline(runId, (p) => {
+          ((p as PipelineState & { degraded?: string[] }).degraded ??= []).push("brief-qa-skipped");
+        }).catch(() => {});
       }
       try {
         concepts = await enhanceConceptPrompts({ concepts, tracker });
       } catch (e) {
         logger.warn("prompt enhancer unavailable — rendering authored prompts", { error: (e as Error).message });
+        await updatePipeline(runId, (p) => {
+          ((p as PipelineState & { degraded?: string[] }).degraded ??= []).push("enhancer-skipped");
+        }).catch(() => {});
       }
 
       // One work item per concept — times the variant lineup on bake-off runs.
