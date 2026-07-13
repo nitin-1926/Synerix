@@ -74,6 +74,16 @@ export async function reconcileRunRefund(opts: {
 }): Promise<number> {
   const owed = Math.max(0, Math.round(opts.owedRefund * 100) / 100);
   return prisma.$transaction(async (tx) => {
+    // Serialize concurrent reconcilers (worker catchError vs the studio
+    // stall-healer) by taking the workspace row lock BEFORE aggregating —
+    // under READ COMMITTED two transactions could otherwise both read
+    // "0 refunded" and both credit the full amount. The no-op increment
+    // upsert exists solely to acquire that lock (and create the row).
+    await tx.workspaceCredits.upsert({
+      where: { workspaceId: opts.workspaceId },
+      create: { workspaceId: opts.workspaceId, balance: 0 },
+      update: { balance: { increment: 0 } },
+    });
     const prior = await tx.creditLedger.aggregate({
       where: { generationRunId: opts.generationRunId, reason: "REFUND" },
       _sum: { delta: true },
