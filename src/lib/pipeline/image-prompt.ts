@@ -1,13 +1,16 @@
 import type { SceneAspect } from "@/lib/image/provider";
-import type { ProductIntel } from "@/lib/products/intelligence";
 import type { CreativeConcept } from "./schemas";
 
 /**
- * Scene-prompt builder for the two render modes.
- *  - IN_SCENE: the model places the REAL product (passed as a reference image)
- *    into the scene ONCE, faithfully. No cut-out afterwards.
- *  - STUDIO_COMPOSITE: the model renders a PRODUCT-LESS scene with a clean empty
- *    hero space; the real cut-out is composited afterwards.
+ * Scene-prompt builders. The concept's art-directed imagePrompt is trusted
+ * verbatim (it carries the creative direction); code appends only the
+ * non-negotiable floors — product/garment fidelity, photographic quality,
+ * per-aspect overlay safe-zones and framing guards — so a weak or failed
+ * enhancer pass can never ship an unguarded plate.
+ *  - IN_SCENE / EXACT_PRODUCT: the model places the REAL product (reference
+ *    image) into the scene ONCE, faithfully.
+ *  - ON_MODEL: fuses an AI-model reference with the real garment, directed as
+ *    either an editorial campaign or a clean catalog showcase.
  */
 
 const SAFE_ZONES: Record<SceneAspect, string> = {
