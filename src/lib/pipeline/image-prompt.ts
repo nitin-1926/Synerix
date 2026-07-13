@@ -78,19 +78,23 @@ const SCRIPT_NAME: Record<string, string> = {
 
 /**
  * PASS 1 — the wordless scene. Trust-the-brief: the concept's imagePrompt IS
- * the prompt (it carries every guardrail — see the concepts system prompt).
- * Code appends only the short product-reference line, brand_os style.
+ * the prompt (it carries the creative direction — see the concepts system
+ * prompt). Code appends the product-reference line plus the non-negotiable
+ * floors: photographic quality and the per-aspect overlay safe-zone (the
+ * concept prompt is aspect-agnostic and the enhancer is fail-open, so neither
+ * can be relied on for these).
  */
 export function buildScenePassPrompt(opts: {
   concept: CreativeConcept;
+  aspect: SceneAspect;
   dissectionPrompt?: string | null;
   hasProduct: boolean;
 }): string {
   const body = opts.concept.imagePrompt?.trim() || opts.concept.sceneDescription;
   const refLine = opts.hasProduct
-    ? `\n\nThe attached reference photo(s) ARE the exact product: render it faithfully — real packaging, label, shape and colours preserved, its own label text sharp and legible, never redesigned, shown only once.${opts.dissectionPrompt ? ` Reference: ${opts.dissectionPrompt}` : ""}`
+    ? `The attached reference photo(s) ARE the exact product: render it faithfully — real packaging, label, shape and colours preserved, its own label text sharp and legible, never redesigned, shown only once.${opts.dissectionPrompt ? ` Reference: ${opts.dissectionPrompt}` : ""}`
     : "";
-  return `${body}${refLine}\n\n${FRAMING}`.slice(0, 4000);
+  return joinCapped([], body, [refLine, QUALITY, SAFE_ZONES[opts.aspect], FRAMING].filter(Boolean), 4000);
 }
 
 /**
