@@ -1068,8 +1068,7 @@ export async function POST(req: NextRequest) {
 					replyTo: email, // Allow admin to reply directly to customer
 				};
 
-				const adminInfo = await transporter.sendMail(adminMailOptions);
-				console.log('Admin test results email sent successfully:', adminInfo.messageId);
+				await transporter.sendMail(adminMailOptions);
 			} catch (adminError) {
 				console.error('Error sending admin email:', adminError);
 				// Don't fail the whole request if admin email fails
