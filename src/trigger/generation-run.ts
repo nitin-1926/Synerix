@@ -497,7 +497,45 @@ async function ensurePackFidelity(
     verdict = await checkPackFidelity({ render: gen.buffer, reference: ctx.refBuffer!, tracker: ctx.tracker });
     retried = true;
   }
-  return { gen, packQa: { ...verdict, retried } };
+  return { gen, fidelityQa: { ...verdict, retried } };
+}
+
+/** Verify on-model identity + garment fidelity against the two references;
+ * strict corrective re-renders on mismatch (same retry budget as pack-QA —
+ * quality over cost). Keeps the last attempt either way; the verdict rides
+ * along for human review. refs[0] = model, refs[1] = garment. */
+async function ensureOnModelFidelity(
+  ctx: ConceptCtx,
+  opts: {
+    gen: Awaited<ReturnType<typeof generateScene>>;
+    prompt: string;
+    aspect: SceneAspect;
+    refs: Array<{ buffer: Buffer; mime: string }>;
+    model: { provider?: BakeoffVariant["provider"]; tier?: BakeoffVariant["tier"]; softPrefer?: boolean };
+  },
+): Promise<{ gen: Awaited<ReturnType<typeof generateScene>>; fidelityQa: NonNullable<PlateResult["fidelityQa"]> }> {
+  const [modelRef, garmentRef] = opts.refs;
+  const check = (render: Buffer) =>
+    checkOnModelFidelity({ render, modelRef: modelRef.buffer, garmentRef: garmentRef.buffer, tracker: ctx.tracker });
+  let gen = opts.gen;
+  let verdict = await check(gen.buffer);
+  let retried = false;
+  for (let attempt = 1; attempt <= PACK_QA_MAX_RETRIES && !verdict.pass; attempt++) {
+    logger.warn("on-model fidelity failed, re-rendering", { attempt, of: PACK_QA_MAX_RETRIES, issues: verdict.issues });
+    const strictPrompt = `${opts.prompt}\n\nCRITICAL CORRECTION: a previous render drifted from the references (${verdict.issues}). The model MUST be the exact person from IMAGE 1 (same face, gender, age, skin tone, build, hair) and the garment MUST be the exact clothing from IMAGE 2 (same colour, print, cut, neckline, sleeves, length) — one single figure in one single photograph.`;
+    gen = await generateScene({
+      prompt: strictPrompt,
+      aspect: opts.aspect,
+      references: opts.refs,
+      provider: opts.model.provider,
+      tier: opts.model.tier,
+      softPrefer: opts.model.softPrefer,
+    });
+    ctx.tracker.addImage(gen.costModel, "on-model");
+    verdict = await check(gen.buffer);
+    retried = true;
+  }
+  return { gen, fidelityQa: { ...verdict, retried } };
 }
 
 const aspectTag = (a: string) => a.replace(":", "x");
