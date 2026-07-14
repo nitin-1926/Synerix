@@ -205,19 +205,9 @@ function generateBusinessHealthReport(
 	const recommendations = generateRecommendations(categoryAnalysis, testScore);
 
 	// Generate charts
-	console.log(
-		'Generating charts for categories:',
-		categoryAnalysis.map(c => c.category),
-	);
-
 	const categoryChart = generateCategoryChart(categoryAnalysis);
-	console.log('Category chart generated, length:', categoryChart.length);
-
 	const radarChart = generateRadarChart(categoryAnalysis);
-	console.log('Radar chart generated, length:', radarChart.length);
-
 	const pieChart = generatePieChart(categoryAnalysis);
-	console.log('Pie chart generated, length:', pieChart.length);
 
 	// Calculate additional insights
 	const totalQuestions = businessDiagnosticQuestions.length;
