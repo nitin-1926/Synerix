@@ -23,7 +23,10 @@ const createTransporter = () => {
 };
 
 // Generate enquiry notification email to business owner
-function generateEnquiryNotificationEmail(userEmail: string) {
+function generateEnquiryNotificationEmail(rawEmail: string) {
+	// HTML part uses the escaped copy; the text/plain part must use the raw
+	// address (an escaped apostrophe breaks the mailto: link there).
+	const userEmail = escapeHtml(rawEmail);
 	const html = `
 		<!DOCTYPE html>
 		<html>
