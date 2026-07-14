@@ -158,7 +158,17 @@ export default async function BrandPage() {
           <DnaCard title="Voice" items={[dna.voice.register.replaceAll("_", " "), ...dna.voice.signature_phrases.slice(0, 3)]} />
           <DnaCard title="Products spotted" items={dna.offering.primary_products.slice(0, 6)} />
           <DnaCard title="Audience" items={[dna.audience.target_customer ?? "—", ...dna.audience.occasions.slice(0, 4)]} />
-          <DnaCard title="Positioning" items={[dna.positioning.promise ?? "—", `price: ${dna.positioning.price_band}`]} />
+          <DnaCard
+            title="Positioning"
+            items={[
+              dna.positioning.promise ?? "—",
+              // Hide the price row when research couldn't determine it —
+              // "price: unknown" reads as a bug, not a fact.
+              ...(dna.positioning.price_band && dna.positioning.price_band !== "unknown"
+                ? [`Price band: ${dna.positioning.price_band}`]
+                : []),
+            ]}
+          />
         </section>
       )}
 
