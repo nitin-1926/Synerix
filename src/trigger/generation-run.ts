@@ -631,8 +631,9 @@ async function processDirect(ctx: ConceptCtx): Promise<void> {
         provider: ctx.forced?.provider, tier: ctx.forced?.tier,
       });
       ctx.tracker.addImage(gen.costModel, "direct");
-      if (ctx.studioComposite && refs) {
-        ({ gen } = await ensurePackFidelity(ctx, {
+      let fidelityQa: PlateResult["fidelityQa"];
+      if (refs) {
+        ({ gen, fidelityQa } = await ensurePackFidelity(ctx, {
           gen, prompt, aspect, refs,
           model: { provider: ctx.forced?.provider, tier: ctx.forced?.tier },
           stage: "direct",
