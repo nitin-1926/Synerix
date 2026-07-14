@@ -143,7 +143,7 @@ Someone has submitted an enquiry through your website contact form.
 
 📧 ENQUIRY DETAILS:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-• Email: ${userEmail}
+• Email: ${rawEmail}
 • Source: Website Contact Form
 • Date: ${new Date().toLocaleDateString('en-US', {
 		year: 'numeric',
