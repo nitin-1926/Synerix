@@ -342,7 +342,7 @@ export function buildOverlaySpec(input: ArchetypeInput): OverlaySpec {
   }
 
   // ---- v2 design pass: type pairing + graphic devices + palette roles ----
-  applyTypePairing(layers, pairing, palette);
+  applyTypePairing(layers, pairing);
 
   // Content-aware scrim strength: busier plates get a stronger scrim for
   // legibility, calm plates a lighter one (less heavy-handed). Stored placement
