@@ -7,7 +7,9 @@ import { requireAuth, ACTIVE_WORKSPACE_COOKIE } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
 export async function signInWithGoogle(next?: string) {
-  await signIn("google", { redirectTo: next && next.startsWith("/") ? next : "/dashboard" });
+  // "//evil.com" passes a bare startsWith("/") check and is protocol-relative.
+  const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
+  await signIn("google", { redirectTo: safeNext });
 }
 
 export async function signOutAction() {
