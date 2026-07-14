@@ -73,7 +73,11 @@ export async function recompositeAll(
   };
 
   // All aspects re-composite in parallel — this loop being sequential was the
-  // main reason "free" edits felt slow.
+  // main reason "free" edits felt slow. Compositing + storage uploads happen
+  // BEFORE any DB write: if one aspect fails, no render row has moved (an
+  // orphaned storage object is harmless; a half-updated creative is not —
+  // some aspects would show the new scene while masterPlateKey still points
+  // at the old plate, with no version snapshot to revert to).
   const results = await Promise.all(
     creative.renders.map(async (render) => {
       const spec = render.overlaySpec as unknown as OverlaySpec;
