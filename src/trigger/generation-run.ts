@@ -550,7 +550,7 @@ async function processConcept(ctx: ConceptCtx, concept: CreativeConcept, idx: nu
       const res = await generatePlate(ctx, concept, aspect);
       const key = storageKeys.masterPlate(ctx.runId, `${idx}${ctx.variantTag}-${aspectTag(aspect)}`);
       await uploadBuffer(key, res.plate, "image/png");
-      return { aspect, plate: res.plate, key, typographyMode: res.typographyMode, costModel: res.costModel, packQa: res.packQa };
+      return { aspect, plate: res.plate, key, typographyMode: res.typographyMode, costModel: res.costModel, fidelityQa: res.fidelityQa };
     }),
   );
   const platesByAspect = new Map(perAspect.map((r) => [r.aspect, r.plate] as const));
