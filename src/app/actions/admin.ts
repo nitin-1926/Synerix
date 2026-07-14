@@ -128,23 +128,23 @@ export async function adminGrantCredits(workspaceId: string, amount: number, not
     await grantCredits({ workspaceId, amount, reason: "MANUAL_GRANT", note: note || undefined });
   } else {
     await prisma.$transaction(async (tx) => {
-      const credits = await tx.workspaceCredits.findUnique({ where: { workspaceId } });
-      const balance = Number(credits?.balance ?? 0);
-      const after = balance + amount;
-      if (after < 0) {
-        throw new Error(`Balance cannot go below 0 (current balance: ${balance})`);
-      }
-      await tx.workspaceCredits.upsert({
-        where: { workspaceId },
-        create: { workspaceId, balance: after },
-        update: { balance: after },
+      // Guarded conditional decrement (mirrors debitCredits) — a read-then-
+      // write-absolute here would silently overwrite any debit that commits
+      // between the read and the write.
+      const deducted = await tx.workspaceCredits.updateMany({
+        where: { workspaceId, balance: { gte: -amount } },
+        data: { balance: { decrement: -amount } },
       });
+      if (deducted.count === 0) {
+        throw new Error("Balance cannot go below 0");
+      }
+      const credits = await tx.workspaceCredits.findUniqueOrThrow({ where: { workspaceId } });
       await tx.creditLedger.create({
         data: {
           workspaceId,
           delta: amount,
           reason: "MANUAL_GRANT",
-          balanceAfter: after,
+          balanceAfter: Number(credits.balance),
           note: note || undefined,
         },
       });
