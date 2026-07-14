@@ -9,10 +9,12 @@ export async function GET(request: NextRequest) {
 		let test;
 
 		if (testId) {
-			// Get specific test by testId
-			test = await prisma.test.findUnique({
+			// Get specific test by testId. Inactive tests are not publicly
+			// readable — this endpoint is unauthenticated.
+			test = await prisma.test.findFirst({
 				where: {
 					id: testId,
+					isActive: true,
 				},
 				select: {
 					id: true,
