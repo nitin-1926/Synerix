@@ -995,6 +995,14 @@ export async function POST(req: NextRequest) {
 		// Generate recommendations
 		const recommendations = generateRecommendations(categoryAnalysis, testScore);
 
+		// Escaped copies for HTML interpolation only — raw values still go to the
+		// DB and mail headers. Without this, attacker-controlled fields inject
+		// live markup/links into mail sent from our own domain.
+		const safeName = escapeHtml(name);
+		const safeBusinessName = escapeHtml(businessName);
+		const safeBusinessDescription = escapeHtml(businessDescription);
+		const safeEmail = escapeHtml(email);
+
 		// Generate comprehensive business health report
 		const reportData = generateBusinessHealthReport(name, businessName, businessDescription, testScore, answers);
 
