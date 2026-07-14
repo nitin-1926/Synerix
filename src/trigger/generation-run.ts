@@ -641,7 +641,7 @@ async function processDirect(ctx: ConceptCtx): Promise<void> {
       }
       const key = storageKeys.masterPlate(ctx.runId, `0${ctx.variantTag}-${aspectTag(aspect)}`);
       await uploadBuffer(key, gen.buffer, "image/png");
-      return { aspect, plate: gen.buffer, key, costModel: gen.costModel };
+      return { aspect, plate: gen.buffer, key, costModel: gen.costModel, fidelityQa };
     }),
   );
   const platesByAspect = new Map(perAspect.map((r) => [r.aspect, r.plate] as const));
