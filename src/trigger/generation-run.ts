@@ -419,11 +419,18 @@ async function generatePlate(ctx: ConceptCtx, concept: CreativeConcept, aspect: 
       aspect,
       garmentPrompt: ctx.run.product?.dissectionPrompt,
       pose: ctx.run.modelPose,
+      direction: ctx.onModelDirection,
     });
-    const gen = await generateScene({ prompt, aspect, references: refs, ...model });
-    ctx.tracker.addImage(gen.costModel, "on-model");
-    scenePlate = gen.buffer;
-    costModel = gen.costModel;
+    const first = await generateScene({ prompt, aspect, references: refs, ...model });
+    ctx.tracker.addImage(first.costModel, "on-model");
+
+    // On-model promises this exact model in this exact garment: verify both
+    // against the references and re-render strictly on mismatch (mirrors the
+    // EXACT_PRODUCT pack check — identity/garment drift is this mode's
+    // equivalent of a mangled label).
+    const { gen, fidelityQa } = await ensureOnModelFidelity(ctx, { gen: first, prompt, aspect, refs, model });
+    const plate = gen.buffer;
+    return { plate, scenePlate: plate, typographyMode: "overlay", costModel: gen.costModel, fidelityQa };
   } else {
     // IN_SCENE: the image model stages the real product (all reference angles).
     // This is also the EXACT_PRODUCT path now: the premium models reproduce
