@@ -375,7 +375,7 @@ export async function POST(req: NextRequest) {
 
 		// Generate email content
 		const notificationEmail = generateEnquiryNotificationEmail(email);
-		const confirmationEmail = generateUserConfirmationEmail(email);
+		const confirmationEmail = generateUserConfirmationEmail();
 
 		// Send notification email to business owner
 		const notificationMailOptions = {
