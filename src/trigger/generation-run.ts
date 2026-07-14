@@ -675,6 +675,7 @@ async function processDirect(ctx: ConceptCtx): Promise<void> {
   await composeAllAspects(ctx, creative.id, platesByAspect, aspectPlateKeys, {
     archetype: "headline_bottom",
     copy: { eyebrow: null, headline: empty, subhead: null, cta: null },
+    plateQa: Object.fromEntries(perAspect.filter((r) => r.fidelityQa).map((r) => [r.aspect, r.fidelityQa!])),
   });
 }
 
