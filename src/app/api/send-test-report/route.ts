@@ -1043,18 +1043,15 @@ export async function POST(req: NextRequest) {
 
 		try {
 			const info = await transporter.sendMail(mailOptions);
-			console.log('Business health report sent successfully:', info.messageId);
-			console.log(`Report sent to: ${email} with copy to ${process.env.GMAIL_USERNAME}`);
-			console.log(`Business: ${businessName}, Score: ${testScore}%, Risk: ${riskLevel}`);
 
 			// Send detailed test results to admin
 			try {
 				const adminEmailHtml = generateAdminReportHtml(
-					name,
-					phoneNumber,
-					email,
-					businessName,
-					businessDescription,
+					safeName,
+					escapeHtml(phoneNumber),
+					safeEmail,
+					safeBusinessName,
+					safeBusinessDescription,
 					testScore,
 					answers,
 					categoryAnalysis,
