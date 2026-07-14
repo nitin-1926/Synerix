@@ -1,4 +1,4 @@
-import type { CopyLanguage, OverlaySpec, Palette, TextByLang, TextLayer } from "./types";
+import type { CopyLanguage, OverlaySpec, TextByLang, TextLayer } from "./types";
 import { ASPECT_DIMENSIONS } from "./types";
 import { DEVANAGARI_STACK, LATIN_STACK } from "./fonts";
 import { contrastText, isHexDark } from "./text";
