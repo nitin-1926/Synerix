@@ -71,7 +71,18 @@ export const brandIngest = task({
     const { brandId, websiteUrl } = payload;
 
     // ---- Stage 1: crawl ----
-    await prisma.brand.update({ where: { id: brandId }, data: { ingestStatus: "CRAWLING" } });
+    // Conditional PENDING→CRAWLING: if the stall healer already flipped this
+    // brand to FAILED (queue-delayed pickup) — or a retry superseded this run —
+    // an unconditional write would resurrect the terminal state and let two
+    // ingests interleave on one brand. 0 rows flipped → this run is stale, bail.
+    const claimed = await prisma.brand.updateMany({
+      where: { id: brandId, ingestStatus: "PENDING" },
+      data: { ingestStatus: "CRAWLING" },
+    });
+    if (claimed.count === 0) {
+      logger.warn("brand is no longer PENDING (healed or superseded) — skipping stale ingest", { brandId });
+      return { skipped: true };
+    }
     metadata.set("stage", "crawling");
     const crawl = await crawlBrandSite(websiteUrl);
     logger.info("crawl complete", { pages: crawl.pages.length, images: crawl.imageUrls.length });
