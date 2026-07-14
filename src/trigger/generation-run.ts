@@ -478,7 +478,7 @@ async function ensurePackFidelity(
     model: { provider?: BakeoffVariant["provider"]; tier?: BakeoffVariant["tier"]; softPrefer?: boolean };
     stage: string;
   },
-): Promise<{ gen: Awaited<ReturnType<typeof generateScene>>; packQa: NonNullable<PlateResult["packQa"]> }> {
+): Promise<{ gen: Awaited<ReturnType<typeof generateScene>>; fidelityQa: NonNullable<PlateResult["fidelityQa"]> }> {
   let gen = opts.gen;
   let verdict = await checkPackFidelity({ render: gen.buffer, reference: ctx.refBuffer!, tracker: ctx.tracker });
   let retried = false;
