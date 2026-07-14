@@ -402,10 +402,14 @@ async function generatePlate(ctx: ConceptCtx, concept: CreativeConcept, aspect: 
   // Variant pin: bake-off forces the provider (no fallback — a failed variant
   // is a data point); a user model pick prefers it but keeps the chain (soft).
   const model = { provider: ctx.forced?.provider, tier: ctx.forced?.tier, softPrefer: ctx.forced?.soft };
-  let scenePlate: Buffer;
-  let costModel: string;
-  if (ctx.onModel && ctx.modelBuffer && ctx.refBuffer && ctx.run.product?.images[0]) {
+  if (ctx.onModel) {
     // ON_MODEL: fuse the AI model (image 1) + the real garment (image 2).
+    // Missing references are a hard error — silently falling through to a
+    // model-less render breaks the mode's promise (a random person or no
+    // person at all, sold as an on-model shoot).
+    if (!ctx.modelBuffer || !ctx.refBuffer || !ctx.run.product?.images[0]) {
+      throw new Error("On-model run is missing its model or garment reference image");
+    }
     const refs = [
       { buffer: ctx.modelBuffer, mime: ctx.modelMime },
       { buffer: ctx.refBuffer, mime: ctx.run.product.images[0].mimeType },
