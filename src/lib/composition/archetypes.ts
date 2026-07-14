@@ -394,7 +394,7 @@ function headlineCopyBox(layers: TextLayer[], headline: TextLayer, pad: number) 
  * to palette roles (replacing the old hardcoded gold/cream). Layout boxes,
  * positions and sizes are untouched; the renderer shrinks to fit.
  */
-function applyTypePairing(layers: TextLayer[], pairing: TypePairing, palette: Palette): void {
+function applyTypePairing(layers: TextLayer[], pairing: TypePairing): void {
   const apply = (layer: TextLayer, t: RoleType) => {
     layer.fontFamily = t.family;
     layer.fontWeight = t.fontWeight;
