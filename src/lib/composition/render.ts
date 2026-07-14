@@ -211,10 +211,6 @@ function drawTextLayer(ctx: SKRSContext2D, layer: TextLayer, lang: CopyLanguage,
     ctx.fill();
     ctx.restore();
   }
-  // Letter-spacing breaks the Devanagari/Gurmukhi headline connector — Latin only.
-  const useSpacing = layer.letterSpacingPx && lang !== "hi" && lang !== "pa";
-  if (useSpacing) ctx.letterSpacing = `${layer.letterSpacingPx}px`;
-
   // Pill background sized to content (single-line CTA) or full box (badge).
   if (layer.pill) {
     const isBadge = layer.pill.paddingX === 0; // badge_offer circle
