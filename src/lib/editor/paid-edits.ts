@@ -85,30 +85,36 @@ export async function recompositeAll(
       const composed = await renderOverlay(spec, { plate: await plateFor(render.aspectRatio), logo });
       const key = storageKeys.composedRender(creative.id, render.aspectRatio, nextIndex);
       await uploadBuffer(key, composed, "image/png");
-      await prisma.creativeRender.update({
-        where: { id: render.id },
-        data: { overlaySpec: spec as unknown as Prisma.InputJsonValue, composedImageKey: key, status: "COMPOSED" },
-      });
-      return { spec, key, aspect: render.aspectRatio };
+      return { renderId: render.id, spec, key, aspect: render.aspectRatio };
     }),
   );
   const primary = results.find((r) => r.aspect === creative.masterAspect) ?? results[0];
   if (!primary) throw new Error("Creative has no renders");
 
-  const version = await prisma.creativeVersion.create({
-    data: {
-      creativeId: creative.id,
-      index: nextIndex,
-      cause: opts.cause as Prisma.InputJsonValue,
-      overlaySpec: primary.spec as unknown as Prisma.InputJsonValue,
-      masterPlateKey: opts.plateKey,
-      composedImageKey: primary.key,
-      aspectRatio: primary.aspect,
-    },
-  });
-  await prisma.creative.update({
-    where: { id: creative.id },
-    data: { currentVersionId: version.id, masterPlateKey: opts.plateKey },
+  // Single transaction: render updates + version snapshot + pointer flip
+  // commit together or not at all.
+  await prisma.$transaction(async (tx) => {
+    for (const r of results) {
+      await tx.creativeRender.update({
+        where: { id: r.renderId },
+        data: { overlaySpec: r.spec as unknown as Prisma.InputJsonValue, composedImageKey: r.key, status: "COMPOSED" },
+      });
+    }
+    const version = await tx.creativeVersion.create({
+      data: {
+        creativeId: creative.id,
+        index: nextIndex,
+        cause: opts.cause as Prisma.InputJsonValue,
+        overlaySpec: primary.spec as unknown as Prisma.InputJsonValue,
+        masterPlateKey: opts.plateKey,
+        composedImageKey: primary.key,
+        aspectRatio: primary.aspect,
+      },
+    });
+    await tx.creative.update({
+      where: { id: creative.id },
+      data: { currentVersionId: version.id, masterPlateKey: opts.plateKey },
+    });
   });
 }
 
