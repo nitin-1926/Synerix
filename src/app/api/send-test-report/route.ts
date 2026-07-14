@@ -885,10 +885,10 @@ function generateRecommendations(
 // Schema for validation
 const emailSchema = z.object({
 	email: z.string().email('Invalid email address'),
-	phoneNumber: z.string().min(1, 'Phone number is required'),
-	name: z.string().min(1, 'Name is required'),
-	businessName: z.string().min(1, 'Business name is required'),
-	businessDescription: z.string().min(1, 'Business description is required'),
+	phoneNumber: z.string().min(1, 'Phone number is required').max(20),
+	name: z.string().min(1, 'Name is required').max(100),
+	businessName: z.string().min(1, 'Business name is required').max(150),
+	businessDescription: z.string().min(1, 'Business description is required').max(1000),
 	testScore: z.number().min(0, 'Test score is required'),
 	testId: z.string().min(1, 'Test ID is required'),
 	answers: z.array(
