@@ -770,7 +770,7 @@ We're all set to move forward with detailed discussions about your business grow
 📧 Email us directly: ${process.env.GMAIL_USERNAME}
 📱 WhatsApp us: ${process.env.WHATSAPP_NUMBER}
 
-Let us know a suitable time for you to connect and take ${businessName} to new heights of success!
+Let us know a suitable time for you to connect and take ${rawBusinessName} to new heights of success!
 
 Looking forward to your response!
 
