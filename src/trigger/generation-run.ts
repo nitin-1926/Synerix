@@ -443,24 +443,24 @@ async function generatePlate(ctx: ConceptCtx, concept: CreativeConcept, aspect: 
       : undefined;
     const prompt = buildScenePassPrompt({
       concept,
+      aspect,
       dissectionPrompt: ctx.run.product?.dissectionPrompt,
       hasProduct,
     });
     let gen = await generateScene({ prompt, aspect, references: refs, ...model });
     ctx.tracker.addImage(gen.costModel, "in-scene");
 
-    // EXACT_PRODUCT promises pixel-true packaging: verify the rendered pack
-    // against the reference photo and re-render once, strictly, on mismatch.
-    let packQa: PlateResult["packQa"];
-    if (ctx.studioComposite && refs) {
-      ({ gen, packQa } = await ensurePackFidelity(ctx, { gen, prompt, aspect, refs, model, stage: "in-scene" }));
+    // Every render that shows the real product gets the pack-vs-reference
+    // check (EXACT_PRODUCT and plain IN_SCENE alike — a mangled label is just
+    // as broken on a lifestyle shot as on a packshot). The QA call is a cheap
+    // vision judgement; corrective re-renders only happen on mismatch.
+    let fidelityQa: PlateResult["fidelityQa"];
+    if (refs) {
+      ({ gen, fidelityQa } = await ensurePackFidelity(ctx, { gen, prompt, aspect, refs, model, stage: "in-scene" }));
     }
-    scenePlate = gen.buffer;
-    costModel = gen.costModel;
-    return { plate: scenePlate, scenePlate, typographyMode: "overlay", costModel, packQa };
+    const plate = gen.buffer;
+    return { plate, scenePlate: plate, typographyMode: "overlay", costModel: gen.costModel, fidelityQa };
   }
-
-  return { plate: scenePlate, scenePlate, typographyMode: "overlay", costModel };
 }
 
 /** Verify pack-vs-reference on an image-model render; strict corrective
