@@ -4,6 +4,7 @@ import nodemailer from 'nodemailer';
 import { businessDiagnosticQuestions } from "@/data/website/questions";
 import { generateCategoryChart, generateRadarChart, generatePieChart } from './chart-generator';
 import { prisma } from "@/lib/db";
+import { escapeHtml } from "@/lib/html";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 // Generate HTML for admin report with detailed test results
