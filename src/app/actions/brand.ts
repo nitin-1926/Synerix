@@ -54,10 +54,22 @@ export async function createBrandFromUrl(formData: FormData) {
     });
   }
 
-  const handle = await tasks.trigger<typeof brandIngest>("brand-ingest", {
-    brandId: brand.id,
-    websiteUrl: parsed.data,
-  });
+  let handle;
+  try {
+    handle = await tasks.trigger<typeof brandIngest>("brand-ingest", {
+      brandId: brand.id,
+      websiteUrl: parsed.data,
+    });
+  } catch (e) {
+    // Enqueue failed → don't strand the brand in PENDING with the wizard
+    // polling forever; mark FAILED so the UI offers a retry.
+    console.error("[brand] failed to enqueue brand-ingest", e);
+    await prisma.brand.update({
+      where: { id: brand.id },
+      data: { ingestStatus: "FAILED", ingestError: "Ingest could not be queued — please try again" },
+    });
+    return { error: "Brand analysis service is unavailable right now — please try again shortly." };
+  }
   await prisma.brand.update({ where: { id: brand.id }, data: { ingestRunId: handle.id } });
   revalidatePath("/onboarding");
   return { ok: true, brandId: brand.id };
