@@ -1022,7 +1022,6 @@ export async function POST(req: NextRequest) {
 					recommendations,
 				},
 			});
-			console.log('Test results stored in database successfully');
 		} catch (dbError) {
 			console.error('Error storing test results in database:', dbError);
 			// Continue with email sending even if database storage fails
