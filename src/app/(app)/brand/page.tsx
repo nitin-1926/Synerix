@@ -74,13 +74,21 @@ export default async function BrandPage() {
               <Label htmlFor="oneLiner">One-liner</Label>
               <Input id="oneLiner" name="oneLiner" defaultValue={brand.oneLiner ?? ""} />
             </div>
+            {/* Compact swatches — a full-width native color input reads as a
+                giant unlabeled bar, not a color field. */}
             <div className="space-y-2">
               <Label htmlFor="primaryColorHex">Primary color</Label>
-              <Input id="primaryColorHex" name="primaryColorHex" type="color" defaultValue={brand.primaryColorHex ?? "#b83b5e"} className="h-11 p-1" />
+              <div className="flex items-center gap-3">
+                <Input id="primaryColorHex" name="primaryColorHex" type="color" defaultValue={brand.primaryColorHex ?? "#b83b5e"} className="size-10 shrink-0 cursor-pointer rounded-lg p-1" />
+                <span className="font-mono text-sm uppercase text-muted-foreground">{brand.primaryColorHex ?? "#b83b5e"}</span>
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="accentColorHex">Accent color</Label>
-              <Input id="accentColorHex" name="accentColorHex" type="color" defaultValue={brand.accentColorsHex[0] ?? "#e8862e"} className="h-11 p-1" />
+              <div className="flex items-center gap-3">
+                <Input id="accentColorHex" name="accentColorHex" type="color" defaultValue={brand.accentColorsHex[0] ?? "#e8862e"} className="size-10 shrink-0 cursor-pointer rounded-lg p-1" />
+                <span className="font-mono text-sm uppercase text-muted-foreground">{brand.accentColorsHex[0] ?? "#e8862e"}</span>
+              </div>
             </div>
             <div className="space-y-4 sm:col-span-2">
               <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
