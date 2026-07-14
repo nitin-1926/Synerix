@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import * as nodemailer from 'nodemailer';
 import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { escapeHtml } from "@/lib/html";
 
 // Schema for validation
 const enquirySchema = z.object({
