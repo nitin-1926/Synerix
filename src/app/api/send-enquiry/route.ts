@@ -179,7 +179,7 @@ Report Generated: ${new Date().toLocaleDateString('en-US', {
 }
 
 // Generate confirmation email to user
-function generateUserConfirmationEmail(userEmail: string) {
+function generateUserConfirmationEmail() {
 	const html = `
 		<!DOCTYPE html>
 		<html>
