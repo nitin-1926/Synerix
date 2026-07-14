@@ -160,8 +160,8 @@ Someone has submitted an enquiry through your website contact form.
 3. Prepare a customized proposal based on their requirements
 4. Follow up with additional resources and case studies
 
-📧 Quick Reply: mailto:${userEmail}?subject=Thank you for your interest in Synerix
-📱 WhatsApp Team: https://wa.me/${process.env.WHATSAPP_NUMBER}?text=New%20enquiry%20from%20${userEmail}
+📧 Quick Reply: mailto:${rawEmail}?subject=Thank you for your interest in Synerix
+📱 WhatsApp Team: https://wa.me/${process.env.WHATSAPP_NUMBER}?text=New%20enquiry%20from%20${rawEmail}
 
 ═══════════════════════════════════════════════════════════════
 Synerix Business Solutions
