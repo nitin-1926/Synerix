@@ -602,6 +602,24 @@ async function processDirect(ctx: ConceptCtx): Promise<void> {
   // Native plate per requested aspect (no cross-orientation crop), in parallel.
   const perAspect = await Promise.all(
     ctx.aspects.map(async (aspect) => {
+      // Direct + ON_MODEL: the user's literal scene, but still fused with the
+      // chosen AI model and the real garment (with identity/garment QA) —
+      // routed through generatePlate via a pseudo-concept whose imagePrompt is
+      // the user's prompt. Previously this path dropped the model reference
+      // entirely and rendered a random person. generatePlate hard-fails if
+      // either reference is missing.
+      if (ctx.onModel) {
+        const pseudo = {
+          name: "Custom creative",
+          sceneDescription: userPrompt,
+          imagePrompt: userPrompt,
+          paletteHexes: [],
+        } as unknown as CreativeConcept;
+        const res = await generatePlate(ctx, pseudo, aspect);
+        const key = storageKeys.masterPlate(ctx.runId, `0${ctx.variantTag}-${aspectTag(aspect)}`);
+        await uploadBuffer(key, res.plate, "image/png");
+        return { aspect, plate: res.plate, key, costModel: res.costModel, fidelityQa: res.fidelityQa };
+      }
       const prompt = buildDirectPrompt({
         userPrompt,
         aspect,
