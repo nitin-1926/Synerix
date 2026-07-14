@@ -410,10 +410,6 @@ export async function POST(req: NextRequest) {
 				transporter.sendMail(confirmationMailOptions),
 			]);
 
-			console.log('Enquiry emails sent successfully:');
-			console.log(`Notification sent to ${process.env.GMAIL_USERNAME}:`, notificationInfo.messageId);
-			console.log('Confirmation sent to user:', confirmationInfo.messageId);
-			console.log(`Enquiry from: ${email}`);
 
 			return NextResponse.json({
 				success: true,
