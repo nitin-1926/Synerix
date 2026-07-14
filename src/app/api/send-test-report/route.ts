@@ -148,12 +148,18 @@ function generateAdminReportHtml(
 
 // Generate comprehensive business health report
 function generateBusinessHealthReport(
-	name: string,
-	businessName: string,
-	businessDescription: string,
+	rawName: string,
+	rawBusinessName: string,
+	rawBusinessDescription: string,
 	testScore: number,
 	answers: Array<{ questionId: string; optionId: string; weightAge: number }>,
 ) {
+	// HTML parts interpolate the escaped copies; the text/plain part must use
+	// the raw values (entities never decode in text/plain — "Johnson &amp; Sons"
+	// would reach the reader literally).
+	const name = escapeHtml(rawName);
+	const businessName = escapeHtml(rawBusinessName);
+	const businessDescription = escapeHtml(rawBusinessDescription);
 	// Analyze answers by category
 	const categoryScores: { [key: string]: { score: number; total: number; questions: Array<{ question: string; answer?: string; score: number; maxScore: number }> } } = {};
 
