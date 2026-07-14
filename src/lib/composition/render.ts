@@ -174,6 +174,14 @@ function drawTextLayer(ctx: SKRSContext2D, layer: TextLayer, lang: CopyLanguage,
   const style = layer.fontStyle === "italic" ? "italic " : "";
   const fontColor = resolveColorRole(palette, layer.colorRole, layer.color);
 
+  // Letter-spacing must be active BEFORE fitText: wrapping and shrink-to-fit
+  // measure via ctx.measureText, and a line measured without spacing gains
+  // ~nChars × spacingPx at draw time — enough to escape the layout box on a
+  // long tracked eyebrow. (Spacing breaks the Devanagari/Gurmukhi headline
+  // connector — Latin scripts only.)
+  const useSpacing = layer.letterSpacingPx && lang !== "hi" && lang !== "pa";
+  if (useSpacing) ctx.letterSpacing = `${layer.letterSpacingPx}px`;
+
   const fitted = fitText(ctx, text, {
     fontFamily: family,
     fontWeight: layer.fontWeight,
