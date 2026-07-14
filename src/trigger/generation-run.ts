@@ -588,7 +588,7 @@ async function processConcept(ctx: ConceptCtx, concept: CreativeConcept, idx: nu
     productPlacement: concept.productPlacement,
     copy: conceptCopyToRoles(concept.copy),
     typographySpec: concept.typographySpec,
-    plateQa: Object.fromEntries(perAspect.filter((r) => r.packQa).map((r) => [r.aspect, r.packQa!])),
+    plateQa: Object.fromEntries(perAspect.filter((r) => r.fidelityQa).map((r) => [r.aspect, r.fidelityQa!])),
   });
 }
 
