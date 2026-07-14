@@ -708,12 +708,12 @@ function generateBusinessHealthReport(
 	// Generate enhanced plain text version
 	const text = `
 ═══════════════════════════════════════════════════════════════
-BUSINESS HEALTH REPORT - ${businessName.toUpperCase()}
+BUSINESS HEALTH REPORT - ${rawBusinessName.toUpperCase()}
 ═══════════════════════════════════════════════════════════════
 
-Hello ${name}! 👋
+Hello ${rawName}! 👋
 
-Hope you're doing well and thank you for taking the time to complete our comprehensive Business Health Assessment for ${businessName}.
+Hope you're doing well and thank you for taking the time to complete our comprehensive Business Health Assessment for ${rawBusinessName}.
 
 We're excited to share your detailed analysis and discuss how we can help take your business to new heights!
 
