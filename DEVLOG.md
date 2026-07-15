@@ -67,6 +67,28 @@ New entries go at the **top** of the Log section (reverse chronological).
 
 ## Log
 
+### 2026-07-16 — On-model photoshoot direction system + identity/garment QA; quality floors restored on every prompt path
+
+- Type: feature
+- Scope: src/lib/pipeline/image-prompt.ts (+test), src/lib/pipeline/model-qa.ts (new), src/lib/pipeline/validate-concepts.ts, src/trigger/generation-run.ts
+
+Reasoning / RCA / research:
+    - Pipeline audit found the three account types (FMCG / fashion-editorial / regular apparel) barely differ in code: WorkspaceType branched exactly one brief paragraph, and the on-model FASHION_EDITORIAL styling block was dead (gated on `!imagePrompt`, which real concepts always have). Regular apparel shops had NO clean-showcase mode at all — every on-model shot got whatever lifestyle scene the concept LLM invented.
+    - On-model had no post-render QA while EXACT_PRODUCT had pack-QA — yet identity drift (face not matching the chosen AI model) and garment restyling are this mode's exact equivalents of a mangled label.
+    - buildScenePassPrompt ("trust-the-brief") had dropped the QUALITY floor and per-aspect SAFE_ZONES; since the enhancer is fail-open, an enhancer outage shipped completely unguarded plates. The concept prompt is also aspect-agnostic, so per-aspect safe zones can only come from code.
+    - Direct mode + ON_MODEL was a straight bug: processDirect never passed the model reference, so "my exact scene with my chosen model" rendered a random person.
+    - Considered making direction a per-run user choice; rejected for now — workspace type already encodes what the account sells (editorial vs catalog), zero extra UI. Per-run override can layer on later.
+
+Implementation summary:
+    - image-prompt.ts: `OnModelDirection` ("editorial" | "catalog") with two always-appended PHOTOSHOOT DIRECTION blocks (85-105mm editorial campaign craft vs garment-hero clean showcase); QUALITY + SAFE_ZONES now always-on for on-model AND scene-pass prompts; dead `buildScenePrompt`/`usageGuard`/`PlatePromptOpts`/composite branch deleted; header rewritten.
+    - model-qa.ts (new): vision judge (identityMatch + garmentFaithful + singleFigure) mirroring pack-qa, fail-open. generation-run.ts: `ensureOnModelFidelity` retry loop (shares PACK_QA_MAX_RETRIES), verdict rides along as renamed `fidelityQa`.
+    - generation-run.ts: workspace type fetched once → `ctx.onModelDirection`; pack-QA extended from EXACT_PRODUCT-only to EVERY product render (quality over cost per owner directive); direct+ON_MODEL routed through generatePlate via pseudo-concept; brief-QA/enhancer fail-open now records `pipeline.degraded` markers.
+    - validate-concepts.ts: added check 7 (OCCASION MISSING) — festival briefs whose scene reads generic get flagged/repaired.
+    - Verified: tsc clean, 54/54 vitest (9 new prompt-contract tests).
+
+Follow-ups deferred:
+    - Per-run direction override UI; curated pose presets for clean-showcase; processConcept/processDirect share more plumbing than ideal (dedupe later, not broken).
+
 ### 2026-07-16 — Playwright e2e suite (zero AI spend) against dev-bypass auth
 
 - Type: build
