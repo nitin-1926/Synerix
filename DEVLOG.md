@@ -67,6 +67,23 @@ New entries go at the **top** of the Log section (reverse chronological).
 
 ## Log
 
+### 2026-07-16 — Visual audit of every app page (live browser) + grid/whitespace/image-expiry fixes
+
+- Type: bug
+- Scope: src/app/(app)/{products,models,dashboard,brand,studio}/page.tsx, studio/create-form.tsx, src/lib/storage.ts
+
+Reasoning / RCA / research:
+    - Walked every route at localhost:6969 with Playwright (screenshots + console + network) after user reported bad spacing, inconsistent components, broken images and slow navigation.
+    - Product-card whitespace root cause: CSS `aspect-ratio` is only a PREFERRED size — a tall phone photo forces the wrapper past 1:1 (min-content), the tallest card stretches the whole grid row, siblings get slabs of dead space. Fix: `relative + overflow-hidden` wrapper with `absolute inset-0` img (products + models grids).
+    - Dashboard dead space: `auto-rows-fr` forced every row to the tallest card (the custom-CTA tile). Removed + compacted the tile.
+    - "Images not loading sometimes" root cause: signed URLs minted for 3600s but unstable_cache revalidates at 3300s AND serves stale entries while revalidating — browsers could receive already-expired signatures. Fix: sign for expiry + margin (2× cache window + 1h) so any cache-served URL is always valid.
+    - Perf: warm client-side nav measured 54–218ms — perceived slowness is dev-mode first-visit route compilation (2–4s once per route per dev-server start; absent in production) plus full-res images. Studio product picker was loading full-res uploads for 150px tiles → switched to 400px transform thumbs (grids elsewhere already used thumbs).
+    - Cosmetics: brand-kit colors were full-width native color bars → compact swatch + hex; "price: unknown" leaked into Positioning card → hidden when unknown; custom-pose raw <input> → shadcn Input. Noted: the black bottom-left circle is the Next.js dev-tools button (dev only, not shipped); logo-corner is already a shadcn Select.
+    - Verified: fresh screenshots confirm uniform grids and compact dashboard; tsc clean, eslint 0 problems, 56/56 vitest, 11/11 Playwright.
+
+Follow-ups deferred:
+    - Duplicate "Annved Millet Laddu" product is data (added twice), not UI. Row-2 dashboard cards still match the custom tile's height (acceptable). Editor page not visually walked (no creative in dev workspace) — code-audited earlier instead.
+
 ### 2026-07-16 — First production Trigger.dev deploy + automatic worker env sync
 
 - Type: build
