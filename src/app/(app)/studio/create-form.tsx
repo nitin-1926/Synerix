@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { toast } from "sonner";
 import { Check, ImageIcon, Layers, Plus, Sparkles, UserSquare, Wand2 } from "lucide-react";
 import Link from "next/link";
 import { startGenerationRun } from "@/app/actions/generate";
