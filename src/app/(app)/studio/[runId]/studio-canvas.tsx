@@ -41,7 +41,6 @@ export function StudioCanvas(props: {
   productName: string | null;
   masterAspect: string;
   conceptCount: number;
-  conceptNames: string[];
   conceptStatus: Record<string, string>;
   conceptErrors: Record<string, string>;
   bakeoff: boolean;
