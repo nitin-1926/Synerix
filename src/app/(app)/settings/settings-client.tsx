@@ -168,8 +168,8 @@ export function SettingsClient(props: {
         <ul className="divide-y divide-border rounded-lg border border-border">
           {props.members.map((m) => (
             <li key={m.membershipId} className="flex items-center gap-3 px-4 py-3">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
               {m.image ? (
+                // eslint-disable-next-line @next/next/no-img-element -- avatar from Google, already tiny
                 <img src={m.image} alt="" className="size-8 rounded-full" />
               ) : (
                 <span className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold uppercase text-primary">
