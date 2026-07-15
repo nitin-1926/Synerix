@@ -67,6 +67,22 @@ New entries go at the **top** of the Log section (reverse chronological).
 
 ## Log
 
+### 2026-07-16 — Playwright e2e suite (zero AI spend) against dev-bypass auth
+
+- Type: build
+- Scope: playwright.config.ts (new), e2e/*.spec.ts (new), package.json (test:e2e), .gitignore
+
+Reasoning / RCA / research:
+    - Goal: e2e coverage without paying image/LLM providers per run. Solution: specs only exercise navigation, auth gating and validation paths that return before any provider call; DEV_AUTH_BYPASS=1 supplies a seeded user/workspace so no Google OAuth in tests.
+    - Learned: the dev-bypass user is a super-admin, so bare app routes redirect to /admin unless the sx-admin-acting=1 cookie is set — specs assert the redirect AND test the workspace view with the cookie (mirrors the real "enter workspace" action).
+
+Implementation summary:
+    - playwright.config.ts: chromium, baseURL localhost:6969, webServer reuses a running dev server locally.
+    - e2e/marketing.spec.ts (4: pages render, zero pageerrors, no em-dashes) + e2e/app.spec.ts (7: admin redirect, dashboard/studio/settings/library/models/calendar). 11/11 passing.
+
+Follow-ups deferred:
+    - CI e2e needs a database story (local postgres service or dedicated test DB) — currently a local-only suite. Generation-flow e2e with a mocked provider layer.
+
 ### 2026-07-16 — Production "generate → something went wrong" RCA: Trigger tasks never deployed; hardened enqueue path
 
 - Type: bug
