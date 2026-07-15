@@ -362,12 +362,12 @@ export function CreateForm(props: {
                         <Pill key={p.label} active={pose === p.value} onClick={() => setPose(p.value)}>{p.label}</Pill>
                       ))}
                     </div>
-                    <input
+                    <Input
                       value={pose}
                       onChange={(e) => setPose(e.target.value)}
                       maxLength={200}
                       placeholder="…or describe a custom pose (e.g. mid-twirl showing the dupatta)"
-                      className="mt-3 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
+                      className="mt-3"
                     />
                     <p className="mt-1.5 text-xs text-muted-foreground">Leave on “Auto” to let the AI vary the pose per option.</p>
                   </div>
