@@ -99,9 +99,17 @@ export function OnboardingWizard(props: {
   useEffect(() => {
     if (!ingesting) return;
     pollRef.current = setInterval(async () => {
-      const r = await fetch("/api/brand-status");
-      const b = await r.json();
-      setStatus(b.ingestStatus ?? "NONE");
+      // A transient fetch/parse failure just skips this tick — the next poll
+      // retries; without the guard it becomes an unhandled rejection and the
+      // wizard spins forever with stale status.
+      let b: { ingestStatus?: string; ingestError?: string | null };
+      try {
+        const r = await fetch("/api/brand-status");
+        b = await r.json();
+      } catch {
+        return;
+      }
+      setStatus((b.ingestStatus as Status | undefined) ?? "NONE");
       setError(b.ingestError ?? null);
       if (b.ingestStatus === "READY") {
         clearInterval(pollRef.current!);
