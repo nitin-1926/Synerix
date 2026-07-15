@@ -68,6 +68,13 @@ export default defineConfig({
       prismaExtension({ mode: "modern" }),
       // The canvas compositor loads fonts from public/fonts at runtime.
       additionalFiles({ files: ["./public/fonts/**"] }),
+      // Push worker env vars to the Trigger.dev project on deploy (see list above).
+      syncEnvVars(() =>
+        WORKER_ENV_VARS.filter((name) => process.env[name]).map((name) => ({
+          name,
+          value: process.env[name]!,
+        })),
+      ),
     ],
   },
 });
