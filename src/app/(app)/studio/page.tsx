@@ -2,7 +2,7 @@ import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { ensureBrand } from "@/lib/ensure-brand";
 import { getBalance } from "@/lib/credits";
-import { getSignedUrls } from "@/lib/storage";
+import { getSignedThumbUrls } from "@/lib/storage";
 import { listAiModels } from "@/app/actions/models";
 import { CreateForm } from "./create-form";
 
@@ -47,7 +47,9 @@ export default async function StudioPage({
         }),
   ]);
 
-  const urls = await getSignedUrls(products.flatMap((p) => p.images.map((i) => i.storageKey)));
+  // Picker tiles are ~150px — thumbnails, not full-res uploads (multi-MB
+  // phone photos made the Create page feel slow to paint).
+  const urls = await getSignedThumbUrls(products.flatMap((p) => p.images.map((i) => i.storageKey)), 400);
 
   return (
     <>
