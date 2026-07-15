@@ -67,6 +67,23 @@ New entries go at the **top** of the Log section (reverse chronological).
 
 ## Log
 
+### 2026-07-16 — First production Trigger.dev deploy + automatic worker env sync
+
+- Type: build
+- Scope: trigger.config.ts
+
+Reasoning / RCA / research:
+    - First real deploy attempt failed at task indexing: "DATABASE_URL is not set" in all six tasks. The Trigger.dev worker env is a THIRD environment — separate from Vercel and from local .env — and its variables live in the Trigger dashboard, which had none.
+    - Chose the syncEnvVars build extension over manual dashboard entry: deploys push the current values automatically, so key rotation is a redeploy, not a dashboard chore. Guarded to only sync vars non-empty in the deploying environment, so a CI deploy without secrets can never blank the dashboard values.
+    - Sync list deliberately excludes app-only vars (AUTH_*, GMAIL_*, DEV_AUTH_BYPASS) — the worker has no business holding them.
+
+Implementation summary:
+    - trigger.config.ts: dotenv load + WORKER_ENV_VARS allowlist (DB, Supabase storage, AI provider keys, Sentry) + syncEnvVars extension.
+    - Deployed: version 20260715.2, 6 tasks detected, 10 env vars synced (user-authorized deploy).
+
+Follow-ups deferred:
+    - CI auto-deploy still needs the TRIGGER_ACCESS_TOKEN repo secret (user-side). Vercel needs a redeploy to pick up the newly added TRIGGER_SECRET_KEY.
+
 ### 2026-07-16 — Verification-round fixes: conditional terminal writes, reconciled run refunds, text/plain escape leak, healer resurrection
 
 - Type: bug
