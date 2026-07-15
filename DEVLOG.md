@@ -67,6 +67,23 @@ New entries go at the **top** of the Log section (reverse chronological).
 
 ## Log
 
+### 2026-07-16 — App UI error-surfacing fixes from polish audit
+
+- Type: bug
+- Scope: src/app/(app)/models/models-client.tsx + models/page.tsx, studio/create-form.tsx, onboarding/wizard.tsx, studio/[runId]/{page,studio-canvas}.tsx, src/components/app-nav.tsx
+
+Reasoning / RCA / research:
+    - Full app-UI audit (subagent) rated the app high-polish but flagged error-surfacing inconsistencies rather than missing states. Fixed the defects; left the larger "toast vs inline" unification and segmented-control/pager dedupe for a dedicated pass (they are consistency refinements, not bugs).
+    - Onboarding poll was the one real hazard: the 2.5s interval body had no try/catch, so one transient fetch failure became an unhandled rejection and the wizard span forever.
+
+Implementation summary:
+    - models-client: killed the double error surface (toast + inline for the same error → inline only, matching the form's other errors).
+    - create-form: Enhance-prompt failures now toast instead of landing in the far-away summary-column error slot.
+    - onboarding wizard: poll tick wrapped in try/catch (skip tick, retry next).
+    - models grid: READY-but-thumbless tile now says "Preview unavailable" instead of a blank box.
+    - Dead code: unused conceptNames prop (studio-canvas + page), vestigial desktopNav alias (app-nav).
+    - Verified: tsc clean, 54/54 vitest, 11/11 Playwright.
+
 ### 2026-07-16 — On-model photoshoot direction system + identity/garment QA; quality floors restored on every prompt path
 
 - Type: feature
