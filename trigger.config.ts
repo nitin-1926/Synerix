@@ -1,7 +1,32 @@
 import { defineConfig } from "@trigger.dev/sdk";
 import { prismaExtension } from "@trigger.dev/build/extensions/prisma";
-import { additionalFiles } from "@trigger.dev/build/extensions/core";
+import { additionalFiles, syncEnvVars } from "@trigger.dev/build/extensions/core";
 import * as Sentry from "@sentry/node";
+import { config as loadEnv } from "dotenv";
+
+// Deploy-time env for the config itself (the worker gets its env from the
+// Trigger.dev dashboard, kept in sync by the syncEnvVars extension below).
+loadEnv({ path: ".env" });
+
+/**
+ * Everything the tasks read at runtime. Synced to the Trigger.dev project env
+ * on every deploy — but ONLY vars that are non-empty locally, so a CI deploy
+ * without these secrets never blanks the dashboard values. Deliberately
+ * excludes app-only vars (AUTH_*, GMAIL_*, DEV_AUTH_BYPASS).
+ */
+const WORKER_ENV_VARS = [
+  "DATABASE_URL",
+  "DIRECT_URL",
+  "NEXT_PUBLIC_SUPABASE_URL",
+  "SUPABASE_SERVICE_ROLE_KEY",
+  "ANTHROPIC_API_KEY",
+  "GOOGLE_GENERATIVE_AI_API_KEY",
+  "OPENAI_API_KEY",
+  "RUNWARE_API_KEY",
+  "FIRECRAWL_API_KEY",
+  "FAL_KEY",
+  "SENTRY_DSN",
+];
 
 // Error monitoring for task workers. No-op until SENTRY_DSN is set.
 if (process.env.SENTRY_DSN) {
