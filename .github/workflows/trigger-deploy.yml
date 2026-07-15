@@ -9,6 +9,10 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      # prisma.config.ts resolves DIRECT_URL at load time; `prisma generate`
+      # (postinstall) never connects, so a placeholder satisfies it in CI.
+      DIRECT_URL: "postgresql://placeholder:placeholder@localhost:5432/placeholder"
     steps:
       - uses: actions/checkout@v4
 
