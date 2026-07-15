@@ -63,10 +63,14 @@ ships a **curated library of presets** (Indian adult M/F, baby, a few
 poses/looks) AND can **generate a new model from a text description** (via the
 image model), saving it to the library for consistent reuse across a catalog.
 
-### Review (quality stance)  *(resolved 2026-06-08)*
-No automated critic/QA loop. A human (operator/consultant) reviews the 4
-generated Creatives in the studio, regenerates poor ones, and only then shares
-with the client. Quality is gated by human taste, not by code.
+### Review (quality stance)  *(updated 2026-07-16)*
+Layered QA before human review: concept briefs are validated and repaired
+(`validate-concepts.ts`), rendered plates are checked against references —
+pack-vs-label for product shots (`pack-qa.ts`), identity + garment fidelity
+for on-model shots (`model-qa.ts`) — with strict corrective re-renders, and
+overlay placement is vetoed/re-composited (`placement-qa.ts`). A human still
+makes the final call in the studio before sharing with the client; automated
+QA raises the floor, human taste sets the bar.
 
 ### Render Engine decision
 Final images are composited with a deterministic **canvas compositor**
@@ -128,5 +132,4 @@ QA-failed baked edits auto-refund. Ledger is user-visible at /settings/credits.
 This repo also serves the Synerix marketing site — `src/app/(marketing)/`:
 landing, consulting, the Synerix Studio product page, and the Business Health
 Check (test wizard + scored email report; leads in `tests`/`test_results`,
-viewable in /admin/leads). The pre-merge website source lives in `legacy/`
-(reference only).
+viewable in /admin/leads).
