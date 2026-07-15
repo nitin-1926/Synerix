@@ -34,7 +34,6 @@ export function ModelsClient() {
       const res = await generateBrandModel(formData);
       if (res?.error) {
         setError(res.error);
-        toast.error(res.error);
       } else {
         formRef.current?.reset();
         setOpen(false);
