@@ -49,6 +49,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4",
     "@trigger.dev/build": "4.5.0",
     "@types/node": "^20",
@@ -62,8 +63,7 @@
     "trigger.dev": "4.5.0",
     "tsx": "^4.22.3",
     "typescript": "^5",
-    "vitest": "^3.2.6",
-    "@playwright/test": "^1.61.1"
+    "vitest": "^3.2.6"
   },
   "allowScripts": {
     "esbuild@0.28.0": true,
