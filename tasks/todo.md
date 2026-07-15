@@ -1,4 +1,4 @@
-# Round 4 — Productization: dev script, pipeline quality, account types, marketing, AI bot (2026-07-11) — IN FLIGHT
+# Round 4 — Productization: dev script, pipeline quality, account types, marketing, AI bot (2026-07-11) — DONE (all R4 items ✅, gate passed 2026-07-11)
 
 Execution order: R4.1 → R4.5 → R4.4 → R4.2 → R4.3
 (pipeline before marketing/bot so copy + bot knowledge describe FINAL capabilities; account types before marketing because login-only changes login copy.)
