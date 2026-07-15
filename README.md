@@ -18,14 +18,12 @@ NextAuth v5 (Google) · Anthropic Claude + Gemini (Nano Banana Pro) + Runware/FA
 ## Develop
 
 ```bash
-npm install
-npx prisma generate
-npm run dev                  # web on :3000
-npx trigger.dev@v4 dev       # background worker (separate terminal)
+npm install                  # postinstall runs prisma generate
+npm run dev                  # web on :6969 + Trigger.dev worker (concurrently)
 ```
 
 - Env lives in `.env.local` and must be mirrored to `.env` (the Trigger.dev
-  worker reads `.env`). See `.env.local` for the full variable list.
+  worker reads `.env`). `.env.example` lists every variable.
 - `DEV_AUTH_BYPASS=1` (dev only) signs you in as a seeded dev user with admin
   access — remove once Google OAuth credentials are configured
   (`GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`, redirect URI
@@ -50,8 +48,4 @@ npm run build && npm run lint && npm test
 | Generation pipeline (briefs, baked typography, QA) | `src/lib/pipeline/`, `src/trigger/generation-run.ts` |
 | Brand Creative Intelligence (web-search research) | `src/lib/pipeline/brand-intel.ts` |
 | Credits ledger | `src/lib/credits.ts`, `/settings/credits` |
-| Legacy website data migration | `scripts/migrate-legacy-pinata.ts` |
-
-`legacy/` holds the pre-merge Pinata website source for reference only — it is
-excluded from builds and lint and can be deleted once nothing else is needed
-from it.
+| Legacy website data migration (spent one-off) | `scripts/migrate-legacy-pinata.ts` |
