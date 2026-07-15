@@ -67,6 +67,25 @@ New entries go at the **top** of the Log section (reverse chronological).
 
 ## Log
 
+### 2026-07-16 — Production "generate → something went wrong" RCA: Trigger tasks never deployed; hardened enqueue path
+
+- Type: bug
+- Scope: .github/workflows/trigger-deploy.yml, src/app/actions/generate.ts
+
+Reasoning / RCA / research:
+    - Every "Deploy Trigger.dev tasks" GitHub Action run failed at `npm ci`: postinstall `prisma generate` loads prisma.config.ts, which hard-requires `DIRECT_URL` (PrismaConfigEnvError) — CI has no env vars.
+    - Compounding: `gh secret list` is empty — TRIGGER_ACCESS_TOKEN was never added, so the deploy step would have failed anyway. Net effect: production Trigger env has no deployed tasks, so `tasks.trigger("generation-run")` throws in the server action → Next.js generic "something went wrong" page. Credits already debited were not refunded.
+    - Also flagged: .env.local carries a `tr_dev_` key; Vercel Production must carry the `tr_prod_` secret key or triggers land in the (offline) dev env and queue forever.
+    - Considered making prisma.config.ts fall back to a default URL; rejected — a silent fallback could mask a real misconfig in prod migrations. A placeholder env var scoped to CI is explicit and local to the workflow.
+
+Implementation summary:
+    - Workflow: job-level `DIRECT_URL` placeholder (prisma generate never connects; it only needs the var resolvable).
+    - generate.ts: wrapped `tasks.trigger` in try/catch — on enqueue failure, idempotent refund via `reconcileRunRefund`, run marked FAILED with the queue error, and a clear user-facing message returned (mirrors the existing pattern in actions/editor.ts). Client (create-form.tsx) already renders `{error}` returns.
+    - Verified: tsc clean, 49/49 vitest, `trigger.dev deploy --dry-run` builds the bundle successfully.
+
+Follow-ups deferred:
+    - Actual prod deploy of tasks is permission-gated (user must run/approve `npx trigger.dev@4.5.0 deploy` or add TRIGGER_ACCESS_TOKEN + push). Vercel env verification blocked until `vercel login`.
+
 ### 2026-07-12 — Base UI dropdown crash fix + admin workspace rename + invite flow hardening (expiry + resend)
 
 - Type: bug + feature
