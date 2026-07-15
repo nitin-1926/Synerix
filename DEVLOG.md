@@ -67,6 +67,21 @@ New entries go at the **top** of the Log section (reverse chronological).
 
 ## Log
 
+### 2026-07-16 — Adversarial-review fixes: ghost-enqueue guard, model-QA pass rule, cap-safe prompt guards, chain poisoning
+
+- Type: bug
+- Scope: src/trigger/generation-run.ts, src/lib/pipeline/{model-qa,pack-qa,image-prompt}.ts (+test), src/app/actions/generate.ts
+
+Reasoning / RCA / research:
+    - Adversarial review of today's diff surfaced six concrete failure scenarios; all fixed same-session.
+    - Ghost enqueue: tasks.trigger can throw client-side AFTER the API accepted the run → the action refunds + marks FAILED, but the task would still execute → free generation. Fixed with a terminal-status guard at task entry (skips FAILED/COMPLETE/PARTIAL runs).
+    - model-qa's pass rule was copied from pack-qa (`!packVisible ||` is legit for lifestyle scenes) but inverted this mode's promise: a render with NO model at all passed QA. Now modelVisible=false is a hard fail.
+    - The "always appended" guard blocks were appended LAST before `.slice(cap)` — an oversized enhancer imagePrompt truncated exactly the guards. New joinCapped() truncates only the scene body; head fidelity + tail floors survive by construction (tested).
+    - updatePipeline's module-level promise chain had no rejection reset — one transient DB error would poison every later pipeline write in the warm worker. Chain now absorbs rejections (callers still see their own); degraded-marker writes in fail-open catches are additionally .catch()ed so a marker can never fail the run it describes.
+    - pack-QA on lifestyle-scale packs: illegible-at-distance label text no longer counts as failure (kills a persistent retry-burn loop after QA expanded to all product renders).
+    - ON_MODEL with a missing garment/model reference silently downgraded to a model-less render; now a hard task error, plus action-level validation (garment must have ≥1 photo). Direct-mode fidelity verdicts are now persisted (were discarded).
+    - Verified: tsc clean, 56/56 vitest, 11/11 Playwright, trigger deploy --dry-run builds.
+
 ### 2026-07-16 — App UI error-surfacing fixes from polish audit
 
 - Type: bug
