@@ -83,13 +83,16 @@ export default async function ProductsPage({
           return (
             <Link key={p.id} href={`/products/${p.id}`} className="group block">
               <Card className="h-full gap-0 py-0 transition-all group-hover:-translate-y-0.5 group-hover:shadow-md">
-                <div className="aspect-square bg-secondary">
+                {/* relative + absolute img: aspect-ratio alone is only a
+                    PREFERRED size — a tall photo forces the box to grow and
+                    stretches the whole grid row (the whitespace bug). */}
+                <div className="relative aspect-square overflow-hidden bg-secondary">
                   {img && urls[img.storageKey] && (
                     /* eslint-disable-next-line @next/next/no-img-element */
                     <img
                       src={urls[img.storageKey]}
                       alt={p.name}
-                      className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                      className="absolute inset-0 size-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
                     />
                   )}
                 </div>
