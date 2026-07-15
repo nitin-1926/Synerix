@@ -102,10 +102,11 @@ export function CreateForm(props: {
 
   async function handleEnhance() {
     setEnhancing(true);
-    setError(null);
     try {
       const res = await enhanceUserPrompt({ text: brief, mode: "scene" });
-      if ("error" in res) setError(res.error);
+      // Toast, not the summary-column error slot — that renders far from the
+      // Enhance button and reads like a submit failure.
+      if ("error" in res) toast.error(res.error);
       else setBrief(res.enhanced);
     } finally {
       setEnhancing(false);
