@@ -220,15 +220,15 @@ export default async function DashboardPage() {
           {/* The "create something custom" tile — the sixth card, in-grid. */}
           <Link href="/studio" className="group block">
             <Card className="h-full border-2 border-dashed border-primary/30 bg-primary/[0.04] ring-0 transition-colors group-hover:border-primary/50 group-hover:bg-primary/[0.07]">
-              <CardContent className="flex h-full flex-col items-center justify-center py-6 text-center">
-                <span className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <Sparkles className="size-5" />
+              <CardContent className="flex h-full flex-col items-center justify-center py-4 text-center">
+                <span className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <Sparkles className="size-4" />
                 </span>
-                <p className="mt-3 font-semibold">Need something custom?</p>
+                <p className="mt-2 font-semibold">Need something custom?</p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   A sale, a new dish, a store opening — describe it
                 </p>
-                <span className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary">
+                <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary">
                   Create a custom creative <ArrowRight className="size-3.5" />
                 </span>
               </CardContent>
