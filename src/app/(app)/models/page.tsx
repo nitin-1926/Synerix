@@ -40,18 +40,18 @@ export default async function ModelsPage() {
           const failed = m.status === "FAILED";
           return (
             <Card key={m.id} className="group relative h-full gap-0 py-0 overflow-hidden">
-              <div className="aspect-[4/5] bg-secondary">
+              <div className="relative aspect-[4/5] overflow-hidden bg-secondary">
                 {m.thumbUrl ? (
                   /* eslint-disable-next-line @next/next/no-img-element */
                   <img
                     src={m.thumbUrl}
                     alt={m.name}
-                    className="size-full object-cover"
+                    className="absolute inset-0 size-full object-cover"
                     loading="lazy"
                   />
                 ) : (
                   <div className="flex size-full items-center justify-center px-4 text-center text-xs text-muted-foreground">
-                    {busy ? "Generating…" : failed ? "No image" : ""}
+                    {busy ? "Generating…" : failed ? "No image" : "Preview unavailable"}
                   </div>
                 )}
               </div>
