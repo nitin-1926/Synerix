@@ -67,6 +67,23 @@ New entries go at the **top** of the Log section (reverse chronological).
 
 ## Log
 
+### 2026-07-16 — Verification-round fixes: conditional terminal writes, reconciled run refunds, text/plain escape leak, healer resurrection
+
+- Type: bug
+- Scope: src/trigger/{generation-run,brand-ingest}.ts, src/app/actions/generate.ts, src/app/api/{send-test-report,send-enquiry}/route.ts, src/lib/rate-limit.ts
+
+Reasoning / RCA / research:
+    - Adversarially re-reviewed the productionize fixes themselves; four gaps confirmed, all in the interaction between healers, workers and refunds.
+    - Free-generation cascade: generation-run's finalize wrote COMPLETE/FAILED unconditionally and refunded via plain grantCredits. A queue-delayed run (startedAt is set at ENQUEUE) could be healed+refunded by the studio stall-healer mid-execution, then the worker resurrected it to COMPLETE → refund AND creatives. All terminal writes are now conditional updateMany (status notIn terminal; loser no-ops) and every run refund routes through reconcileRunRefund so concurrent refunders converge.
+    - Ghost-enqueue ordering: the action's catch refunded BEFORE marking FAILED — a worker picking up the accepted-but-timed-out enqueue in that gap passed the guard. Status write now lands first.
+    - Same resurrection bug in brand-ingest: its first status write was unconditional, so a healed-FAILED brand got flipped back to CRAWLING and a user retry produced two interleaved ingests on one brand row. First write is now a conditional PENDING→CRAWLING claim; 0 rows = stale run, bail (safe: task has retry maxAttempts 1).
+    - escapeHtml at the mail-route call sites leaked entities into the text/plain email parts ("Johnson &amp;amp; Sons", broken mailto: links — fires on legitimate names). Generators now take raw values and escape internally for the HTML part only; text templates use raw.
+    - rate-limit: with no resolvable client IP (bare `next start`, no proxy) all visitors shared the "unknown" bucket — a 3/hour route bricked site-wide after 3 requests. Fails open on unknown (never occurs on Vercel, where x-real-ip is platform-set).
+    - Verified: tsc clean, eslint 0 problems, 56/56 vitest, 11/11 Playwright, next build clean, trigger dry-run builds.
+
+Follow-ups deferred:
+    - recompositeAll same-nextIndex storage-key overwrite on concurrent edits (pre-existing, needs per-creative serialization or run-scoped keys). catchError may still write PARTIAL over a healer's FAILED (money-safe via reconciliation; cosmetic status disagreement).
+
 ### 2026-07-16 — Productionize pass: security hardening, race fixes, stall healer, dead-code/dep/doc cleanup
 
 - Type: build
