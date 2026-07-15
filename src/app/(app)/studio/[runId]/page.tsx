@@ -126,7 +126,6 @@ export default async function RunPage({
       productName={run.product?.name ?? null}
       masterAspect={run.requestedAspects[0] ?? "4:5"}
       conceptCount={conceptCount}
-      conceptNames={(pipeline.concepts ?? []).map((cc) => cc.name)}
       conceptStatus={pipeline.conceptStatus ?? {}}
       conceptErrors={pipelineErrors}
       bakeoff={run.bakeoff}
