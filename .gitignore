@@ -57,3 +57,7 @@ Thumbs.db
 src/generated/
 graphify-out/
 .trigger
+
+# playwright
+/test-results/
+/playwright-report/
