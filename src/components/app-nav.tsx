@@ -44,9 +44,6 @@ export function AppNav(props: {
   workspaces?: Array<{ id: string; name: string; active: boolean }>;
 }) {
   const pathname = usePathname();
-  // Admin lives in its own dedicated shell now; super-admins return to it via the
-  // "Back to admin" banner, so no Admin item is mixed into the product nav.
-  const desktopNav = NAV;
   const canSwitchWorkspace = (props.workspaces?.length ?? 0) >= 2;
 
   async function signOut() {
@@ -97,7 +94,7 @@ export function AppNav(props: {
         </div>
 
         <nav className="flex-1 space-y-1 px-3">
-          {desktopNav.map(({ href, label, icon: Icon, match }) => {
+          {NAV.map(({ href, label, icon: Icon, match }) => {
             const active = match.some((m) => pathname?.startsWith(m));
             return (
               <Link
