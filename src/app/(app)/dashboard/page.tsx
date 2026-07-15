@@ -194,7 +194,9 @@ export default async function DashboardPage() {
             View calendar <ArrowRight className="size-3.5" />
           </Link>
         </div>
-        <div className="mt-4 grid auto-rows-fr gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {/* No auto-rows-fr: it forces every row to the tallest card's height,
+            leaving festival cards with a slab of dead space in the middle. */}
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {upcoming.map((o) => (
             <Link key={o.id} href={`/studio?occasion=${o.id}`} className="group block">
               <Card className="h-full transition-all group-hover:-translate-y-0.5 group-hover:shadow-md">
