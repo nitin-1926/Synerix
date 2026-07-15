@@ -10,6 +10,7 @@ import { NewProductDialog, type InlineProduct } from "./new-product-dialog";
 import { CREDIT_COSTS, LIMITS } from "@/lib/ai/models";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
