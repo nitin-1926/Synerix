@@ -67,6 +67,21 @@ New entries go at the **top** of the Log section (reverse chronological).
 
 ## Log
 
+### 2026-07-16 — Productionize pass: security hardening, race fixes, stall healer, dead-code/dep/doc cleanup
+
+- Type: build
+- Scope: src/lib/{rate-limit,html,credits}.ts, src/app/api/{send-test-report,send-enquiry,test,brand-status}/route.ts, src/app/actions/{auth,admin,brand}.ts, src/lib/editor/paid-edits.ts, src/lib/composition/render.ts, package.json, README.md, CONTEXT.md, .env.example (new), prisma/schema.prisma (comments)
+
+Reasoning / RCA / research:
+    - Three parallel audits (security sentinel, slop/config sweep, correctness reviewer). Auth core came back clean: workspace scoping/IDOR, admin gating, storage, secrets, DEV_AUTH_BYPASS fail-closed all verified. Issues clustered in the public marketing endpoints and in read-then-write DB patterns.
+    - Security: clientIp() trusted the LEFTMOST x-forwarded-for (spoofable per request → every public rate limit bypassable, incl. the Gemini chat endpoint) — now prefers platform-set x-real-ip, falls back to the RIGHTMOST XFF hop. User input was interpolated raw into outbound email HTML (phishing-payload injection via businessName etc.) — escapeHtml() applied at the two mail routes; schema length caps added. /api/test served inactive tests; signInWithGoogle allowed protocol-relative "//" redirect targets.
+    - Correctness: reconcileRunRefund's aggregate ran before any row lock (concurrent catchError + stall-healer could double-refund) — a no-op increment upsert now takes the workspace row lock first. adminGrantCredits' negative path was a read-then-write-absolute lost-update — now a guarded conditional decrement like debitCredits. recompositeAll could half-commit render rows when one aspect failed — DB writes now in one transaction after all composites/uploads. Brand ingest could strand PENDING forever (unhandled enqueue + no healer) — enqueue try/catch + 15-min stall healer in /api/brand-status. fitText measured without letter-spacing while drawing with it — spacing now set before measuring.
+    - Slop/config: removed dead deps (exa-js, culori+types, @supabase/ssr) and dead files (pipeline/cutout.ts, ui/{avatar,toggle-group,tooltip}.tsx — zero callers verified). LESSON: the sweep flagged `shadcn` as dead but globals.css imports "shadcn/tailwind.css" — grep-for-imports must include CSS; caught by the build gate and restored. Debug console.logs stripped from mail routes. README fixed (port 6969, single dev command, .env.example reference); .env.example created (names only); dangling legacy/ references removed; CONTEXT.md quality-stance section rewritten (automated QA now exists).
+    - Verified: tsc clean, eslint 0 problems, 56/56 vitest, 11/11 Playwright, next build clean, trigger deploy --dry-run builds.
+
+Follow-ups deferred:
+    - Unauthenticated mail endpoints still send to caller-chosen recipients (product requirement for the lead-gen report; mitigated by real-IP rate limit + escaping). In-memory rate limiter is per-instance (documented; Upstash if traffic grows). Editor-edit hard-loss refunds and renderNewAspect double-submit are narrow residual races (logged by audit, low frequency) — candidates for a later pass.
+
 ### 2026-07-16 — Adversarial-review fixes: ghost-enqueue guard, model-QA pass rule, cap-safe prompt guards, chain poisoning
 
 - Type: bug
