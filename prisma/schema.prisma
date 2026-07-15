@@ -516,7 +516,9 @@ model Creative {
   critic             Json? // final RenderIteration axes + score
   usedCutoutFallback Boolean        @default(false)
   // Human-review gate: a creative is not client-ready (exportable/shareable)
-  // until an operator approves it in the studio. No automated QA.
+  // until an operator approves it in the studio. Automated QA (brief
+  // validation, pack/on-model fidelity, overlay placement) raises the floor
+  // upstream; this flag is the human final call.
   approved           Boolean        @default(false)
   approvedAt         DateTime?
   // Soft delete — hidden from every listing/read, never physically removed
@@ -643,7 +645,7 @@ enum ApiCostKind {
 }
 
 // ---------- Synerix website (consulting) ----------
-// Ported from the legacy Pinata site (legacy/prisma/schema.prisma). Table names
+// Ported from the pre-merge Pinata site. Table names
 // (@@map) and cuid IDs are preserved so legacy rows copy across 1:1 via
 // scripts/migrate-legacy-pinata.ts.
 
