@@ -39,7 +39,11 @@ if (process.env.SENTRY_DSN) {
 
 export default defineConfig({
   project: "proj_gtjzmmmwfafgaloqpzgf",
-  runtime: "node",
+  // node-22 (not "node" → Node 21): the worker's own realtime coordination
+  // client needs a native global WebSocket, absent before Node 22. On "node"
+  // every deployed run dies with "Node.js 21 detected without native WebSocket
+  // support" the moment it executes (local dev survived on the host's Node 22).
+  runtime: "node-22",
   logLevel: "log",
   maxDuration: 3600,
   onFailure: async ({ payload, error, ctx }) => {
