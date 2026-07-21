@@ -72,6 +72,9 @@ export async function generateConcepts(
      * every scene — renders are premium-model + verified against the real
      * product photos by pack-fidelity QA. */
     exactProduct?: boolean;
+    /** ON_MODEL + PLAIN runs: the deliverable is a clean e-commerce apparel
+     * photoshoot image, not a campaign scene — concepts vary pose/angle only. */
+    onModelPlain?: boolean;
   },
 ): Promise<CreativeConcept[]> {
   const evidence = evidenceBlock?.trim()
@@ -80,11 +83,14 @@ export async function generateConcepts(
   const exactPack = opts?.exactProduct
     ? `\n\nEXACT-PACK MODE: the user chose pixel-exact packaging. A premium image model renders each scene from the real product photos and every render is machine-verified against them, so lifestyle and product_hero concepts are BOTH fine — but every imagePrompt MUST stage the pack prominently, front-facing enough that its label is clearly readable, never tiny in frame, never turned away, never obscured by hands or props. Say explicitly in each imagePrompt that the packaging must be reproduced exactly as photographed: identical label text, colours, logo and layout.`
     : "";
+  const plainOnModel = opts?.onModelPlain
+    ? `\n\nPLAIN ON-MODEL MODE (overrides any conflicting instruction above): the deliverable is a clean e-commerce apparel product-page photograph (think Myntra / Zara listing shots), NOT an ad campaign scene. Every concept: exactly ONE model wearing the garment against a clean seamless studio backdrop or minimal neutral setting; the GARMENT is the hero, fully visible, drape and details readable. Concepts differ ONLY by pose, camera angle, crop and backdrop tone — NEVER by location, story, props, occasion staging or additional people. No outdoor scenes, no narrative moments, no second person anywhere in frame, no props beyond at most a simple stool or block. Occasion/festival context may flavour the COPY only, never the photograph.`
+    : "";
   const { object, usage } = await generateObject({
     model: resolveLanguageModel(MODELS.concepts),
     schema: conceptsResponseSchema,
     system: CONCEPTS_SYSTEM,
-    prompt: `Produce exactly ${count} product-correct concept briefs for this brief — a cohesive campaign of DISTINCT executions.\nThink product-first: what is it, how is it really used, what would be WRONG to show — then design.\nRemember the truth rules: no invented offers or claims, and no em/en dashes in any copy.${exactPack}\n\n${occasionBrief}${evidence}`,
+    prompt: `Produce exactly ${count} product-correct concept briefs for this brief — a cohesive campaign of DISTINCT executions.\nThink product-first: what is it, how is it really used, what would be WRONG to show — then design.\nRemember the truth rules: no invented offers or claims, and no em/en dashes in any copy.${exactPack}${plainOnModel}\n\n${occasionBrief}${evidence}`,
   });
   tracker?.addLLM(MODELS.concepts, usage, "concepts");
 

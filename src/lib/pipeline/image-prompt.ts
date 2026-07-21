@@ -35,7 +35,13 @@ const FRAMING =
 // hero with headroom and foot-room so the compositor's aspect crop never clips
 // the model or the garment.
 const ON_MODEL_FRAMING =
-  "Show ONE model in ONE single full-body view only — no front-and-back split, no repeated or mirrored figure, no catalogue grid. Frame the full figure from above the head to below the feet, centred and filling the frame naturally, with clear breathing room above the head and below the feet; do NOT crop the model, their head/feet or the garment at the top, bottom or sides.";
+  "Show ONE model in ONE single full-body view only — no front-and-back split, no repeated or mirrored figure, no catalogue grid. Exactly ONE person in the entire frame: no other people, background figures, passers-by or reflections of people anywhere. Frame the full figure from above the head to below the feet, centred and filling the frame naturally, with clear breathing room above the head and below the feet; do NOT crop the model, their head/feet or the garment at the top, bottom or sides.";
+
+// PLAIN on-model runs deliver e-commerce product-page shots, not ad scenes.
+// Appended AFTER the concept's scene body so a stray concept that still writes
+// a location/story cannot override the deliverable the user actually chose.
+const PLAIN_ECOMMERCE =
+  "STRICT E-COMMERCE SHOWCASE (this overrides any scene direction above): a clean apparel product-page photograph — seamless studio backdrop or minimal neutral setting only; the garment fully visible as the hero with drape and details readable; no location scenes, no storytelling staging, no props beyond at most a simple stool or block, and absolutely no other people.";
 
 /**
  * On-model art direction, keyed by what the account sells. Both are ALWAYS
@@ -146,6 +152,8 @@ export function buildOnModelPrompt(opts: {
   pose?: string | null;
   /** Photoshoot treatment; defaults to the clean catalog showcase. */
   direction?: OnModelDirection;
+  /** PLAIN branding mode: force a strict e-commerce showcase render. */
+  plain?: boolean;
 }): string {
   const { concept, aspect, garmentPrompt, pose } = opts;
   const direction = opts.direction ?? "catalog";
@@ -178,6 +186,7 @@ export function buildOnModelPrompt(opts: {
   // Photographic craft floors apply to BOTH paths — the concept prompt is
   // written for a generic scene and cannot be relied on for on-model
   // photoshoot direction, quality, safe-zones or single-figure framing.
+  if (opts.plain) tail.push(PLAIN_ECOMMERCE);
   tail.push(ON_MODEL_DIRECTION[direction]);
   tail.push(QUALITY);
   tail.push(SAFE_ZONES[aspect]);

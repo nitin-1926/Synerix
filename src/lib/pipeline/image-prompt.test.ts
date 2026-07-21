@@ -117,6 +117,19 @@ describe("buildOnModelPrompt", () => {
     expect(p).toContain("navy quilted bomber jacket");
   });
 
+  it("plain mode appends the e-commerce override after the scene body; default omits it", () => {
+    const plain = buildOnModelPrompt({ concept: conceptWithPrompt, aspect: "4:5", plain: true });
+    expect(plain).toMatch(/STRICT E-COMMERCE SHOWCASE/);
+    expect(plain).toMatch(/overrides any scene direction above/i);
+    expect(plain.indexOf("STRICT E-COMMERCE SHOWCASE")).toBeGreaterThan(plain.indexOf("golden window light"));
+    expect(buildOnModelPrompt({ concept, aspect: "4:5" })).not.toMatch(/STRICT E-COMMERCE/);
+  });
+
+  it("allows exactly one person in frame (no background figures)", () => {
+    const p = buildOnModelPrompt({ concept, aspect: "4:5" });
+    expect(p).toMatch(/Exactly ONE person in the entire frame/i);
+  });
+
   it("truncates an oversized scene body, never the fidelity head or craft floors", () => {
     const huge = { ...concept, imagePrompt: "A ".repeat(3000) + "END" } as unknown as CreativeConcept;
     const p = buildOnModelPrompt({ concept: huge, aspect: "9:16", direction: "editorial" });

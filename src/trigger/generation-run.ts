@@ -204,7 +204,7 @@ export const generationRun = task({
         tracker,
         brandPalette.length ? brandPalette : undefined,
         intelToEvidenceBlock(brandIntel),
-        { exactProduct: ctx.studioComposite },
+        { exactProduct: ctx.studioComposite, onModelPlain: onModel && run.brandingMode === "PLAIN" },
       );
 
       // ---- Stage 2b: semantic brief QA + repair, then photographic prompt
@@ -420,6 +420,7 @@ async function generatePlate(ctx: ConceptCtx, concept: CreativeConcept, aspect: 
       garmentPrompt: ctx.run.product?.dissectionPrompt,
       pose: ctx.run.modelPose,
       direction: ctx.onModelDirection,
+      plain: ctx.run.brandingMode === "PLAIN",
     });
     const first = await generateScene({ prompt, aspect, references: refs, ...model });
     ctx.tracker.addImage(first.costModel, "on-model");
