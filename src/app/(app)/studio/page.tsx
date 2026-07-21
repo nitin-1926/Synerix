@@ -87,7 +87,6 @@ export default async function StudioPage({
           preselectedProductId={params.product ?? null}
           apparelBrandingDefault={brand.apparelBrandingDefault}
           creditBalance={balance}
-          isSuperAdmin={auth.isSuperAdmin}
         />
       </div>
     </>

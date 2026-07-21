@@ -41,14 +41,6 @@ const LANGS = [
   { id: "hi", label: "हिन्दी" },
   { id: "pa", label: "ਪੰਜਾਬੀ" },
 ];
-// Premium image models (mirrors IMAGE_MODEL_PREFS server-side — kept local so
-// the client bundle doesn't pull the provider module).
-type ImageModelId = "nb-pro" | "gpt-image-2" | "compare";
-const IMAGE_MODELS: { id: ImageModelId; label: string; hint: string }[] = [
-  { id: "nb-pro", label: "Nano Banana Pro", hint: "Best pack & label fidelity. Recommended." },
-  { id: "gpt-image-2", label: "GPT Image 2", hint: "Alternative premium render." },
-  { id: "compare", label: "Both — compare", hint: "Every option on both models. 2× credits." },
-];
 // On-model pose presets ("" = auto, let the AI vary it per option).
 const POSES: { label: string; value: string }[] = [
   { label: "Auto", value: "" },
@@ -77,7 +69,6 @@ export function CreateForm(props: {
   preselectedProductId: string | null;
   apparelBrandingDefault: BrandingMode;
   creditBalance: number;
-  isSuperAdmin: boolean;
 }) {
   const [tab, setTab] = useState<"guided" | "direct">("guided");
   const [products, setProducts] = useState<Product[]>(props.products);
@@ -95,10 +86,6 @@ export function CreateForm(props: {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [enhancing, setEnhancing] = useState(false);
-  // Super-admin model bake-off: same prompts across the whole model lineup.
-  const [bakeoff, setBakeoff] = useState(false);
-  // Premium image model pick; "compare" renders on both (2× credits).
-  const [imageModel, setImageModel] = useState<ImageModelId>("nb-pro");
 
   async function handleEnhance() {
     setEnhancing(true);
@@ -132,8 +119,9 @@ export function CreateForm(props: {
   const direct = tab === "direct" && !props.isOccasion;
   const pickedOccasion = props.upcomingOccasions.find((o) => o.id === pickedOccasionId) ?? null;
   const hasOccasion = props.isOccasion || (!direct && Boolean(pickedOccasion));
-  const variantMult = imageModel === "compare" ? 2 : 1;
-  const cost = bakeoff ? 0 : (direct ? CREDIT_COSTS.perConcept : CREDIT_COSTS.perConcept * optionCount) * variantMult;
+  // A selected product is a complete brief by itself — free text stays optional.
+  const briefOptional = hasOccasion || Boolean(selectedProduct);
+  const cost = direct ? CREDIT_COSTS.perConcept : CREDIT_COSTS.perConcept * optionCount;
   const insufficient = props.creditBalance < cost;
   const needsModel = onModel && !aiModelId;
   const langLabel = LANGS.find((l) => l.id === language)?.label ?? language;
@@ -175,8 +163,6 @@ export function CreateForm(props: {
     fd.set("language", language);
     fd.set("optionCount", String(optionCount));
     fd.set("aspects", aspects.join(","));
-    fd.set("imageModel", imageModel);
-    if (bakeoff) fd.set("bakeoff", "1");
     startTransition(async () => {
       setError(null);
       const res = await startGenerationRun(fd);
@@ -376,23 +362,6 @@ export function CreateForm(props: {
             </section>
           )}
 
-          {/* Image model — premium renders only; "compare" fans out to both */}
-          <section>
-            <Label className="text-xs uppercase tracking-wide text-muted-foreground">Image model</Label>
-            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-              {IMAGE_MODELS.map((m) => (
-                <ModeCard
-                  key={m.id}
-                  active={imageModel === m.id}
-                  onClick={() => setImageModel(m.id)}
-                  icon={m.id === "compare" ? <Layers className="size-4" /> : <ImageIcon className="size-4" />}
-                  title={m.label}
-                  desc={m.hint}
-                />
-              ))}
-            </div>
-          </section>
-
           {/* Occasion (in-form pick — deep links from home/calendar preselect instead) */}
           {!props.isOccasion && !direct && props.upcomingOccasions.length > 0 && (
             <section>
@@ -433,7 +402,7 @@ export function CreateForm(props: {
           <section>
             <div className="flex items-center justify-between">
               <Label htmlFor="brief" className="text-xs uppercase tracking-wide text-muted-foreground">
-                {direct ? "Describe the exact scene *" : hasOccasion ? "Anything specific? (optional)" : "Describe what you want *"}
+                {direct ? "Describe the exact scene *" : briefOptional ? "Anything specific? (optional)" : "Describe what you want *"}
               </Label>
               <button
                 type="button"
@@ -455,7 +424,7 @@ export function CreateForm(props: {
               placeholder={
                 direct
                   ? "e.g. The pack on a marble counter beside a steaming plate of pooris, soft window light, marigold petals"
-                  : hasOccasion
+                  : briefOptional
                     ? "e.g. Highlight 20% off, focus on the family pack"
                     : "e.g. A monsoon-sale post, cozy rainy morning, hot pooris, chai on the side"
               }
@@ -520,40 +489,15 @@ export function CreateForm(props: {
             {onModel && <SummaryRow label="Model" value={selectedModel?.name ?? "Not selected"} />}
             {onModel && <SummaryRow label="Output" value={brandingMode === "PLAIN" ? "Plain image" : "Branded campaign"} />}
             {!direct && <SummaryRow label="Language" value={langLabel} />}
-            <SummaryRow label="Image model" value={IMAGE_MODELS.find((m) => m.id === imageModel)?.label ?? imageModel} />
             <SummaryRow label="Formats" value={aspectLabels.join(", ")} />
           </dl>
 
           <Separator />
 
-          {props.isSuperAdmin && (
-            <button
-              type="button"
-              onClick={() => setBakeoff((v) => !v)}
-              className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-xs transition ${
-                bakeoff ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"
-              }`}
-            >
-              <span>
-                <span className="block font-semibold">Model bake-off</span>
-                <span className="text-muted-foreground">
-                  Renders every option on NB2, NB Pro, GPT Image 2 & Seedream — no credits, API cost logged.
-                </span>
-              </span>
-              <span
-                className={`ml-3 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                  bakeoff ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-                }`}
-              >
-                {bakeoff ? "ON" : "OFF"}
-              </span>
-            </button>
-          )}
-
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">Cost</span>
             <span className="text-sm font-semibold">
-              {bakeoff ? "Free (bake-off)" : `${cost} ${cost === 1 ? "credit" : "credits"}`} · Balance: {props.creditBalance}
+              {cost} {cost === 1 ? "credit" : "credits"} · Balance: {props.creditBalance}
             </span>
           </div>
 
@@ -582,15 +526,11 @@ export function CreateForm(props: {
           </Button>
 
           <p className="text-center text-xs text-muted-foreground">
-            {bakeoff
-              ? `Each ${direct ? "render" : "concept"} is generated once per model (4 models) with the identical prompt — compare them side by side on the run page.`
-              : imageModel === "compare"
-                ? `Every ${direct ? "render" : "option"} is generated on BOTH models from the identical prompt — pick your winner side by side. Failed renders are refunded.`
-                : direct
-                  ? "One image from your exact prompt."
-                  : optionCount === 1
-                    ? `One creative concept, ${CREDIT_COSTS.perConcept} credits. Refunded if it fails to render.`
-                    : `${optionCount} distinct concepts at ${CREDIT_COSTS.perConcept} credits each, all saved to your library. Any that fail to render are refunded.`}
+            {direct
+              ? "One image from your exact prompt."
+              : optionCount === 1
+                ? `One creative concept, ${CREDIT_COSTS.perConcept} credits. Refunded if it fails to render.`
+                : `${optionCount} distinct concepts at ${CREDIT_COSTS.perConcept} credits each, all saved to your library. Any that fail to render are refunded.`}
           </p>
         </CardContent>
       </Card>
