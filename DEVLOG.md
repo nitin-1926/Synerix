@@ -67,6 +67,34 @@ New entries go at the **top** of the Log section (reverse chronological).
 
 ## Log
 
+### 2026-07-22 — USD cost removed from the product UI entirely (no super-admin exception); /admin/costs is the only cost surface
+
+- Type: bug (owner escalation — second correction on the same requirement)
+- Scope: src/app/(app)/studio/[runId]/{page,studio-canvas}.tsx, src/app/(app)/library/{page,library-client}.tsx; deployed (vercel --prod + trigger v20260721.2, git untouched)
+
+Reasoning / RCA / research:
+    - Yesterday's fix gated the run-page footer and library USD on isSuperAdmin — but the OWNER is the super-admin, so he still saw "API cost $0.524 · 0.524/creative" on his own run page and read it as "not removed". His actual requirement was absolute: API spend appears ONLY in /admin/costs, never in the product UI, for anyone.
+    - Removed outright: studio-canvas cost prop + footer, run-page cost pass-through (+ orphaned pipeline.cost type widening), library costUSD field/mapping/render. Re-swept with ZERO exclusions (usd|toFixed|api cost|$N|cost across (app)+(marketing)+components): every remaining hit is credits pricing, comments, or marketing prose.
+    - Lesson (why the first fix missed): I translated "visible only to Super Admin" as a role gate; the owner meant surface separation (product UI vs admin console). When the requester IS the privileged role, a role gate changes nothing they can see — prefer removing the surface over gating it, and verify from the requester's own viewpoint.
+    - Deployed via CLI working-tree deploy (no commit — owner hasn't said commit): Vercel prod aliased to www.synerix.in; trigger deploy v20260721.2 also ships yesterday's plain-mode/occasion prompt changes to the prod worker. Note: Vercel warns Node 20 deprecated for builds after 2026-10-01 — project setting should move to 24.x.
+
+Follow-ups deferred:
+    - Owner: commit+push when ready (retroactive-commit-history); bump Vercel project Node version to 24.x before October.
+
+### 2026-07-22 — Product-only briefs allowed, model picker/bake-off UI removed, PLAIN on-model = strict e-commerce listing shots
+
+- Type: feature/bug (owner feedback after first working prod runs)
+- Scope: src/app/actions/generate.ts, src/app/(app)/studio/{create-form,page}.tsx, src/lib/pipeline/{concepts,image-prompt}.ts (+test), src/trigger/generation-run.ts
+
+Reasoning / RCA / research:
+    - (1) "Asking me to select an occasion": guided runs required occasion OR free text — but a selected product is already a complete brief (assembleOccasionBrief emits brand+product blocks with festival/custom both null-safe). Validation now blocks only when product AND occasion AND brief are ALL absent; the form's brief label/placeholder go "(optional)" whenever a product is selected (briefOptional = hasOccasion || product).
+    - (2) Image-model picker (NB Pro / GPT Image 2 / compare) + super-admin bake-off toggle removed from the create form — owner ruled them dev-testing tools, not product. UI-only removal: the server keeps imageModelPref (schema default "nb-pro" applies when the field isn't posted), variantsForPref, bake-off handling and the run-page compare display, so legacy compare/bake-off runs still render and the machinery can return behind an admin surface later. isSuperAdmin prop dropped from CreateForm (bake-off button was its only consumer).
+    - (3) "Selected plain image but got extra models on a rooftop": PLAIN only affected the OVERLAY stage (skip logo/text) — concepts still authored campaign scenes. Owner intent for apparel: e-commerce product-page shots varying ONLY pose. Fixed at both layers: generateConcepts gains onModelPlain (concepts must be seamless-studio listing shots differing only by pose/angle/crop/backdrop tone; occasion may flavour copy, never the photograph) and buildOnModelPrompt gains plain (STRICT E-COMMERCE SHOWCASE tail appended AFTER the scene body, explicitly overriding it, so even a stray concept can't ship a location scene). Also hardened ON_MODEL_FRAMING for ALL on-model runs: "exactly ONE person in the entire frame" (the extra-models failure). Direct+on-model inherits via generatePlate.
+    - Verified live (zero-debit run c2d3b8b3, dev worker, prod DB): ON_MODEL + PLAIN + NO occasion + NO brief → COMPLETE; concept self-named "Bisque On-Model Listing"; final image inspected: one model, exact bisque tunic, seamless studio backdrop, no props/people/text. tsc 0, eslint 0, 58/58 vitest (2 new prompt tests).
+
+Follow-ups deferred:
+    - Prompt changes live in the WORKER bundle — prod needs `npx trigger.dev@4.5.0 deploy` (+ Vercel deploy for form/action) when the owner ships; not deployed this session (no instruction).
+
 ### 2026-07-21 — Deployed runs die on "Node.js 21 detected without native WebSocket support": worker runtime → node-22
 
 - Type: bug
