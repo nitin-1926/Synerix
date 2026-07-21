@@ -45,8 +45,10 @@ export async function startGenerationRun(formData: FormData) {
 
   if (directMode) {
     if (!d.customBrief || d.customBrief.length < 4) return { error: "Write a prompt describing the creative" };
-  } else if (!d.occasionId && !d.entryId && !d.customBrief) {
-    return { error: "Pick an occasion or describe what you want" };
+  } else if (!d.occasionId && !d.entryId && !d.customBrief && !d.productId) {
+    // A selected product is a complete brief on its own (brand + product blocks
+    // in assembleOccasionBrief) — occasion and free text are both optional.
+    return { error: "Pick a product, an occasion, or describe what you want" };
   }
 
   const requestedAspects = [...new Set(d.aspects.split(",").map((a) => a.trim()))].filter((a) =>
