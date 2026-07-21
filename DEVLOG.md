@@ -67,6 +67,35 @@ New entries go at the **top** of the Log section (reverse chronological).
 
 ## Log
 
+### 2026-07-21 — Deployed runs die on "Node.js 21 detected without native WebSocket support": worker runtime → node-22
+
+- Type: bug
+- Scope: trigger.config.ts (runtime), deployed as Trigger.dev prod version 20260721.1
+
+Reasoning / RCA / research:
+    - After the TRIGGER_SECRET_KEY fix let runs finally ENQUEUE in prod, the first run to actually execute failed instantly: "Node.js 21 detected without native WebSocket support … install 'ws' … RealtimeClient. Your credits were refunded." (screenshot, ws "Blueman", run d65e183a).
+    - Not our code: `grep` for subscribeToRun/RealtimeClient/streams/triggerAndWait across src/trigger + src/lib returns NOTHING. The RealtimeClient is the Trigger.dev worker's OWN coordination client (heartbeats/cancellation/metadata), which the SDK opens over a WebSocket on every run. Node < 22 has no global WebSocket, so the worker dies before our run() body executes; the task's failure path refunds credits (why the message says "refunded").
+    - Decisive tell: the error names "Node.js 21", not 20. Vercel runs the app on Node 20; Trigger's worker on `runtime: "node"` resolves to Node 21. So the failure is the deployed WORKER, not the web app — which also explains why it never reproduced locally (host + `trigger.dev dev` run on Node 22.22, which HAS native WebSocket) nor in the earlier scripted verification runs (same Node-22 host). Prod was the first Node-21 execution.
+    - Fix: `runtime: "node-22"` (valid values: node | node-22 | bun) → native global WebSocket present. The error's alternative ("install ws + pass transport") is only reachable when YOU construct RealtimeClient; the worker's internal client takes no injected transport, so the runtime bump is the only real fix. Deployed via `npx trigger.dev@4.5.0 deploy` (CLI pinned to the installed 4.5.0 SDK — @latest 4.5.6 aborts on version mismatch): "Version 20260721.1 deployed with 6 detected tasks".
+
+Follow-ups deferred:
+    - None. node-22 is the current recommended default; revisit only if a task needs a newer LTS.
+
+### 2026-07-21 — Prod "Generation service is unavailable" RCA: preview-scoped Trigger key on Vercel (config, not code) + workspace-admin label disambiguation
+
+- Type: bug (config) + docs-in-UI
+- Scope: src/app/(app)/settings/settings-client.tsx (label only); Vercel project `synerix` env (user action)
+
+Reasoning / RCA / research:
+    - User screenshot (2026-07-20, ws "Synerix Apparel", ON_MODEL + NB Pro): "Generation service is unavailable right now — your credits were not spent." That string fires ONLY on the tasks.trigger enqueue catch in src/app/actions/generate.ts:200 — the run never reached the queue, so no image model/fallback was ever involved.
+    - DB confirmed 3 FAILED runs 15:07–15:17 UTC, all `Queue failed: No matching branch env`. Trigger.dev v4 docs: that error means the SDK authenticated with a PREVIEW-scoped secret key (`tr_preview_…`) whose branch has no deployed preview env. Vercel `synerix` has a single TRIGGER_SECRET_KEY shared across Preview+Production (created ~2026-07-13) — production is running on a preview key. Fix is config: set the `tr_prod_` key (Trigger dashboard → API keys → prod) on Vercel Production and redeploy. Not fixable in code; refund path worked as designed (credits untouched).
+    - Provider-fallback requirement re-verified, already implemented in the 2026-07-16 chain rework: single model picks are soft-prefer with the full quality-first cascade behind them (NB Pro → GPT Image 2 → NB 2 → Seedream, resolveSceneChain + 7 tests); compare/bake-off stay hard-forced deliberately (comparison integrity, failed slots refund). No code change needed.
+    - Correction (same session, user pointed at in-app surfaces): the first audit only swept the admin console — two USD leaks existed INSIDE the workspace UI: the run page footer ("API cost $…", studio-canvas.tsx via studio/[runId]/page.tsx) and the library run rows ("$X.XX", library-client.tsx via library/page.tsx). Both now gated on isSuperAdmin at the SERVER component (the number never reaches the client payload for customers); credits displays untouched (that's customer-facing pricing). Lesson: "cost visible only to super admin" means auditing every render of pipeline.cost, not just the pages named "costs".
+    - Cost-visibility audit: all cost UI lives only under src/app/(admin)/ whose layout calls requireSuperAdmin() (email allowlist via isSuperAdminEmail — never derived from MembershipRole); all /api/admin routes + admin actions individually guarded. Workspace ADMIN role grants member management only (MANAGER_ROLES in actions/workspace.ts); OWNER/super-admin never assignable via invite (parseRole whitelist). Separation was already correct — only ambiguity was the invite dropdown label "Admin", renamed to "Workspace admin" with a comment pinning the distinction.
+
+Follow-ups deferred:
+    - User: swap Vercel Production TRIGGER_SECRET_KEY to the tr_prod_ key + redeploy; optionally give Preview its own tr_preview key with TRIGGER_PREVIEW_BRANCH.
+
 ### 2026-07-16 — Visual audit of every app page (live browser) + grid/whitespace/image-expiry fixes
 
 - Type: bug
