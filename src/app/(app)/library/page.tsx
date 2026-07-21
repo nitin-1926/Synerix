@@ -71,7 +71,10 @@ export default async function LibraryPage({
   });
 
   const runItems = runs.map((r) => {
-    const cost = (r.pipeline as { cost?: { totalUSD?: number } } | null)?.cost?.totalUSD;
+    // Real API spend is internal telemetry — super-admin eyes only.
+    const cost = auth.isSuperAdmin
+      ? (r.pipeline as { cost?: { totalUSD?: number } } | null)?.cost?.totalUSD
+      : undefined;
     return {
       id: r.id,
       title:

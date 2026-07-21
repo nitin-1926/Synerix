@@ -48,8 +48,11 @@ function inviteExpiryLabel(expiresAt: string | null): string {
   return days <= 1 ? "Expires within a day" : `Expires in ${days} days`;
 }
 
+// Workspace-scoped roles only. "Workspace admin" manages members of THIS
+// workspace — it is unrelated to the platform super-admin (email-allowlisted,
+// admin console + cost dashboards), which is never assignable here.
 const ASSIGNABLE_ROLES = [
-  { value: "ADMIN", label: "Admin" },
+  { value: "ADMIN", label: "Workspace admin" },
   { value: "EDITOR", label: "Editor" },
   { value: "VIEWER", label: "Viewer" },
 ];

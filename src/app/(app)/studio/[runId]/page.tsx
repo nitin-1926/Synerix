@@ -158,7 +158,13 @@ export default async function RunPage({
         modelName: run.aiModel?.name ?? null,
         modelUrl: modelKey ? (assetThumbs[modelKey] ?? null) : null,
       }}
-      cost={pipeline.cost ? { totalUSD: pipeline.cost.totalUSD, perCreativeUSD: pipeline.cost.perCreativeUSD } : null}
+      cost={
+        // Real API spend is internal telemetry — super-admin eyes only.
+        // Customers see credits, never USD.
+        authCtx.isSuperAdmin && pipeline.cost
+          ? { totalUSD: pipeline.cost.totalUSD, perCreativeUSD: pipeline.cost.perCreativeUSD }
+          : null
+      }
     />
   );
 }
