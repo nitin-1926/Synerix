@@ -65,9 +65,7 @@ export default async function RunPage({
     run.status = nextStatus;
   }
 
-  const pipeline = (run.pipeline ?? {}) as PipelineState & {
-    cost?: { totalUSD: number; imageUSD: number; llmUSD: number; imageCount: number; perCreativeUSD: number | null };
-  };
+  const pipeline = (run.pipeline ?? {}) as PipelineState;
   const isTerminal = TERMINAL.includes(run.status);
 
   // Realtime token (read-only, this run) for live progress.
@@ -158,13 +156,6 @@ export default async function RunPage({
         modelName: run.aiModel?.name ?? null,
         modelUrl: modelKey ? (assetThumbs[modelKey] ?? null) : null,
       }}
-      cost={
-        // Real API spend is internal telemetry — super-admin eyes only.
-        // Customers see credits, never USD.
-        authCtx.isSuperAdmin && pipeline.cost
-          ? { totalUSD: pipeline.cost.totalUSD, perCreativeUSD: pipeline.cost.perCreativeUSD }
-          : null
-      }
     />
   );
 }

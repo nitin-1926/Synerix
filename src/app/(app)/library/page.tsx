@@ -71,10 +71,6 @@ export default async function LibraryPage({
   });
 
   const runItems = runs.map((r) => {
-    // Real API spend is internal telemetry — super-admin eyes only.
-    const cost = auth.isSuperAdmin
-      ? (r.pipeline as { cost?: { totalUSD?: number } } | null)?.cost?.totalUSD
-      : undefined;
     return {
       id: r.id,
       title:
@@ -90,7 +86,6 @@ export default async function LibraryPage({
         year: "numeric",
       }),
       creditsDebited: Number(r.creditsDebited),
-      costUSD: typeof cost === "number" ? cost : null,
       creativeCount: r._count.creatives,
     };
   });

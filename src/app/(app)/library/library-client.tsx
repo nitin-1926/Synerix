@@ -25,7 +25,6 @@ type RunItem = {
   status: string;
   when: string;
   creditsDebited: number;
-  costUSD: number | null;
   creativeCount: number;
 };
 
@@ -251,7 +250,6 @@ export function LibraryClient(props: {
                           {r.creativeCount} creative{r.creativeCount === 1 ? "" : "s"}
                         </span>
                         <span>{r.creditsDebited} credits</span>
-                        {r.costUSD !== null && <span>${r.costUSD.toFixed(2)}</span>}
                         <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
                       </div>
                     </CardContent>

@@ -48,7 +48,6 @@ export function StudioCanvas(props: {
   selectedId: string | null;
   editorProps: EditorProps | null;
   assets: Assets;
-  cost: { totalUSD: number; perCreativeUSD: number | null } | null;
 }) {
   const router = useRouter();
 
@@ -188,12 +187,6 @@ export function StudioCanvas(props: {
           )}
         </div>
 
-        {props.isTerminal && props.cost && (
-          <p className="px-1 text-[10px] text-muted-foreground">
-            API cost ${props.cost.totalUSD.toFixed(3)}
-            {props.cost.perCreativeUSD != null ? ` · ${props.cost.perCreativeUSD.toFixed(3)}/creative` : ""}
-          </p>
-        )}
       </aside>
 
       {/* CENTER + RIGHT — the selected creative, or the live generating view */}
