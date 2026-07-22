@@ -1,0 +1,32 @@
+name: CI (lint, unit, types)
+
+on:
+  pull_request:
+    branches: [staging, main]
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    env:
+      # prisma.config.ts resolves DIRECT_URL at load time; `prisma generate`
+      # (postinstall) never connects, so a placeholder satisfies it in CI.
+      DIRECT_URL: "postgresql://placeholder:placeholder@localhost:5432/placeholder"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Unit tests
+        run: npm test

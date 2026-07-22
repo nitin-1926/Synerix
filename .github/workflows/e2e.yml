@@ -1,0 +1,87 @@
+name: E2E (real generation)
+
+# Paid pipeline verification: spins up next dev + a Trigger dev worker inside
+# the runner and generates one real creative per kind (in-scene campaign +
+# on-model plain) in the "E2E Tests" workspace, on the cheap-model lineup.
+# Runs on feature PRs into staging (the owner pushes small fixes straight to
+# main, skipping this cost — see repo branch rules) and on demand.
+on:
+  pull_request:
+    branches: [staging]
+  workflow_dispatch:
+
+# One generation suite at a time — parallel suites would race the shared
+# Trigger dev environment and the E2E workspace credits.
+concurrency:
+  group: e2e-real-generation
+  cancel-in-progress: false
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+      AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+      AUTH_URL: http://localhost:6969
+      AUTH_TRUST_HOST: "1"
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      RUNWARE_API_KEY: ${{ secrets.RUNWARE_API_KEY }}
+      # Dev-env key: generations enqueue to the Trigger DEV environment and are
+      # executed by the worker started below, so the cheap-model env applies.
+      TRIGGER_SECRET_KEY: ${{ secrets.TRIGGER_DEV_SECRET_KEY }}
+      TRIGGER_ACCESS_TOKEN: ${{ secrets.TRIGGER_ACCESS_TOKEN }}
+      SUPER_ADMIN_EMAIL: ${{ secrets.SUPER_ADMIN_EMAIL }}
+      DEV_AUTH_BYPASS: "1"
+      E2E_REAL_GENERATION: "1"
+      # Cheap-model lineup: full pipeline shape, minimum spend. Slots documented
+      # in src/lib/ai/models.ts; image hero slot pinned to Nano Banana 2 and the
+      # provider forced to gemini (no premium fallback chain).
+      MODEL_CONCEPTS: claude-haiku-4-5-20251001
+      MODEL_BRIEF_QA: claude-haiku-4-5-20251001
+      MODEL_RESEARCH: claude-haiku-4-5-20251001
+      GEMINI_IMAGE_MODEL: gemini-3.1-flash-image
+      IMAGE_PROVIDER: gemini
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Start Trigger dev worker
+        # Pinned to the exact CLI version in package.json (mismatch aborts).
+        # Headless auth via TRIGGER_ACCESS_TOKEN. The worker keeps running for
+        # the whole job; runs enqueued before it connects wait in the dev queue.
+        run: |
+          npx trigger.dev@4.5.0 dev --log-level info > trigger-dev.log 2>&1 &
+          echo $! > trigger-dev.pid
+          sleep 20
+          grep -qi "error" trigger-dev.log && cat trigger-dev.log || true
+
+      - name: Run e2e suite
+        run: npx playwright test
+
+      - name: Trigger worker log (on failure)
+        if: failure()
+        run: tail -100 trigger-dev.log || true
+
+      - name: Upload Playwright traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: test-results/
+          retention-days: 7
