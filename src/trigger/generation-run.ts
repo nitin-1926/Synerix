@@ -1,7 +1,7 @@
 import { task, tasks, logger, metadata } from "@trigger.dev/sdk";
 import { prisma } from "@/lib/db";
 import { CREDIT_COSTS, LIMITS } from "@/lib/ai/models";
-import { generateScene, variantsForPref, BAKEOFF_VARIANTS, type BakeoffVariant, type SceneAspect } from "@/lib/image/provider";
+import { generateScene, variantsForPref, resolveWorkspaceImageModel, BAKEOFF_VARIANTS, type BakeoffVariant, type SceneAspect } from "@/lib/image/provider";
 import { downloadFromStorage, storageKeys, uploadBuffer } from "@/lib/storage";
 import { reconcileRunRefund } from "@/lib/credits";
 import { assembleOccasionBrief } from "@/lib/pipeline/brief";
@@ -88,15 +88,23 @@ export const generationRun = task({
     }
     const tracker = new CostTracker();
 
-    // Shared assets
+    // Shared assets. Prefer the cached background-removed cutout (clean white
+    // packshot, made once at upload by product-cutout) over the raw photo —
+    // cleaner reference, no per-run cleanup cost.
     const productImage = run.product?.images[0] ?? null;
-    const refBuffer = productImage ? await downloadFromStorage(productImage.storageKey) : null;
+    const refBuffer = productImage
+      ? await downloadFromStorage(productImage.cutoutKey ?? productImage.storageKey)
+      : null;
+    const refMime = productImage?.cutoutKey ? "image/png" : (productImage?.mimeType ?? "image/png");
     // Additional product angles (multi-reference fidelity) — downloaded in parallel.
     const extraRefs: Array<{ buffer: Buffer; mime: string }> = (
       await Promise.all(
         (run.product?.images.slice(1) ?? []).map(async (img) => {
           try {
-            return { buffer: await downloadFromStorage(img.storageKey), mime: img.mimeType };
+            return {
+              buffer: await downloadFromStorage(img.cutoutKey ?? img.storageKey),
+              mime: img.cutoutKey ? "image/png" : img.mimeType,
+            };
           } catch (e) {
             logger.warn("extra product ref download failed", { error: (e as Error).message });
             return null;
@@ -120,12 +128,12 @@ export const generationRun = task({
     // accounts get editorial campaign direction, everyone else gets the clean
     // garment-forward showcase. Fetched once here so BOTH direct and guided
     // runs inherit it (the brief-level editorial paragraph below reuses it).
-    const workspace = await prisma.workspace.findUnique({ where: { id: run.workspaceId }, select: { type: true } });
+    const workspace = await prisma.workspace.findUnique({ where: { id: run.workspaceId }, select: { type: true, imageModel: true } });
     const onModelDirection: OnModelDirection =
       workspace?.type === "FASHION_EDITORIAL" ? "editorial" : "catalog";
 
     const ctx: ConceptCtx = {
-      runId, run, refBuffer, extraRefs, logoBuffer, logoAssetKey: logoAsset?.storageKey,
+      runId, run, refBuffer, refMime, extraRefs, logoBuffer, logoAssetKey: logoAsset?.storageKey,
       aspects, masterAspect, language, intel, studioComposite, tracker,
       onModel, modelBuffer, modelMime: run.aiModel?.mimeType ?? "image/png",
       onModelDirection,
@@ -133,11 +141,15 @@ export const generationRun = task({
     };
 
     // Render variants: bake-off = the full admin lineup (forced, no fallback);
-    // otherwise the user's model pick — single (soft, fallback kept) or
-    // "compare" (both premium models, forced, double credits already debited).
+    // else the workspace image-model setting (super-admin-chosen, soft-prefer);
+    // else the legacy per-run pref (single soft pick or "compare"); else the
+    // default cascade.
+    const wsModelVariant = resolveWorkspaceImageModel(workspace?.imageModel);
     const variants: Array<(BakeoffVariant & { soft?: boolean }) | undefined> = run.bakeoff
       ? BAKEOFF_VARIANTS
-      : variantsForPref(run.imageModelPref);
+      : wsModelVariant
+        ? [wsModelVariant]
+        : variantsForPref(run.imageModelPref);
     const ctxFor = (v: (BakeoffVariant & { soft?: boolean }) | undefined): ConceptCtx =>
       v ? { ...ctx, forced: v, variantTag: v.key ? `-${v.key}` : "" } : ctx;
 
@@ -198,9 +210,14 @@ export const generationRun = task({
       // ---- Stage 2: evidence-grounded senior-CD concept briefs ----
       await setStatus(runId, "CONCEPTING");
       const brandPalette = [run.brand.primaryColorHex, ...run.brand.accentColorsHex].filter((h): h is string => Boolean(h));
+      // Multi-pose on-model: ONE concept (same model + garment) rendered across
+      // the selected poses — the poses are the variation axis, not the concepts.
+      // Every other run generates one concept per requested option.
+      const multiPose = onModel && run.modelPoses.length > 0;
+      const conceptTarget = multiPose ? 1 : Math.min(run.conceptCount, LIMITS.maxConceptsPerRun);
       let concepts = await generateConcepts(
         occasionBrief,
-        Math.min(run.conceptCount, LIMITS.maxConceptsPerRun),
+        conceptTarget,
         tracker,
         brandPalette.length ? brandPalette : undefined,
         intelToEvidenceBlock(brandIntel),
@@ -231,11 +248,17 @@ export const generationRun = task({
         }).catch(() => {});
       }
 
-      // One work item per concept — times the variant lineup on bake-off runs.
-      // Status ids stay `idx` for normal runs, `idx-variantKey` for bake-off.
-      const queue = concepts.flatMap((c, i) =>
-        variants.map((v) => ({ concept: c, idx: i, variant: v })),
-      );
+      // Work items. Normal runs: one per concept, times the variant lineup on
+      // bake-off runs. Multi-pose on-model: one per selected pose (all sharing
+      // the single concept), so `idx` is the pose index and each carries its
+      // pose override for buildOnModelPrompt.
+      const queue = multiPose
+        ? run.modelPoses.flatMap((pose, i) =>
+            variants.map((v) => ({ concept: concepts[0], idx: i, variant: v, pose })),
+          )
+        : concepts.flatMap((c, i) =>
+            variants.map((v) => ({ concept: c, idx: i, variant: v, pose: undefined as string | undefined })),
+          );
       await updatePipeline(runId, (p) => {
         p.concepts = concepts;
         p.conceptStatus = Object.fromEntries(
@@ -248,10 +271,10 @@ export const generationRun = task({
       await setStatus(runId, "RENDERING");
       const workers = Array.from({ length: Math.min(LIMITS.maxConcurrentConcepts, queue.length) }, async () => {
         while (queue.length) {
-          const { concept, idx, variant } = queue.shift()!;
+          const { concept, idx, variant, pose } = queue.shift()!;
           const cid = `${idx}${variant ? `-${variant.key}` : ""}`;
           try {
-            await processConcept(ctxFor(variant), concept, idx);
+            await processConcept({ ...ctxFor(variant), poseOverride: pose }, concept, idx);
             succeeded += 1;
             await updatePipeline(runId, (p) => { p.conceptStatus![cid] = "done"; });
           } catch (e) {
@@ -351,6 +374,8 @@ interface ConceptCtx {
   runId: string;
   run: RunWithRels;
   refBuffer: Buffer | null;
+  /** Mime of refBuffer (PNG when it's the cached cutout, else the original photo's). */
+  refMime: string;
   /** Additional product angles (multi-reference fidelity), excluding refBuffer. */
   extraRefs: Array<{ buffer: Buffer; mime: string }>;
   logoBuffer?: Buffer;
@@ -371,6 +396,8 @@ interface ConceptCtx {
   forced?: BakeoffVariant & { soft?: boolean };
   /** Bake-off: suffix keeping storage keys / status ids unique per variant. */
   variantTag: string;
+  /** Multi-pose on-model: the pose for THIS work item (overrides run.modelPose). */
+  poseOverride?: string;
 }
 
 /** How the headline got onto this creative. Always overlay = canvas-composited
@@ -401,7 +428,7 @@ interface PlateResult {
 async function generatePlate(ctx: ConceptCtx, concept: CreativeConcept, aspect: SceneAspect): Promise<PlateResult> {
   // Variant pin: bake-off forces the provider (no fallback — a failed variant
   // is a data point); a user model pick prefers it but keeps the chain (soft).
-  const model = { provider: ctx.forced?.provider, tier: ctx.forced?.tier, softPrefer: ctx.forced?.soft };
+  const model = { provider: ctx.forced?.provider, tier: ctx.forced?.tier, softPrefer: ctx.forced?.soft, runwareModel: ctx.forced?.runwareModel };
   if (ctx.onModel) {
     // ON_MODEL: fuse the AI model (image 1) + the real garment (image 2).
     // Missing references are a hard error — silently falling through to a
@@ -412,13 +439,13 @@ async function generatePlate(ctx: ConceptCtx, concept: CreativeConcept, aspect: 
     }
     const refs = [
       { buffer: ctx.modelBuffer, mime: ctx.modelMime },
-      { buffer: ctx.refBuffer, mime: ctx.run.product.images[0].mimeType },
+      { buffer: ctx.refBuffer, mime: ctx.refMime },
     ];
     const prompt = buildOnModelPrompt({
       concept,
       aspect,
       garmentPrompt: ctx.run.product?.dissectionPrompt,
-      pose: ctx.run.modelPose,
+      pose: ctx.poseOverride ?? ctx.run.modelPose,
       direction: ctx.onModelDirection,
       plain: ctx.run.brandingMode === "PLAIN",
     });
@@ -440,7 +467,7 @@ async function generatePlate(ctx: ConceptCtx, concept: CreativeConcept, aspect: 
     // and pack-fidelity QA below verifies the label against the reference.
     const hasProduct = Boolean(ctx.refBuffer);
     const refs = hasProduct && ctx.run.product?.images[0]
-      ? [{ buffer: ctx.refBuffer!, mime: ctx.run.product.images[0].mimeType }, ...ctx.extraRefs]
+      ? [{ buffer: ctx.refBuffer!, mime: ctx.refMime }, ...ctx.extraRefs]
       : undefined;
     const prompt = buildScenePassPrompt({
       concept,
@@ -476,7 +503,7 @@ async function ensurePackFidelity(
     prompt: string;
     aspect: SceneAspect;
     refs: Array<{ buffer: Buffer; mime: string }>;
-    model: { provider?: BakeoffVariant["provider"]; tier?: BakeoffVariant["tier"]; softPrefer?: boolean };
+    model: { provider?: BakeoffVariant["provider"]; tier?: BakeoffVariant["tier"]; softPrefer?: boolean; runwareModel?: string };
     stage: string;
   },
 ): Promise<{ gen: Awaited<ReturnType<typeof generateScene>>; fidelityQa: NonNullable<PlateResult["fidelityQa"]> }> {
@@ -493,6 +520,7 @@ async function ensurePackFidelity(
       provider: opts.model.provider,
       tier: opts.model.tier,
       softPrefer: opts.model.softPrefer,
+      runwareModel: opts.model.runwareModel,
     });
     ctx.tracker.addImage(gen.costModel, opts.stage);
     verdict = await checkPackFidelity({ render: gen.buffer, reference: ctx.refBuffer!, tracker: ctx.tracker });
@@ -512,7 +540,7 @@ async function ensureOnModelFidelity(
     prompt: string;
     aspect: SceneAspect;
     refs: Array<{ buffer: Buffer; mime: string }>;
-    model: { provider?: BakeoffVariant["provider"]; tier?: BakeoffVariant["tier"]; softPrefer?: boolean };
+    model: { provider?: BakeoffVariant["provider"]; tier?: BakeoffVariant["tier"]; softPrefer?: boolean; runwareModel?: string };
   },
 ): Promise<{ gen: Awaited<ReturnType<typeof generateScene>>; fidelityQa: NonNullable<PlateResult["fidelityQa"]> }> {
   const [modelRef, garmentRef] = opts.refs;
@@ -531,6 +559,7 @@ async function ensureOnModelFidelity(
       provider: opts.model.provider,
       tier: opts.model.tier,
       softPrefer: opts.model.softPrefer,
+      runwareModel: opts.model.runwareModel,
     });
     ctx.tracker.addImage(gen.costModel, "on-model");
     verdict = await check(gen.buffer);
@@ -570,6 +599,9 @@ async function processConcept(ctx: ConceptCtx, concept: CreativeConcept, idx: nu
       concept: {
         ...concept,
         typographyMode,
+        // The pose this creative was rendered with (on-model), so an editor
+        // aspect re-render reproduces the SAME pose natively.
+        ...(ctx.onModel ? { pose: ctx.poseOverride ?? ctx.run.modelPose ?? undefined } : {}),
         // Per-aspect plate keys so the editor re-composes each aspect from its
         // own native plate (scenePlateKey kept = the master plate for legacy).
         aspectPlateKeys,
@@ -629,14 +661,14 @@ async function processDirect(ctx: ConceptCtx): Promise<void> {
       });
       let gen = await generateScene({
         prompt, aspect, references: refs,
-        provider: ctx.forced?.provider, tier: ctx.forced?.tier,
+        provider: ctx.forced?.provider, tier: ctx.forced?.tier, softPrefer: ctx.forced?.soft, runwareModel: ctx.forced?.runwareModel,
       });
       ctx.tracker.addImage(gen.costModel, "direct");
       let fidelityQa: PlateResult["fidelityQa"];
       if (refs) {
         ({ gen, fidelityQa } = await ensurePackFidelity(ctx, {
           gen, prompt, aspect, refs,
-          model: { provider: ctx.forced?.provider, tier: ctx.forced?.tier },
+          model: { provider: ctx.forced?.provider, tier: ctx.forced?.tier, softPrefer: ctx.forced?.soft, runwareModel: ctx.forced?.runwareModel },
           stage: "direct",
         }));
       }
