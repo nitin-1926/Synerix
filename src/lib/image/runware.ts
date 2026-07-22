@@ -15,9 +15,19 @@ export const IMAGE_MODELS: Record<string, string> = {
   nano_banana_pro: process.env.RUNWARE_MODEL_NANO_BANANA_PRO ?? "google:4@2",
   seedream_v4: process.env.RUNWARE_MODEL_SEEDREAM_V4 ?? "bytedance:5@0",
   seedream_v5_lite: process.env.RUNWARE_MODEL_SEEDREAM_V5_LITE ?? "bytedance:seedream@5.0-lite",
+  // Cheaper Chinese models (Alibaba) for cost A/B on simpler use cases; both
+  // accept reference images via inputs.referenceImages (garment/product fidelity).
+  qwen_image: process.env.RUNWARE_MODEL_QWEN_IMAGE ?? "runware:108@1",
+  wan_2_7: process.env.RUNWARE_MODEL_WAN ?? "alibaba:wan@2.7-image",
 };
 
-const NO_NEGATIVE_PROMPT = new Set(["bytedance:5@0", "bytedance:seedream@5.0-lite", "google:4@2"]);
+const NO_NEGATIVE_PROMPT = new Set([
+  "bytedance:5@0",
+  "bytedance:seedream@5.0-lite",
+  "google:4@2",
+  "runware:108@1",
+  "alibaba:wan@2.7-image",
+]);
 
 const DIM_TABLE: Record<string, Record<QualityTier, Record<Aspect, { width: number; height: number }>>> = {
   "bytedance:5@0": {
@@ -136,6 +146,56 @@ export async function generateImage(p: GenerateImageParams): Promise<GenerateIma
   );
 
   return { imageUrl, modelId, taskUUID };
+}
+
+const BG_REMOVAL_MODEL = process.env.RUNWARE_MODEL_BG_REMOVAL ?? "runware:109@1"; // RemBG 1.4
+
+export interface RemoveBackgroundResult {
+  imageUrl: string;
+  /** USD cost reported by Runware (includeCost). */
+  cost: number;
+  modelId: string;
+}
+
+/** Remove the background from an image (transparent PNG result). Input is a
+ * data URI or https URL. Callers flatten/compose the alpha as they need. */
+export async function removeBackground(image: string): Promise<RemoveBackgroundResult> {
+  const apiKey = process.env.RUNWARE_API_KEY;
+  if (!apiKey) throw new Error("RUNWARE_API_KEY missing");
+  const taskUUID = crypto.randomUUID();
+
+  const task = {
+    taskType: "removeBackground",
+    taskUUID,
+    model: BG_REMOVAL_MODEL,
+    outputType: "URL",
+    outputFormat: "PNG",
+    includeCost: true,
+    inputs: { image },
+  };
+
+  const result = await withRetry(
+    async () => {
+      const r = await fetch(RUNWARE_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify([task]),
+      });
+      const text = await r.text();
+      if (!r.ok) throw new Error(`runware ${r.status}: ${text.slice(0, 500)}`);
+      const body = JSON.parse(text) as {
+        data?: Array<{ taskUUID: string; imageURL?: string; cost?: number }>;
+        errors?: Array<{ message: string }>;
+      };
+      if (body.errors?.length) throw new Error(`runware error: ${body.errors.map((e) => e.message).join("; ")}`);
+      const item = body.data?.find((d) => d.taskUUID === taskUUID) ?? body.data?.[0];
+      if (!item?.imageURL) throw new Error("runware removeBackground response missing imageURL");
+      return { imageUrl: item.imageURL, cost: item.cost ?? 0 };
+    },
+    { label: `runware:bg-removal`, attempts: 4, baseDelayMs: 1500 },
+  );
+
+  return { ...result, modelId: BG_REMOVAL_MODEL };
 }
 
 export async function downloadImage(url: string): Promise<Buffer> {
