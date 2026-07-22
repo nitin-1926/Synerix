@@ -9,6 +9,7 @@ import { requireAuth } from "@/lib/auth";
 import { ensureBrand } from "@/lib/ensure-brand";
 import { storageKeys, uploadBuffer } from "@/lib/storage";
 import type { productDissect } from "@/trigger/product-dissect";
+import type { productCutout } from "@/trigger/product-cutout";
 
 const MAX_IMAGES = 5;
 const MAX_BYTES = 8 * 1024 * 1024;
@@ -60,6 +61,7 @@ export async function createProduct(formData: FormData) {
   }
 
   await tasks.trigger<typeof productDissect>("product-dissect", { productId: product.id });
+  await tasks.trigger<typeof productCutout>("product-cutout", { productId: product.id });
   revalidatePath("/products");
   return { ok: true, productId: product.id };
 }
@@ -95,6 +97,7 @@ export async function createProductInline(formData: FormData) {
   });
 
   await tasks.trigger<typeof productDissect>("product-dissect", { productId: product.id });
+  await tasks.trigger<typeof productCutout>("product-cutout", { productId: product.id });
   revalidatePath("/products");
   return {
     product: {
@@ -135,6 +138,7 @@ export async function addProductImages(productId: string, formData: FormData) {
     });
   }
 
+  await tasks.trigger<typeof productCutout>("product-cutout", { productId: product.id });
   revalidatePath(`/products/${product.id}`);
   revalidatePath("/products");
   return { ok: true };

@@ -3,7 +3,7 @@ import type { CostSummary } from "./cost";
 import type { Prisma } from "@/generated/prisma/client";
 
 /** Where a batch of API cost came from. */
-export type CostSource = "generation" | "dissect" | "brand-research" | "enhance" | "editor";
+export type CostSource = "generation" | "dissect" | "brand-research" | "enhance" | "editor" | "cutout";
 
 /** Coarse provider label derived from the model/cost id (for grouping). */
 function providerOf(model: string): string {

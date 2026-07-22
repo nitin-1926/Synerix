@@ -26,21 +26,19 @@ async function startCreativeEdit(
   payload: CreativeEditPayload,
   note: string,
 ): Promise<PendingEdit | { error: string }> {
-  // render_aspect is a FREE recomposite: no debit here, and neither this
-  // function nor the task's catchError may refund for it.
-  const paid = payload.kind !== "render_aspect";
-  if (paid) {
-    try {
-      await debitCredits({
-        workspaceId: payload.workspaceId,
-        amount: CREDIT_COSTS.regenInstruction,
-        reason: "REGEN_INSTRUCTION",
-        note,
-      });
-    } catch (e) {
-      if (e instanceof InsufficientCreditsError) return { error: "Not enough credits" };
-      throw e;
-    }
+  // Every edit kind is a paid image-model call (render_aspect now generates a
+  // native plate for the new ratio, no longer a free crop). Debit up front so
+  // InsufficientCredits surfaces synchronously; refunds happen on failure.
+  try {
+    await debitCredits({
+      workspaceId: payload.workspaceId,
+      amount: CREDIT_COSTS.regenInstruction,
+      reason: "REGEN_INSTRUCTION",
+      note,
+    });
+  } catch (e) {
+    if (e instanceof InsufficientCreditsError) return { error: "Not enough credits" };
+    throw e;
   }
 
   let handle;
@@ -49,14 +47,12 @@ async function startCreativeEdit(
       tags: [`creative:${payload.creativeId}`, `ws:${payload.workspaceId}`],
     });
   } catch (e) {
-    if (paid) {
-      await grantCredits({
-        workspaceId: payload.workspaceId,
-        amount: CREDIT_COSTS.regenInstruction,
-        reason: "REFUND",
-        note: "Edit could not be queued — refunded",
-      });
-    }
+    await grantCredits({
+      workspaceId: payload.workspaceId,
+      amount: CREDIT_COSTS.regenInstruction,
+      reason: "REFUND",
+      note: "Edit could not be queued — refunded",
+    });
     return { error: `Could not start the edit: ${(e as Error).message?.slice(0, 160)}` };
   }
 
@@ -274,8 +270,8 @@ export async function renderNewAspect(creativeId: string, aspect: Aspect) {
   if (!creative.masterPlateKey) return { error: "Creative has no master scene" };
   if (creative.renders.some((r) => r.aspectRatio === aspect)) return { ok: true };
 
-  // Free, but the full-res plate download + composite + upload can outlive a
-  // serverless action — run it in the creative-edit task (no credit debit).
+  // Paid: generates a NATIVE plate for the new ratio (correct framing, not a
+  // crop) in the creative-edit task. startCreativeEdit debits + refunds.
   return startCreativeEdit(
     { kind: "render_aspect", creativeId, workspaceId: auth.workspaceId, aspect },
     `New ${aspect} format`,

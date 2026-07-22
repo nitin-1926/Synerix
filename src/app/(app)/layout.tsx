@@ -1,5 +1,13 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+
+// Server actions POST to the page that hosts the form, so the function limit
+// for every app-shell action lives here. The Vercel default (10s) killed the
+// generate action mid-flight on cold starts (auth + ~8 Supabase round-trips +
+// Trigger enqueue) — the run was already enqueued, so the user saw the crash
+// page while the generation kept going. 60s absorbs the worst cold path; all
+// genuinely slow work already lives in Trigger tasks, not actions.
+export const maxDuration = 60;
 import { requireAuth, ADMIN_ACTING_COOKIE } from "@/lib/auth";
 import { getBalance } from "@/lib/credits";
 import { prisma } from "@/lib/db";

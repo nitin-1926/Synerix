@@ -21,7 +21,7 @@ export type CreativeEditPayload =
       language: CopyLanguage;
       cause: "text_edit" | "language_switch";
     }
-  // FREE recomposite of an extra aspect — no credits debited, never refunded.
+  // Native render of an extra aspect (image-model call) — paid like a regen.
   | { kind: "render_aspect"; creativeId: string; workspaceId: string; aspect: SceneAspect };
 
 /**
@@ -44,7 +44,7 @@ export const creativeEdit = task({
       payload.kind === "regen_instruction"
         ? await applyRegenInstruction(creative, payload.workspaceId, payload.instruction)
         : payload.kind === "render_aspect"
-          ? await applyRenderAspect(creative, payload.aspect)
+          ? await applyRenderAspect(creative, payload.aspect, payload.workspaceId)
           : await applyBakedTextSwap(
             creative,
             payload.workspaceId,
@@ -63,9 +63,9 @@ export const creativeEdit = task({
   },
   catchError: async ({ payload, error }) => {
     // apply* never throw — reaching here means we crashed before the edit ran
-    // (e.g. creative lookup), so the action's debit must be returned.
+    // (e.g. creative lookup), so the action's debit must be returned. Every edit
+    // kind (incl. render_aspect, now a paid native render) is debited up front.
     logger.error("creative edit crashed", { creativeId: payload.creativeId, error: (error as Error).message });
-    if (payload.kind === "render_aspect") return; // free edit — nothing was debited
     await grantCredits({
       workspaceId: payload.workspaceId,
       amount: CREDIT_COSTS.regenInstruction,

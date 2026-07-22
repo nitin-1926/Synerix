@@ -76,7 +76,11 @@ export function CreateForm(props: {
   const [renderMode, setRenderMode] = useState<"in_scene" | "composite" | "on_model">("in_scene");
   const [aiModelId, setAiModelId] = useState<string | null>(props.aiModels[0]?.id ?? null);
   const [brandingMode, setBrandingMode] = useState<BrandingMode>(props.apparelBrandingDefault);
-  const [pose, setPose] = useState("");
+  // On-model poses (multi-select): each selected pose → one image of the SAME
+  // model + garment. Empty = a single AI-varied pose. `customPose` is appended
+  // as one more pose when filled.
+  const [poses, setPoses] = useState<string[]>([]);
+  const [customPose, setCustomPose] = useState("");
   const [language, setLanguage] = useState("en");
   const [optionCount, setOptionCount] = useState(LIMITS.maxConceptsPerRun);
   const [aspects, setAspects] = useState<string[]>(["4:5"]);
@@ -121,7 +125,13 @@ export function CreateForm(props: {
   const hasOccasion = props.isOccasion || (!direct && Boolean(pickedOccasion));
   // A selected product is a complete brief by itself — free text stays optional.
   const briefOptional = hasOccasion || Boolean(selectedProduct);
-  const cost = direct ? CREDIT_COSTS.perConcept : CREDIT_COSTS.perConcept * optionCount;
+  // On-model: the selected poses ARE the options (same model+garment, one image
+  // per pose). Empty selection = a single AI-varied pose. Elsewhere the option
+  // count drives it.
+  const effectivePoses = [...poses, customPose.trim()].filter(Boolean);
+  const onModelCount = Math.max(1, effectivePoses.length);
+  const guidedCount = onModel ? onModelCount : optionCount;
+  const cost = direct ? CREDIT_COSTS.perConcept : CREDIT_COSTS.perConcept * guidedCount;
   const insufficient = props.creditBalance < cost;
   const needsModel = onModel && !aiModelId;
   const langLabel = LANGS.find((l) => l.id === language)?.label ?? language;
@@ -158,10 +168,13 @@ export function CreateForm(props: {
     if (fidelityMode === "ON_MODEL" && aiModelId) fd.set("aiModelId", aiModelId);
     if (fidelityMode === "ON_MODEL") {
       fd.set("brandingMode", brandingMode);
-      if (pose.trim()) fd.set("modelPose", pose.trim());
+      // Multi-pose: each pose → one image (same model+garment). JSON-encoded so
+      // pose text can contain any character. Empty = single AI-varied pose.
+      fd.set("modelPoses", JSON.stringify(effectivePoses));
     }
     fd.set("language", language);
-    fd.set("optionCount", String(optionCount));
+    // On-model uses the pose count as its option count; everything else the picker.
+    fd.set("optionCount", String(guidedCount));
     fd.set("aspects", aspects.join(","));
     startTransition(async () => {
       setError(null);
@@ -340,22 +353,39 @@ export function CreateForm(props: {
                     </div>
                   </div>
 
-                  {/* Model pose */}
+                  {/* Model poses — MULTI-select. Each selected pose becomes one
+                      image of the same model + garment (poses replace the option
+                      count for on-model runs). */}
                   <div className="mt-4">
-                    <Label className="text-xs uppercase tracking-wide text-muted-foreground">Model pose</Label>
+                    <Label className="text-xs uppercase tracking-wide text-muted-foreground">Poses & angles</Label>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      {POSES.map((p) => (
-                        <Pill key={p.label} active={pose === p.value} onClick={() => setPose(p.value)}>{p.label}</Pill>
-                      ))}
+                      {POSES.filter((p) => p.value).map((p) => {
+                        const on = poses.includes(p.value);
+                        return (
+                          <Pill
+                            key={p.label}
+                            active={on}
+                            onClick={() =>
+                              setPoses((prev) => (on ? prev.filter((v) => v !== p.value) : [...prev, p.value]))
+                            }
+                          >
+                            {p.label}
+                          </Pill>
+                        );
+                      })}
                     </div>
                     <Input
-                      value={pose}
-                      onChange={(e) => setPose(e.target.value)}
+                      value={customPose}
+                      onChange={(e) => setCustomPose(e.target.value)}
                       maxLength={200}
-                      placeholder="…or describe a custom pose (e.g. mid-twirl showing the dupatta)"
+                      placeholder="…add a custom pose (e.g. mid-twirl showing the dupatta)"
                       className="mt-3"
                     />
-                    <p className="mt-1.5 text-xs text-muted-foreground">Leave on “Auto” to let the AI vary the pose per option.</p>
+                    <p className="mt-1.5 text-xs text-muted-foreground">
+                      {onModelCount === 1
+                        ? "One image — pick poses to get the same model & outfit in each."
+                        : `${onModelCount} images · same model & garment, one per pose · ${cost} cr`}
+                    </p>
                   </div>
                 </div>
               )}
@@ -454,8 +484,9 @@ export function CreateForm(props: {
             </section>
           </div>
 
-          {/* How many options to generate (guided only) — drives cost. */}
-          {!direct && (
+          {/* How many options to generate (guided only) — drives cost. Hidden
+              for on-model runs, where the selected poses drive the count. */}
+          {!direct && !onModel && (
             <section>
               <Label className="text-xs uppercase tracking-wide text-muted-foreground">How many options?</Label>
               <div className="mt-3 flex flex-wrap gap-2">
@@ -488,6 +519,7 @@ export function CreateForm(props: {
             )}
             {onModel && <SummaryRow label="Model" value={selectedModel?.name ?? "Not selected"} />}
             {onModel && <SummaryRow label="Output" value={brandingMode === "PLAIN" ? "Plain image" : "Branded campaign"} />}
+            {onModel && <SummaryRow label="Poses" value={`${onModelCount} ${onModelCount === 1 ? "pose" : "poses"}`} />}
             {!direct && <SummaryRow label="Language" value={langLabel} />}
             <SummaryRow label="Formats" value={aspectLabels.join(", ")} />
           </dl>
@@ -522,7 +554,7 @@ export function CreateForm(props: {
                   ? "Pick a model"
                   : direct
                     ? "Generate creative"
-                    : `Generate ${optionCount} ${optionCount === 1 ? "option" : "options"}`}
+                    : `Generate ${guidedCount} ${guidedCount === 1 ? "option" : "options"}`}
           </Button>
 
           <p className="text-center text-xs text-muted-foreground">

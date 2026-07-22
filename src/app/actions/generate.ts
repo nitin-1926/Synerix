@@ -20,6 +20,9 @@ const startSchema = z.object({
   brandingMode: z.enum(["BRANDED", "PLAIN"]).optional().or(z.literal("")),
   // Optional pose direction for on-model apparel (empty = AI varies it).
   modelPose: z.string().trim().max(200).optional().or(z.literal("")),
+  // Multi-pose (on-model): JSON array of pose strings; each → one image of the
+  // same model + garment. Empty/absent = a single AI-varied pose.
+  modelPoses: z.string().optional().or(z.literal("")),
   aiModelId: z.string().uuid().optional().or(z.literal("")), // required for ON_MODEL
   directMode: z.string().optional(), // "1" → literal prompt, skip concepting
   bakeoff: z.string().optional(), // "1" → super-admin model bake-off (no debit)
@@ -116,11 +119,33 @@ export async function startGenerationRun(formData: FormData) {
     aiModelId = model.id;
   }
 
-  // Direct mode = 1 render. Guided = N concepts (user-chosen, capped).
-  // "Compare" renders every option on both premium models → double credits.
-  // Bake-off renders each concept once per model variant but debits nothing —
-  // API spend still lands in ApiCostLog.
-  const conceptCount = directMode ? 1 : d.optionCount;
+  // On-model multi-pose: each selected pose is one image of the same model +
+  // garment, so the pose count IS the option count. Parse + sanitize here.
+  let modelPoses: string[] = [];
+  if (d.fidelityMode === "ON_MODEL" && d.modelPoses) {
+    try {
+      const parsed = JSON.parse(d.modelPoses);
+      if (Array.isArray(parsed)) {
+        modelPoses = parsed
+          .filter((p): p is string => typeof p === "string")
+          .map((p) => p.trim())
+          .filter(Boolean)
+          .slice(0, LIMITS.maxConceptsPerRun);
+      }
+    } catch {
+      return { error: "Invalid pose selection" };
+    }
+  }
+
+  // Direct mode = 1 render. On-model = one render per selected pose (min 1).
+  // Guided = N concepts (user-chosen, capped). "Compare" renders every option on
+  // both premium models → double credits. Bake-off debits nothing (API spend
+  // still lands in ApiCostLog).
+  const conceptCount = directMode
+    ? 1
+    : d.fidelityMode === "ON_MODEL"
+      ? Math.max(1, modelPoses.length)
+      : d.optionCount;
   const variantMultiplier = d.imageModel === "compare" ? 2 : 1;
   const cost = bakeoff ? 0 : CREDIT_COSTS.perConcept * conceptCount * variantMultiplier;
 
@@ -143,6 +168,7 @@ export async function startGenerationRun(formData: FormData) {
       fidelityMode: d.fidelityMode,
       brandingMode,
       modelPose: d.fidelityMode === "ON_MODEL" ? (d.modelPose || null) : null,
+      modelPoses,
       aiModelId,
       requestedAspects,
       language: d.language,

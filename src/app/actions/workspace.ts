@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { sendInviteEmail } from "@/lib/email";
+import { WORKSPACE_IMAGE_MODELS } from "@/lib/image/provider";
 import { MembershipRole } from "@/generated/prisma/client";
 
 const MANAGER_ROLES = new Set(["OWNER", "ADMIN"]);
@@ -35,6 +36,16 @@ export async function renameWorkspace(name: string) {
   const trimmed = name.trim();
   if (trimmed.length < 2 || trimmed.length > 60) throw new Error("Name must be 2–60 characters");
   await prisma.workspace.update({ where: { id: ctx.workspaceId }, data: { name: trimmed } });
+  revalidatePath("/settings");
+}
+
+/** Super-admin-only: set (or clear) the workspace's image-model override. */
+export async function setWorkspaceImageModel(modelKey: string | null) {
+  const ctx = await requireAuth();
+  if (!ctx.isSuperAdmin) throw new Error("Only platform admins can change the image model");
+  const key = modelKey || null;
+  if (key && !WORKSPACE_IMAGE_MODELS.some((m) => m.key === key)) throw new Error("Unknown image model");
+  await prisma.workspace.update({ where: { id: ctx.workspaceId }, data: { imageModel: key } });
   revalidatePath("/settings");
 }
 
