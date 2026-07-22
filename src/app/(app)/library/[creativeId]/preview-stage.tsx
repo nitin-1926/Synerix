@@ -44,6 +44,8 @@ export function PreviewStage(props: {
   missingAspects: Aspect[];
   onAddAspect: (aspect: Aspect) => void;
   addAspectPending: boolean;
+  /** Credit cost label for rendering a new native format (e.g. "2"). */
+  aspectCostLabel: string;
   busy: boolean;
   busyLabel?: string;
   approved: boolean;
@@ -158,10 +160,10 @@ export function PreviewStage(props: {
             disabled={props.addAspectPending || props.busy}
             onClick={() => props.onAddAspect(a)}
             className="rounded-full border-dashed text-muted-foreground"
-            title={`Render ${a} (free)`}
+            title={`Render a native ${a} — ${props.aspectCostLabel} credits`}
           >
             {props.addAspectPending ? <Loader2 className="animate-spin" data-icon="inline-start" /> : <Plus data-icon="inline-start" />}
-            {a} <span className="text-[10px] font-semibold uppercase tracking-wide opacity-70">Free</span>
+            {a} <span className="text-[10px] font-semibold uppercase tracking-wide opacity-70">{props.aspectCostLabel} cr</span>
           </Button>
         ))}
         <span className="flex-1" />

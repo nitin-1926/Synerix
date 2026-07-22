@@ -9,6 +9,7 @@ import {
   renameWorkspace,
   resendInvite,
   revokeInvite,
+  setWorkspaceImageModel,
   updateMemberRole,
 } from "@/app/actions/workspace";
 import { Badge } from "@/components/ui/badge";
@@ -61,15 +62,21 @@ function errorMessage(e: unknown) {
   return e instanceof Error ? e.message : "Something went wrong";
 }
 
+const DEFAULT_MODEL = "__default__"; // Select needs a non-empty value for "use cascade"
+
 export function SettingsClient(props: {
   workspaceName: string;
   canManage: boolean;
+  isSuperAdmin: boolean;
+  imageModel: string | null;
+  imageModelOptions: { key: string; label: string; hint: string }[];
   currentUserId: string;
   members: Member[];
   invites: Invite[];
 }) {
   const [pending, startTransition] = useTransition();
   const [wsName, setWsName] = useState(props.workspaceName);
+  const [imageModel, setImageModel] = useState(props.imageModel ?? DEFAULT_MODEL);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("EDITOR");
 
@@ -106,6 +113,43 @@ export function SettingsClient(props: {
             >
               Save
             </Button>
+          </div>
+          <Separator />
+        </>
+      )}
+
+      {/* Image model — platform super-admin only. Sets the model every run in
+          this workspace prefers (fallback cascade kept behind it). */}
+      {props.isSuperAdmin && (
+        <>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+            <div className="flex-1 space-y-1.5">
+              <Label>Image model (admin)</Label>
+              <Select
+                value={imageModel}
+                onValueChange={(v) => {
+                  if (!v || v === imageModel) return;
+                  setImageModel(v);
+                  run(() => setWorkspaceImageModel(v === DEFAULT_MODEL ? null : v), "Image model updated");
+                }}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={DEFAULT_MODEL}>Default (quality-first cascade)</SelectItem>
+                  {props.imageModelOptions.map((m) => (
+                    <SelectItem key={m.key} value={m.key}>
+                      {m.label} — {m.hint}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Only you (platform admin) can see and change this. Every generation in this workspace prefers the chosen
+                model; the resilience fallback cascade stays behind it.
+              </p>
+            </div>
           </div>
           <Separator />
         </>

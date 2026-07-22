@@ -67,7 +67,105 @@ New entries go at the **top** of the Log section (reverse chronological).
 
 ## Log
 
-### 2026-07-22 — USD cost removed from the product UI entirely (no super-admin exception); /admin/costs is the only cost surface
+### 2026-07-22 — Super-admin workspace image-model picker (7 models incl. cheap Chinese Runware models)
+
+- Type: feature
+- Scope: prisma/schema.prisma (Workspace.imageModel), src/lib/image/{provider.ts,runware.ts}, src/trigger/generation-run.ts, src/app/actions/workspace.ts, src/app/(app)/settings/{page.tsx,settings-client.tsx}
+
+Reasoning / RCA / research:
+    - Owner wants to A/B image models per workspace to save cost — simple e-commerce apparel doesn't need the premium tier. The create-form model picker was removed earlier (dev-only), so the knob belongs at the workspace level, visible/settable by the platform super-admin only.
+    - Added Qwen-Image (runware:108@1) and Wan 2.7 (alibaba:wan@2.7-image) — cheap Alibaba models that both accept reference images (garment/product fidelity survives). Verified the exact Runware AIR ids via Runware docs; "Wan 2.2" was resolved to the current 2.7 image model.
+    - Kept it a SOFT preference: the chosen model leads but the full quality-first cascade stays behind it, so a paid run survives a model outage. A hard pin would fail the run when the cheap model hiccups.
+    - Threaded a `runwareModel` down ChainStep/BakeoffVariant/SceneGenParams so one "seedream" provider can front several Runware models. Critical subtlety (unit-tested): a fallback seedream step must NOT inherit the leading pick's model key — runProvider now reads the STEP's model, not the top-level param.
+
+Implementation summary:
+    - WORKSPACE_IMAGE_MODELS registry + resolveWorkspaceImageModel() in provider.ts; generation-run resolves it ahead of the legacy per-run pref. setWorkspaceImageModel action gated on isSuperAdmin. Settings picker rendered only for super-admins (model list passed as plain props so provider.ts/sharp never bundles into the client).
+    - 4 new provider unit tests (registry integrity + fallback model isolation). Migration 20260722133655.
+
+### 2026-07-22 — Multi-pose on-model: same model + garment, one image per selected pose in a single run
+
+- Type: feature
+- Scope: prisma/schema.prisma (GenerationRun.modelPoses), src/app/(app)/studio/create-form.tsx, src/app/actions/generate.ts, src/trigger/generation-run.ts
+
+Reasoning / RCA / research:
+    - Owner wants pose variety for apparel: pick several poses, get the SAME model in the SAME garment across them. Previously on-model with N options generated N different CONCEPTS (different scenes) — wrong axis of variation.
+    - Decision (grilled): poses REPLACE the option count for on-model. M selected poses → M images; the "how many options" picker is hidden for on-model. Empty selection = one AI-varied pose (legacy behavior preserved).
+    - Implementation: generate ONE concept, then fan out one work item per pose (poseOverride threaded into ConceptCtx → buildOnModelPrompt). The pose is stored in the creative's concept JSON so an editor aspect re-render reproduces it.
+    - modelPoses sent as a JSON array (pose text contains commas; a delimiter join is unsafe), parsed + capped server-side; conceptCount for on-model = pose count.
+
+Implementation summary:
+    - create-form pose pills became multi-select + a custom-pose field appended to the set; cost/summary/CTA driven by the pose count. generate.ts derives conceptCount and stores modelPoses. Migration shared with the image-model change.
+
+### 2026-07-22 — Editor "add format" now renders a NATIVE plate per ratio (no more crop) and charges credits
+
+- Type: bug
+- Scope: src/lib/editor/paid-edits.ts (applyRenderAspect), src/app/actions/editor.ts, src/trigger/creative-edit.ts, src/app/(app)/library/[creativeId]/{preview-stage.tsx,editor.tsx}
+
+Reasoning / RCA / research:
+    - Symptom (owner): switching a creative to another format in the editor "just crops the photo rather than fitting the dimension", 4:5 looked cut. RCA: generation already renders a native plate per requested aspect, but the editor's "add format" (applyRenderAspect) cover-cropped the master plate into the new ratio — a big crop that clips heads/feet. Confirmed Nano Banana natively supports 4:5, so the generation side was fine; the crop was purely the editor path.
+    - Fix (owner-chosen): re-generate a native plate for the new ratio via the image model, reusing the run's references (cutout-preferred) + the same prompt builder (buildOnModelPrompt / buildScenePassPrompt) + the workspace image-model setting. Reconstructing the run context (product/model/pose/fidelity) is what makes the re-render faithful rather than a generic redraw.
+    - Owner chose to CHARGE credits (it's a real image generation). Collapsed the old render_aspect "free" special-case: startCreativeEdit now debits every edit kind, applyRenderAspect refunds on handled failure, and the task's catchError refunds render_aspect on crash (previously it skipped it). The native plate is also saved as that aspect's own plate key so later text/language edits recomposite from it, not a crop.
+
+Implementation summary:
+    - applyRenderAspect rewritten (native render + cost tracking + aspectPlateKeys update). Editor "add format" badge changed from "Free" to the credit cost. Pose persisted in concept JSON at generation so re-renders match.
+
+- Type: bug
+- Scope: src/app/(app)/layout.tsx
+
+Reasoning / RCA / research:
+    - Symptom: click Generate → blank "Something went wrong" page, yet the run showed RUNNING in the library and actually COMPLETED. Third distinct failure in this flow (after the preview-key enqueue bug and the Node-21 WebSocket worker crash) — each a different layer.
+    - Vercel error log pinned it: `POST /studio — Vercel Runtime Timeout Error: Task timed out after 10 seconds`. startGenerationRun does auth + ~8 sequential Supabase round-trips + a Trigger enqueue; a cold invocation crosses 10s. The enqueue had already succeeded, so the pipeline ran while the browser got the crash page.
+    - Status codes were all 200 in the request logs — RSC/server-action errors don't surface as 5xx, so `--level error` (not `--status-code 5xx`) was the query that found it.
+    - Fix at the layout, not per page: server actions POST to the page hosting the form, and Next segment config cascades from layouts (verified in next.js reduceAppConfig), so one `export const maxDuration = 60` in src/app/(app)/layout.tsx covers every app action. All genuinely slow work already lives in Trigger tasks; nothing needs more than 60s.
+    - The bare unstyled crash page is global-error.tsx (the app has no nested error.tsx) — deliberately left for a future polish pass; the timeout fix removes the trigger.
+
+Implementation summary:
+    - One segment-config export + comment; verified layout-level cascade against Next.js docs/source before relying on it.
+
+### 2026-07-22 — Product-image background removal moved to upload time: cached cutouts, reused as generation references
+
+- Type: feature
+- Scope: prisma/schema.prisma (+migration 20260722115500), src/lib/storage.ts, src/lib/image/runware.ts, src/trigger/product-cutout.ts (new), src/app/actions/products.ts, src/trigger/generation-run.ts, src/lib/pipeline/cost-log.ts
+
+Reasoning / RCA / research:
+    - Owner ask: "remove bg once and reuse". Audit found NO bg removal anywhere in the pipeline today (cut-out paste was retired for premium in-scene), so this is a new capability, not an optimisation: raw product photos were going to image models as references, busy backgrounds and all.
+    - One-time per image at upload (product-cutout task) beats per-run removal: paid once (~$0.004/image via Runware removeBackground, runware:109@1), cached forever in cutoutKey.
+    - Cutouts are flattened onto white with sharp instead of shipping alpha: image models handle a clean studio packshot better than transparency, and it matches the e-comm listing look. Flattening locally (not Runware settings.rgba) keeps the behavior model-independent.
+    - Generation prefers cutoutKey and falls back to the original photo when absent — a failed/missing cutout can never fail a paid run; the task is idempotent (only processes cutoutKey=null rows) so re-triggering is free.
+
+Implementation summary:
+    - ProductImage.cutoutKey (nullable) + removeBackground() in runware.ts (includeCost, retry-wrapped) + product-cutout task; triggered from createProduct, createProductInline, addProductImages.
+    - generation-run: ConceptCtx gained refMime; primary + extra refs use cutout when present (mimeType then image/png).
+    - Cost rows land in ApiCostLog under new source "cutout".
+
+Follow-ups deferred:
+    - Backfill for pre-existing product images (task triggers only on upload); trivial script when wanted.
+    - AI-model photos not cutout — they're already studio shots.
+
+### 2026-07-22 — Real-generation e2e (browser → live pipeline on cheap models) + staging branch flow with CI gates
+
+- Type: build
+- Scope: e2e/generation.spec.ts (new), scripts/seed-e2e-workspace.ts (new), .github/workflows/{ci.yml,e2e.yml} (new), GitHub branch protection (main, staging), 11 Actions secrets
+
+Reasoning / RCA / research:
+    - Chosen shape (owner-grilled): Playwright vs localhost with DEV_AUTH_BYPASS + a Trigger DEV worker inside the CI runner. Because the worker runs in-job, cheap-model env vars apply (MODEL_CONCEPTS/BRIEF_QA/RESEARCH=haiku, GEMINI_IMAGE_MODEL=NB2, IMAGE_PROVIDER=gemini forced) — the same runs against the prod Trigger deployment would use full-price models since env lives with the deployment. Hence the DEV TRIGGER_SECRET_KEY in CI, never the prod one.
+    - Dedicated "E2E Tests" workspace (slug e2e-tests, id a15a9e76-…) seeded by cloning Blueman brand + one dissected apparel product + 10k credits from Synerix Apparel — rows only, storage keys shared. Spec pins it via sx-active-ws cookie; ws id is hardcoded (E2E_WORKSPACE_ID overridable) because Playwright's transpiler can't resolve the "@/" alias inside src/lib/db.ts (first run failed exactly there).
+    - Paid spec is opt-in (E2E_REAL_GENERATION=1) so `npm run test:e2e` stays free locally; serial mode + workflow concurrency group because parallel suites would race the shared Trigger dev env and credits.
+    - Branch flow per owner: feature PR → staging runs checks+e2e (both required); main requires PR + checks with enforce_admins=false so only the owner pushes direct (small fixes skip the e2e bill).
+    - Known risk, accepted: a locally-running `npm run dev` session shares the Trigger dev env with CI and could steal its runs; if flaky, move CI to a Trigger preview branch env.
+
+Implementation summary:
+    - 2 tests: in-scene campaign + on-model plain, 1 option each (4 credits/suite), assert option thumbnail renders and no failure panel, 7-min test timeout.
+    - Secrets set via gh CLI from .env.local (DB, Supabase, Anthropic, Google, Runware, auth, dev Trigger key). TRIGGER_ACCESS_TOKEN still missing — dashboard-minted only; deploy workflow was already blocked on it.
+
+### 2026-07-22 — FAL_KEY purged: "remove Fal" resolved as an env-only ghost
+
+- Type: chore
+- Scope: .env.local, Vercel env (all environments)
+
+Reasoning / RCA / research:
+    - Owner asked to "keep only Runware and remove Fal". Zero Fal references exist in src or package.json — the image stack is Gemini-direct + OpenAI-direct + Runware, and stays that way (direct Gemini was spike-verified better for reference placement).
+    - Fal existed only as an unused FAL_KEY env var locally and on Vercel; removed both so it can't mislead again.
 
 - Type: bug (owner escalation — second correction on the same requirement)
 - Scope: src/app/(app)/studio/[runId]/{page,studio-canvas}.tsx, src/app/(app)/library/{page,library-client}.tsx; deployed (vercel --prod + trigger v20260721.2, git untouched)

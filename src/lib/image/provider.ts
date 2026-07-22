@@ -33,6 +33,9 @@ export interface SceneGenParams {
   softPrefer?: boolean;
   /** Gemini model tier; defaults to Nano Banana 2. */
   tier?: ImageTier;
+  /** With `provider: "seedream"` (Runware): which Runware model id/key to use.
+   * Defaults to Seedream v4. Lets one provider expose several Runware models. */
+  runwareModel?: string;
   negativePrompt?: string;
 }
 
@@ -60,6 +63,8 @@ export interface BakeoffVariant {
   key: string;
   provider: ImageProvider;
   tier: ImageTier;
+  /** For seedream/Runware variants: the specific Runware model key. */
+  runwareModel?: string;
 }
 export const BAKEOFF_VARIANTS: BakeoffVariant[] = [
   { key: "nb2", provider: "gemini", tier: "default" },
@@ -93,18 +98,57 @@ export function variantsForPref(pref: string | null | undefined): Array<BakeoffV
   return [undefined]; // legacy runs (pre-picker): default chain
 }
 
+/**
+ * Super-admin workspace image-model picker. Each key maps to a render variant
+ * (provider + tier, and a Runware model for the seedream provider). The chosen
+ * model becomes the workspace's leading pick with the full fallback cascade kept
+ * behind it (a paid run must survive an outage), so this is a quality/cost knob,
+ * not a hard pin. `null` (no selection) = the default quality-first cascade.
+ */
+export interface WorkspaceImageModel {
+  key: string;
+  label: string;
+  hint: string;
+  variant: BakeoffVariant;
+}
+export const WORKSPACE_IMAGE_MODELS: WorkspaceImageModel[] = [
+  { key: "nb-pro", label: "Nano Banana Pro", hint: "Premium · best pack & label fidelity", variant: { key: "nb-pro", provider: "gemini", tier: "hero" } },
+  { key: "nb2", label: "Nano Banana 2", hint: "Cheaper Google · fast, great for simple shots", variant: { key: "nb2", provider: "gemini", tier: "default" } },
+  { key: "gpt-image-2", label: "GPT Image 2", hint: "Premium alternative render", variant: { key: "gpt-image-2", provider: "gpt-image-2", tier: "hero" } },
+  { key: "seedream-v4", label: "Seedream v4", hint: "Runware · strong & inexpensive", variant: { key: "seedream-v4", provider: "seedream", tier: "default", runwareModel: "seedream_v4" } },
+  { key: "seedream-v5-lite", label: "Seedream v5 Lite", hint: "Runware · cheapest Seedream", variant: { key: "seedream-v5-lite", provider: "seedream", tier: "default", runwareModel: "seedream_v5_lite" } },
+  { key: "qwen-image", label: "Qwen-Image", hint: "Alibaba (Runware) · cheap, good text", variant: { key: "qwen-image", provider: "seedream", tier: "default", runwareModel: "qwen_image" } },
+  { key: "wan-2.7", label: "Wan 2.7", hint: "Alibaba (Runware) · cheap, reference-aware", variant: { key: "wan-2.7", provider: "seedream", tier: "default", runwareModel: "wan_2_7" } },
+];
+
+/** Resolve a stored workspace image-model key into a leading soft-prefer variant
+ * (keeps the fallback cascade behind it). Unknown/null key → cascade default. */
+export function resolveWorkspaceImageModel(
+  key: string | null | undefined,
+): (BakeoffVariant & { soft: true }) | undefined {
+  const model = WORKSPACE_IMAGE_MODELS.find((m) => m.key === key);
+  if (!model) return undefined;
+  // Clear the variant key so status ids stay clean (single pick, not a bake-off).
+  return { ...model.variant, key: "", soft: true };
+}
+
 /** Friendly display names for cost-model ids (UI badges). */
 export const IMAGE_MODEL_LABELS: Record<string, string> = {
   "gemini-3.1-flash-image": "Nano Banana 2",
   "gemini-3-pro-image": "Nano Banana Pro",
   "gpt-image-2": "GPT Image 2",
   "bytedance:5@0": "Seedream v4",
+  "bytedance:seedream@5.0-lite": "Seedream v5 Lite",
+  "runware:108@1": "Qwen-Image",
+  "alibaba:wan@2.7-image": "Wan 2.7",
 };
 
 /** One attempt in the resilience cascade: a provider at a specific tier. */
 export interface ChainStep {
   provider: ImageProvider;
   tier: ImageTier;
+  /** For seedream/Runware steps: the specific Runware model key. */
+  runwareModel?: string;
 }
 
 // Resilience cascade, quality-first (owner decision: creative quality over
@@ -123,10 +167,10 @@ const FORCED_PROVIDER = process.env.IMAGE_PROVIDER as ImageProvider | undefined;
 
 /** Resolve the ordered list of attempts for a request. Exported for tests —
  * the chain order is a product guarantee, not an implementation detail. */
-export function resolveSceneChain(p: Pick<SceneGenParams, "provider" | "softPrefer" | "tier">): ChainStep[] {
+export function resolveSceneChain(p: Pick<SceneGenParams, "provider" | "softPrefer" | "tier" | "runwareModel">): ChainStep[] {
   const tier = p.tier ?? "default";
   if (p.provider) {
-    const pick: ChainStep = { provider: p.provider, tier };
+    const pick: ChainStep = { provider: p.provider, tier, runwareModel: p.runwareModel };
     if (!p.softPrefer) return [pick]; // forced: single attempt, no fallback
     // Soft preference: the pick leads, the full cascade stays behind it.
     return [pick, ...FALLBACK_CHAIN.filter((s) => !(s.provider === pick.provider && s.tier === pick.tier))];
@@ -135,7 +179,8 @@ export function resolveSceneChain(p: Pick<SceneGenParams, "provider" | "softPref
   return FALLBACK_CHAIN;
 }
 
-async function runProvider(provider: ImageProvider, p: SceneGenParams, tier: ImageTier): Promise<SceneGenResult> {
+async function runProvider(step: ChainStep, p: SceneGenParams): Promise<SceneGenResult> {
+  const { provider, tier } = step;
   if (provider === "gemini") {
     const model = GEMINI_MODEL[tier];
     const buffer = await generateImageGemini({ prompt: p.prompt, aspect: p.aspect, references: p.references, model });
@@ -146,12 +191,14 @@ async function runProvider(provider: ImageProvider, p: SceneGenParams, tier: Ima
     return { buffer: await generateGptImage2(p), provider, costModel: "gpt-image-2" };
   }
 
-  // seedream (Runware). Reference images passed as data URIs.
+  // seedream / other Runware models. The step carries the specific Runware model
+  // key (so a fallback step never inherits the leading pick's model). Reference
+  // images passed as data URIs.
   const refUris = (p.references ?? []).map((r) => `data:${r.mime};base64,${r.buffer.toString("base64")}`);
   const res = await generateRunware({
     prompt: p.prompt,
     negativePrompt: p.negativePrompt,
-    modelKey: "seedream_v4",
+    modelKey: step.runwareModel ?? "seedream_v4",
     aspect: p.aspect as Aspect,
     quality: "1k",
     referenceImages: refUris.length ? refUris : undefined,
@@ -183,9 +230,14 @@ export async function generateScene(p: SceneGenParams): Promise<SceneGenResult> 
   const chain = resolveSceneChain(p);
   const errors: string[] = [];
   for (const step of chain) {
-    const label = step.provider === "gemini" ? `${step.provider}/${step.tier}` : step.provider;
+    const label =
+      step.provider === "gemini"
+        ? `${step.provider}/${step.tier}`
+        : step.provider === "seedream" && step.runwareModel
+          ? `runware/${step.runwareModel}`
+          : step.provider;
     try {
-      return await withDeadline(runProvider(step.provider, p, step.tier), PROVIDER_TIMEOUT_MS, `provider "${label}"`);
+      return await withDeadline(runProvider(step, p), PROVIDER_TIMEOUT_MS, `provider "${label}"`);
     } catch (e) {
       const msg = (e as Error).message ?? String(e);
       errors.push(`${label}: ${msg.slice(0, 160)}`);

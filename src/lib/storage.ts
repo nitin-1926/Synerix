@@ -138,6 +138,8 @@ export const storageKeys = {
   brandScreenshot: (brandId: string, name: string) => `brands/${brandId}/screenshots/${name}.png`,
   productImage: (productId: string, imageId: string, ext: string) =>
     `products/${productId}/${imageId}.${ext}`,
+  productCutout: (productId: string, imageId: string) =>
+    `products/${productId}/${imageId}-cutout.png`,
   masterPlate: (runId: string, conceptId: string) => `runs/${runId}/plates/${conceptId}.png`,
   iteration: (runId: string, conceptId: string, iter: number) =>
     `runs/${runId}/iterations/${conceptId}-${iter}.png`,

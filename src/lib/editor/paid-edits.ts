@@ -5,7 +5,8 @@ import { downloadFromStorage, storageKeys, uploadBuffer } from "@/lib/storage";
 import { renderOverlay } from "@/lib/composition/render";
 import { buildOverlaySpec } from "@/lib/composition/archetypes";
 import { analyzePlate } from "@/lib/composition/analyze";
-import { generateScene, type SceneAspect as Aspect } from "@/lib/image/provider";
+import { generateScene, resolveWorkspaceImageModel, type SceneAspect as Aspect } from "@/lib/image/provider";
+import { buildOnModelPrompt, buildScenePassPrompt } from "@/lib/pipeline/image-prompt";
 import { CostTracker } from "@/lib/pipeline/cost";
 import { persistCost } from "@/lib/pipeline/cost-log";
 import { checkBakedText } from "@/lib/pipeline/text-qa";
@@ -118,26 +119,82 @@ export async function recompositeAll(
   });
 }
 
-/** Compose one additional aspect from the existing master plate — FREE (pure
- * recomposite, no AI call, no credits). Runs in the creative-edit task because
- * the full-res plate download + composite + upload can outlive a serverless
- * action. Returns {error} instead of throwing (nothing to refund). */
+/** Render one additional aspect by generating a NATIVE plate for that ratio via
+ * the image model (correct framing, not a crop of the master plate), then
+ * compositing text/logo. Paid: the caller debits before triggering; this
+ * refunds on a handled failure (the task's catchError covers crashes). */
 export async function applyRenderAspect(
   creative: LoadedCreative,
   aspect: Aspect,
+  workspaceId: string,
 ): Promise<{ ok: true } | { error: string }> {
   if (!creative.masterPlateKey) return { error: "Creative has no master scene" };
   if (creative.renders.some((r) => r.aspectRatio === aspect)) return { ok: true };
 
+  const refund = (note: string) =>
+    grantCredits({ workspaceId, amount: CREDIT_COSTS.regenInstruction, reason: "REFUND", note }).catch(() => {});
+
   try {
-    const concept = creative.concept as unknown as CreativeConcept;
+    const concept = creative.concept as unknown as CreativeConcept & { pose?: string; aspectPlateKeys?: Record<string, string> };
     const refSpec = creative.renders[0]?.overlaySpec as unknown as OverlaySpec | undefined;
-    // Preserve the contact-line visibility chosen on existing renders.
+
+    // Reload the generating run for references + fidelity framing so the new
+    // plate is a faithful native render of the SAME scene at the new ratio.
+    const run = await prisma.generationRun.findUnique({
+      where: { id: creative.generationRunId },
+      include: {
+        product: { include: { images: { orderBy: [{ isPrimary: "desc" }], take: 1 } } },
+        aiModel: true,
+        workspace: { select: { type: true, imageModel: true } },
+      },
+    });
+    const onModel = run?.fidelityMode === "ON_MODEL";
+    const productImage = run?.product?.images[0] ?? null;
+    // Prefer the cached cutout (clean packshot) as reference, like generation.
+    const refBuffer = productImage
+      ? await downloadFromStorage(productImage.cutoutKey ?? productImage.storageKey)
+      : null;
+    const refMime = productImage?.cutoutKey ? "image/png" : (productImage?.mimeType ?? "image/png");
+    // Honour the workspace image-model setting (soft-prefer, fallback kept).
+    const wsVariant = resolveWorkspaceImageModel(run?.workspace?.imageModel);
+    const model = wsVariant
+      ? { provider: wsVariant.provider, tier: wsVariant.tier, softPrefer: true as const, runwareModel: wsVariant.runwareModel }
+      : {};
+
+    const tracker = new CostTracker();
+    let plate: Buffer;
+    if (onModel && run?.aiModel?.storageKey && refBuffer && productImage) {
+      const modelBuffer = await downloadFromStorage(run.aiModel.storageKey);
+      const prompt = buildOnModelPrompt({
+        concept,
+        aspect,
+        garmentPrompt: run.product?.dissectionPrompt,
+        pose: concept.pose ?? run.modelPose,
+        direction: run.workspace?.type === "FASHION_EDITORIAL" ? "editorial" : "catalog",
+        plain: run.brandingMode === "PLAIN",
+      });
+      const refs = [
+        { buffer: modelBuffer, mime: run.aiModel.mimeType ?? "image/png" },
+        { buffer: refBuffer, mime: refMime },
+      ];
+      const gen = await generateScene({ prompt, aspect, references: refs, ...model });
+      tracker.addImage(gen.costModel, "render-aspect");
+      plate = gen.buffer;
+    } else {
+      const hasProduct = Boolean(refBuffer);
+      const refs = hasProduct && productImage ? [{ buffer: refBuffer!, mime: refMime }] : undefined;
+      const prompt = buildScenePassPrompt({ concept, aspect, dissectionPrompt: run?.product?.dissectionPrompt, hasProduct });
+      const gen = await generateScene({ prompt, aspect, references: refs, ...model });
+      tracker.addImage(gen.costModel, "render-aspect");
+      plate = gen.buffer;
+    }
+
+    // Persist the native plate as THIS aspect's own plate key so later text /
+    // language edits re-composite from it (not from a cropped master).
+    const plateKey = storageKeys.masterPlate(creative.generationRunId, `${creative.conceptIndex}-${aspect.replace(":", "x")}`);
+    await uploadBuffer(plateKey, plate, "image/png");
+
     const showContact = Boolean(refSpec?.textLayers.some((l) => l.role === "contact"));
-    // Cover-fitting the master plate into a NEW aspect is a large crop; analyse
-    // it so buildOverlaySpec anchors the crop to the subject (plateFocusY) and
-    // the head/feet aren't clipped — same guard the generator applies.
-    const plate = await downloadFromStorage(creative.masterPlateKey);
     const analysis = await analyzePlate(plate).catch(() => null);
     const spec = buildOverlaySpec({
       archetype: concept.archetype,
@@ -151,8 +208,6 @@ export async function applyRenderAspect(
         primaryColorHex: creative.brand.primaryColorHex ?? concept.paletteHexes[0],
         accentColorHex: creative.brand.accentColorsHex[0] ?? concept.paletteHexes[1] ?? null,
       },
-      // Preserve the type pairing the creative was generated with, so a newly
-      // rendered aspect matches its siblings.
       typePairingId: refSpec?.theme?.typePairing,
       dominantColors: analysis?.dominant,
       placement: analysis ? { safeBand: analysis.safeBand, busyness: analysis.busyness } : undefined,
@@ -173,17 +228,28 @@ export async function applyRenderAspect(
     const composed = await renderOverlay(spec, { plate, logo });
     const key = storageKeys.composedRender(creative.id, aspect, creative.versions[0]?.index ?? 0);
     await uploadBuffer(key, composed, "image/png");
-    await prisma.creativeRender.create({
-      data: {
-        creativeId: creative.id,
-        aspectRatio: aspect,
-        overlaySpec: spec as unknown as Prisma.InputJsonValue,
-        composedImageKey: key,
-        status: "COMPOSED",
-      },
-    });
+
+    const nextAspectPlateKeys = { ...(concept.aspectPlateKeys ?? {}), [aspect]: plateKey };
+    await prisma.$transaction([
+      prisma.creativeRender.create({
+        data: {
+          creativeId: creative.id,
+          aspectRatio: aspect,
+          overlaySpec: spec as unknown as Prisma.InputJsonValue,
+          composedImageKey: key,
+          status: "COMPOSED",
+        },
+      }),
+      prisma.creative.update({
+        where: { id: creative.id },
+        data: { concept: { ...concept, aspectPlateKeys: nextAspectPlateKeys } as unknown as Prisma.InputJsonValue },
+      }),
+    ]);
+
+    await persistCost({ summary: tracker.summary(), source: "editor", workspaceId, runId: creative.generationRunId });
     return { ok: true };
   } catch (e) {
+    await refund("New format render failed — refunded");
     return { error: `Render failed: ${(e as Error).message?.slice(0, 200)}` };
   }
 }

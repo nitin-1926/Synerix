@@ -119,6 +119,10 @@ model Workspace {
   industry        String?
   primaryUseCase  String?
   salesChannel    String?
+  // Super-admin-only image-model override (a WORKSPACE_IMAGE_MODELS key). Null =
+  // the default quality-first fallback cascade. Used to A/B cheaper models per
+  // workspace (e.g. simple e-commerce apparel doesn't need the premium tier).
+  imageModel      String?
   createdAt       DateTime          @default(now())
   memberships     Membership[]
   invites         WorkspaceInvite[]
@@ -290,6 +294,9 @@ model ProductImage {
   productId  String
   product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   storageKey String
+  // Background-removed packshot (white-flattened PNG), generated once at
+  // upload by the product-cutout task and reused as the generation reference.
+  cutoutKey  String?
   mimeType   String
   width      Int?
   height     Int?
@@ -468,6 +475,10 @@ model GenerationRun {
   brandingMode     BrandingMode      @default(BRANDED)
   // Optional pose direction for on-model apparel (empty = AI varies it per concept).
   modelPose        String?
+  // On-model multi-pose: same model + garment rendered once per pose in a single
+  // run (poses are the variation axis, replacing the concept count). Empty = the
+  // legacy single-concept behavior driven by modelPose/conceptCount.
+  modelPoses       String[]          @default([])
   requestedAspects String[]          @default(["4:5"])
   language         String            @default("en") // creative copy default; all langs generated
   conceptCount     Int               @default(4) // how many distinct creative options to generate (guided runs)

@@ -1,5 +1,6 @@
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { WORKSPACE_IMAGE_MODELS } from "@/lib/image/provider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SettingsClient } from "./settings-client";
 
@@ -40,6 +41,9 @@ export default async function SettingsPage() {
             <SettingsClient
               workspaceName={workspace.name}
               canManage={canManage}
+              isSuperAdmin={ctx.isSuperAdmin}
+              imageModel={workspace.imageModel}
+              imageModelOptions={WORKSPACE_IMAGE_MODELS.map((m) => ({ key: m.key, label: m.label, hint: m.hint }))}
               currentUserId={ctx.userId}
               members={members.map((m) => ({
                 membershipId: m.id,
