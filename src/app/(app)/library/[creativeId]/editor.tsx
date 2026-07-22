@@ -367,6 +367,7 @@ export function CreativeEditor(props: {
         renders={props.renders}
         missingAspects={missingAspects}
         addAspectPending={aspectPending}
+        aspectCostLabel={props.costs.regen}
         onAddAspect={(a) =>
           mutate(startAspect, () => renderNewAspect(id, a), `${a} format rendered`, undefined, "aspect")
         }
