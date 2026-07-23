@@ -87,15 +87,17 @@ describe("buildOnModelPrompt", () => {
 
   it("defaults to the clean-catalog photoshoot direction", () => {
     const p = buildOnModelPrompt({ concept, aspect: "4:5" });
-    expect(p).toMatch(/clean showcase/i);
+    expect(p).toMatch(/premium e-commerce showcase/i);
     expect(p).toMatch(/GARMENT is the hero/i);
+    expect(p).toMatch(/soft, diffused/i); // schein-style light
   });
 
   it("switches to editorial campaign direction when asked", () => {
     const p = buildOnModelPrompt({ concept, aspect: "4:5", direction: "editorial" });
-    expect(p).toMatch(/high-fashion campaign/i);
+    expect(p).toMatch(/premium fashion campaign/i);
     expect(p).toMatch(/85mm/);
-    expect(p).not.toMatch(/clean showcase/i);
+    expect(p).toMatch(/designer lookbook campaign/i); // blueman-style character energy
+    expect(p).not.toMatch(/premium e-commerce showcase/i);
   });
 
   it("appends the direction and quality floors even when the concept carries a full imagePrompt", () => {
