@@ -5,6 +5,7 @@ import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { sendInviteEmail } from "@/lib/email";
 import { WORKSPACE_IMAGE_MODELS } from "@/lib/image/provider";
+import { isWorkspaceTypeId } from "@/lib/workspace-type";
 import { MembershipRole } from "@/generated/prisma/client";
 
 const MANAGER_ROLES = new Set(["OWNER", "ADMIN"]);
@@ -36,6 +37,15 @@ export async function renameWorkspace(name: string) {
   const trimmed = name.trim();
   if (trimmed.length < 2 || trimmed.length > 60) throw new Error("Name must be 2–60 characters");
   await prisma.workspace.update({ where: { id: ctx.workspaceId }, data: { name: trimmed } });
+  revalidatePath("/settings");
+}
+
+/** Owner/admin: set the workspace account type (photography + concept style
+ * of future generations). */
+export async function setWorkspaceType(type: string) {
+  const ctx = await requireManager();
+  if (!isWorkspaceTypeId(type)) throw new Error("Unknown account type");
+  await prisma.workspace.update({ where: { id: ctx.workspaceId }, data: { type } });
   revalidatePath("/settings");
 }
 

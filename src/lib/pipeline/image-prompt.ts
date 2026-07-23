@@ -53,12 +53,14 @@ const PLAIN_ECOMMERCE =
 export type OnModelDirection = "editorial" | "catalog";
 
 const ON_MODEL_DIRECTION: Record<OnModelDirection, string> = {
-  // High-end fashion accounts: designer-campaign / magazine-editorial energy.
+  // Premium fashion accounts: styled fashion-campaign photograph with
+  // character energy (reference: theblueman.net lookbooks).
   editorial:
-    "PHOTOSHOOT DIRECTION (editorial): shoot it as a high-fashion campaign photograph — 85mm–105mm portrait compression, deliberate directional editorial lighting with sculpted shadows, a styled set or location with real depth and atmosphere, shallow depth of field. The model is impeccably groomed with styled hair and confident, expressive editorial posture and natural hands; styling and any accessories are tasteful and complementary. Restrained, sophisticated colour story. The result must read as a frame from a Vogue-grade designer campaign — never a flat catalogue listing, never mass-market retail energy.",
-  // Regular apparel shops: clean, garment-forward premium showcase.
+    "PHOTOSHOOT DIRECTION (premium fashion campaign): shoot it as a frame from a designer lookbook campaign — 85mm–105mm portrait compression, shallow depth of field, directional natural or rim light with sculpted contrast and real dimensionality. The set is an environment with genuine depth and tasteful props or textures (architectural detail, foliage, weathered wood, an evocative location) — never a bare seamless wall. The model has styled character energy: impeccable grooming, confident expressive posture, natural hands, and tasteful complementary accessories where they suit the garment (sunglasses, a watch, layered pieces). Rich, confident yet controlled colour grade with a sophisticated story. Never a flat catalogue listing, never mass-market retail energy.",
+  // E-commerce apparel accounts: clean premium catalog showcase (reference:
+  // schein.in product photography).
   catalog:
-    "PHOTOSHOOT DIRECTION (clean showcase): shoot it as a premium apparel lookbook photograph — the GARMENT is the hero. Soft, even, flattering key light with gentle falloff; a clean, uncluttered backdrop (seamless studio tone or a calm minimal setting with subtle depth) that never competes with the clothing; crisp focus on the garment's fabric, colour and cut. The model is well-groomed with a natural, confident, relaxed pose that presents the garment clearly — drape, fit and details all readable. Polished e-commerce-editorial quality: clean, premium, true to the garment.",
+    "PHOTOSHOOT DIRECTION (premium e-commerce showcase): shoot it as a premium apparel product photograph — the GARMENT is the hero. Soft, diffused, flattering daylight-quality key light with gentle falloff and delicate soft shadows; a warm neutral minimal set — seamless studio tone or a calm beige/cream architectural backdrop (plaster wall, subtle arch or steps) with quiet depth — that never competes with the clothing. Muted, harmonious palette that flatters the garment's colours. Crisp, macro-readable focus on fabric texture, drape, embroidery/print detail and cut. The model is elegantly groomed with a natural, poised, relaxed pose that presents the garment clearly — full drape, fit and details all readable. Polished premium-listing quality: clean, quiet, true to the garment.",
 };
 
 /**

@@ -40,6 +40,7 @@ export default async function SettingsPage() {
           <CardContent>
             <SettingsClient
               workspaceName={workspace.name}
+              workspaceType={workspace.type}
               canManage={canManage}
               isSuperAdmin={ctx.isSuperAdmin}
               imageModel={workspace.imageModel}
