@@ -10,59 +10,42 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PROFILE_CHANNELS, PROFILE_INDUSTRIES, PROFILE_USE_CASES } from "@/lib/workspace-profile";
+import { PROFILE_CHANNELS } from "@/lib/workspace-profile";
+import { AccountTypePicker } from "@/components/account-type-picker";
+import type { WorkspaceTypeId } from "@/lib/workspace-type";
 
 type Mode = "url" | "manual";
 type Status = "NONE" | "PENDING" | "CRAWLING" | "EXTRACTING" | "READY" | "FAILED";
 
-/** Optional business-profile answers, shared by both forms. They tailor which
- * surfaces the workspace sees (e.g. AI models only for apparel businesses). */
-function ProfileFields() {
+/** Business-profile answers, shared by both forms. The account type is the
+ * one that matters — it sets the workspace's photography + concept style and
+ * which surfaces it sees (e.g. AI models only for apparel businesses). */
+function ProfileFields(props: {
+  accountType: WorkspaceTypeId | "";
+  onAccountType: (id: WorkspaceTypeId) => void;
+}) {
   return (
     <div className="space-y-4 rounded-xl border border-border bg-muted/30 p-4">
-      <p className="text-xs font-medium text-muted-foreground">
-        A little about the business <span className="font-normal">(optional — helps us show the right tools)</span>
-      </p>
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div className="space-y-2">
-          <Label htmlFor="profile-industry">Industry</Label>
-          <Select name="industry">
-            <SelectTrigger id="profile-industry" className="w-full">
-              <SelectValue placeholder="Choose…" />
-            </SelectTrigger>
-            <SelectContent>
-              {PROFILE_INDUSTRIES.map((o) => (
-                <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="profile-usecase">Mainly creating</Label>
-          <Select name="primaryUseCase">
-            <SelectTrigger id="profile-usecase" className="w-full">
-              <SelectValue placeholder="Choose…" />
-            </SelectTrigger>
-            <SelectContent>
-              {PROFILE_USE_CASES.map((o) => (
-                <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="profile-channel">You sell via</Label>
-          <Select name="salesChannel">
-            <SelectTrigger id="profile-channel" className="w-full">
-              <SelectValue placeholder="Choose…" />
-            </SelectTrigger>
-            <SelectContent>
-              {PROFILE_CHANNELS.map((o) => (
-                <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      <div className="space-y-2">
+        <p className="text-xs font-medium text-muted-foreground">
+          What kind of business is this? <span className="font-normal">— this sets your photography style</span>
+        </p>
+        <AccountTypePicker value={props.accountType} onChange={props.onAccountType} required />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="profile-channel">
+          You sell via <span className="font-normal text-muted-foreground">(optional)</span>
+        </Label>
+        <Select name="salesChannel">
+          <SelectTrigger id="profile-channel" className="w-full">
+            <SelectValue placeholder="Choose…" />
+          </SelectTrigger>
+          <SelectContent>
+            {PROFILE_CHANNELS.map((o) => (
+              <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
     </div>
   );
@@ -81,6 +64,7 @@ export function OnboardingWizard(props: {
 }) {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("url");
+  const [accountType, setAccountType] = useState<WorkspaceTypeId | "">("");
   const [status, setStatus] = useState<Status>(props.initialStatus);
   const [error, setError] = useState<string | null>(props.initialError);
   const [pending, startTransition] = useTransition();
@@ -192,7 +176,7 @@ export function OnboardingWizard(props: {
                     required
                   />
                 </div>
-                <ProfileFields />
+                <ProfileFields accountType={accountType} onAccountType={setAccountType} />
                 <Button type="submit" disabled={pending} className="w-full" size="lg">
                   {pending ? "Starting…" : "Analyze my website"}
                 </Button>
@@ -241,7 +225,7 @@ export function OnboardingWizard(props: {
                     placeholder="Fresh mithai in pure desi ghee since 1987"
                   />
                 </div>
-                <ProfileFields />
+                <ProfileFields accountType={accountType} onAccountType={setAccountType} />
                 <Button type="submit" disabled={pending} className="w-full" size="lg">
                   {pending ? "Saving…" : "Save & continue"}
                 </Button>

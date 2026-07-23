@@ -9,24 +9,26 @@ import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 import { ensureBrand } from "@/lib/ensure-brand";
 import { storageKeys, uploadBuffer } from "@/lib/storage";
-import { PROFILE_CHANNELS, PROFILE_INDUSTRIES, PROFILE_USE_CASES } from "@/lib/workspace-profile";
+import { PROFILE_CHANNELS } from "@/lib/workspace-profile";
+import { isWorkspaceTypeId } from "@/lib/workspace-type";
 import type { brandIngest } from "@/trigger/brand-ingest";
 
 const urlSchema = z.string().trim().transform((v) => (/^https?:\/\//i.test(v) ? v : `https://${v}`)).pipe(z.string().url());
 
-/** Persist the optional onboarding profile answers onto the workspace. */
+/** Persist the onboarding profile onto the workspace. The account type is the
+ * canonical classification (drives photography + concept style); the legacy
+ * industry/primaryUseCase columns are no longer written. */
 async function saveWorkspaceProfile(workspaceId: string, formData: FormData): Promise<void> {
-  const pick = (name: string, allowed: readonly { id: string }[]) => {
-    const v = formData.get(name);
-    return typeof v === "string" && allowed.some((a) => a.id === v) ? v : null;
-  };
-  const data = {
-    industry: pick("industry", [...PROFILE_INDUSTRIES]),
-    primaryUseCase: pick("primaryUseCase", [...PROFILE_USE_CASES]),
-    salesChannel: pick("salesChannel", [...PROFILE_CHANNELS]),
-  };
-  if (data.industry || data.primaryUseCase || data.salesChannel) {
-    await prisma.workspace.update({ where: { id: workspaceId }, data });
+  const rawType = formData.get("accountType");
+  const type = isWorkspaceTypeId(rawType) ? rawType : null;
+  const rawChannel = formData.get("salesChannel");
+  const salesChannel =
+    typeof rawChannel === "string" && PROFILE_CHANNELS.some((c) => c.id === rawChannel) ? rawChannel : null;
+  if (type || salesChannel) {
+    await prisma.workspace.update({
+      where: { id: workspaceId },
+      data: { ...(type ? { type } : {}), ...(salesChannel ? { salesChannel } : {}) },
+    });
   }
 }
 
