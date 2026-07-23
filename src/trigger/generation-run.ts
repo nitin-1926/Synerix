@@ -182,12 +182,13 @@ export const generationRun = task({
         customBrief: run.customBrief,
         customTitle: run.calendarEntry?.customTitle ?? null,
       });
-      // Account-type flavor: FASHION_EDITORIAL workspaces sell high-end
-      // apparel — every concept must read like a designer campaign, not a
-      // commerce listing. Threaded into the brief so concepting, brief QA and
-      // the prompt enhancer all inherit it.
+      // Account-type flavor, threaded into the brief so concepting, brief QA
+      // and the prompt enhancer all inherit it. FMCG_PRODUCT (the default) adds
+      // nothing — the base campaign behavior IS its style.
       if (workspace?.type === "FASHION_EDITORIAL") {
-        occasionBrief += `\n\n## ACCOUNT STYLE (non-negotiable)\nThis is a HIGH-FASHION EDITORIAL account. Every concept must look like a premium designer campaign or magazine editorial photoshoot (Vogue India energy): dramatic yet tasteful lighting, striking styled sets or locations, confident editorial model poses, luxury art direction, restrained color stories. Never mass-market catalogue styling, never discount-retail energy, never busy commerce clutter.`;
+        occasionBrief += `\n\n## ACCOUNT STYLE (non-negotiable)\nThis is a PREMIUM FASHION account. Every concept must look like a frame from a designer lookbook campaign: styled character energy (groomed model, confident expressive poses, tasteful accessories), environmental sets with real depth and props, directional natural or rim lighting with sculpted contrast, rich confident yet controlled colour grades, luxury art direction. Never flat catalogue styling, never mass-market or discount-retail energy, never busy commerce clutter.`;
+      } else if (workspace?.type === "APPAREL_ON_MODEL") {
+        occasionBrief += `\n\n## ACCOUNT STYLE (non-negotiable)\nThis is a PREMIUM E-COMMERCE APPAREL account. Every concept favors clean, elegant, minimal photography: soft diffused flattering light, warm neutral or calm architectural backdrops, muted harmonious palettes, the garment as the unmistakable hero with fabric and cut readable. Campaign or festival concepts stay tasteful, quiet and product-forward. Never gaudy retail energy, never cluttered maximalist scenes, never heavy props that compete with the clothing.`;
       }
       await updatePipeline(runId, (p) => { p.occasionBrief = occasionBrief; });
 
