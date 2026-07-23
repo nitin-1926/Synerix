@@ -1,44 +1,26 @@
-# 2026-07-22b — workspace model picker, multi-pose, aspect fix
-(prev round archived at tasks/todo-r4-archive.md)
+# 2026-07-23 — workspace account types (FMCG / e-com apparel / premium fashion)
+(prev round archived: tasks/todo-r4-archive.md; plan: ~/.ccpm/profiles/work/plans/warm-singing-comet.md)
 
 ## Decisions (from My Lord)
-- Model list: 7 — NB Pro, NB2, GPT Image 2, Seedream v4, Seedream v5 Lite, Qwen-Image (runware:108@1), Wan 2.7 (alibaba:wan@2.7-image). Workspace default, super-admin only.
-- Poses: multi-select REPLACE option count for on-model. M poses → M images, same model+garment. Hide "how many options" for on-model.
-- Aspect: editor "add format" re-renders NATIVE plate (image call) and CHARGES credits.
+- 3 segments = existing WorkspaceType enum (no migration). References: schein.in (e-com apparel), theblueman.net (premium fashion).
+- Settings: owner/admin (canManage) editable. Onboarding: 3-card picker REPLACES industry+usecase selects (keep salesChannel).
 
 ## Plan
-### F1 — Workspace image-model setting (super-admin only)
-- [ ] schema: Workspace.imageModel String?
-- [ ] runware.ts: add qwen_image, wan_2_7 to IMAGE_MODELS
-- [ ] provider.ts: runwareModel on params/variant; seedream path honors it; WORKSPACE_IMAGE_MODELS registry + resolveWorkspaceVariant(); labels
-- [ ] generation-run: select workspace.imageModel; resolve variant (soft-prefer, keep fallback)
-- [ ] actions/workspace.ts: setWorkspaceImageModel (requireSuperAdmin)
-- [ ] settings page + client: picker visible only to super admin
+- [x] src/lib/workspace-type.ts — shared WORKSPACE_TYPES metadata (client-safe)
+- [x] src/components/account-type-picker.tsx — shared radio-card picker
+- [x] admin new-workspace-dialog → use shared picker/metadata
+- [x] onboarding wizard: ProfileFields → AccountTypePicker (required) + salesChannel only
+- [x] brand.ts saveWorkspaceProfile: persist workspace.type + salesChannel; stop writing industry/useCase
+- [x] workspace-profile.ts showsModelSurface: type-first, legacy profile fallback (callers unchanged — profile carries type)
+- [x] workspace.ts setWorkspaceType (requireManager) + settings card (read-only for non-managers)
+- [x] image-prompt.ts: rewrite ON_MODEL_DIRECTION catalog (schein) + editorial (blueman)
+- [x] generation-run.ts: 3-way ACCOUNT STYLE brief block (FMCG none / APPAREL catalog / EDITORIAL campaign)
+- [x] tests: showsModelSurface matrix + updated direction-string assertions
+- [x] verify: tsc ✓ lint ✓ vitest 65 ✓; prod type audit done; DEVLOG entry written
 
-### F2 — Multi-pose (on-model)
-- [ ] schema: GenerationRun.modelPoses String[]
-- [ ] create-form: pose multi-select; hide optionCount for on-model; cost = poses×perConcept
-- [ ] generate.ts: parse modelPoses; on-model conceptCount = poses.length (min 1)
-- [ ] generation-run: on-model per-pose queue (1 concept × M poses); poseOverride → buildOnModelPrompt
-
-### F3 — Aspect native re-render + charge
-- [ ] paid-edits.ts: applyRenderAspect re-renders native plate via generateScene, not cover-crop
-- [ ] actions/editor.ts: renderNewAspect debits + insufficient handling
-- [ ] creative-edit.ts: render_aspect debited → catchError refunds
-- [ ] editor.tsx: "add format" copy reflects credit cost
-
-### Verify
-- [ ] tsc + lint + vitest + migrate + real e2e both kinds
-- [ ] DEVLOG entries; My Lord sets TRIGGER_ACCESS_TOKEN secret
-
-## Review — DONE (all 3 features built + verified)
-- F1 image-model picker: 7 models (NB Pro/NB2/GPT/Seedream v4/Seedream v5 Lite/Qwen-Image/Wan 2.7), super-admin-only in settings, soft-prefer with cascade kept. 4 new unit tests incl. fallback-model-isolation guard.
-- F2 multi-pose: verified live — 2 poses → 2 creatives, each with its own pose (run 8ac7da08). Option picker hidden for on-model.
-- F3 aspect native re-render: verified live — new 1:1 got a native plate (0-1x1.png) recorded in aspectPlateKeys, not a crop. Now charges credits (regen cost); refund on failure both paths.
-- Verify: tsc ✓, lint ✓, vitest 62 ✓, real e2e both kinds ✓ (in-scene 1.9m, on-model 3.3m).
-- Migrations 20260722115500 (cutout) + 20260722133655 (imageModel+modelPoses) applied to prod DB — nullable/backward-compatible, old prod code unaffected.
-
-## State / open
-- ALL of this session's work is UNCOMMITTED (last commit 72b6ed1). Batch A (timeout/cutouts/e2e/CI) was deployed to prod last part but not committed; Batch B (these 3 features) is neither committed nor deployed.
-- Awaiting My Lord: test → then commit (retroactive-commit-history) + deploy (Trigger prod + Vercel prod).
-- Still pending: My Lord sets TRIGGER_ACCESS_TOKEN gh secret (dashboard PAT) — blocks CI trigger-deploy + e2e worker.
+## Review — DONE
+- All UI reuses one AccountTypePicker (admin dialog, onboarding, settings). Zero DB migrations.
+- Live smoke: settings picker persists to DB + toast + revert works (dev workspace flipped APPAREL_ON_MODEL→back); onboarding renders 3-card picker, required radio blocks submit.
+- Concept + render prompts now 3-way: FMCG unchanged; APPAREL_ON_MODEL = schein-anchored (soft diffused light, warm beige architectural sets, garment hero); FASHION_EDITORIAL = blueman-anchored (styled character, environmental depth, rim light, rich grade).
+- FLAGS for My Lord: (1) prod workspaces "Synerix Apparel" + "E2E Tests" are typed FMCG_PRODUCT but are apparel — fix via new settings card. (2) Pre-existing: image-model Select shows raw "__default__" instead of its label. (3) dev:next left running on :6969 for your testing.
+- UNCOMMITTED — My Lord tests, then commit via retroactive-commit-history.
