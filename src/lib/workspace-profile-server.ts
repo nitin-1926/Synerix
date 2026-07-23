@@ -6,7 +6,7 @@ import type { WorkspaceProfile } from "./workspace-profile";
 export const getWorkspaceProfile = cache(async (workspaceId: string): Promise<WorkspaceProfile> => {
   const w = await prisma.workspace.findUnique({
     where: { id: workspaceId },
-    select: { industry: true, primaryUseCase: true, salesChannel: true },
+    select: { type: true, industry: true, primaryUseCase: true, salesChannel: true },
   });
-  return w ?? { industry: null, primaryUseCase: null, salesChannel: null };
+  return w ?? { type: null, industry: null, primaryUseCase: null, salesChannel: null };
 });

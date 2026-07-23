@@ -10,8 +10,11 @@ import {
   resendInvite,
   revokeInvite,
   setWorkspaceImageModel,
+  setWorkspaceType,
   updateMemberRole,
 } from "@/app/actions/workspace";
+import { AccountTypePicker } from "@/components/account-type-picker";
+import type { WorkspaceTypeId } from "@/lib/workspace-type";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,6 +69,7 @@ const DEFAULT_MODEL = "__default__"; // Select needs a non-empty value for "use 
 
 export function SettingsClient(props: {
   workspaceName: string;
+  workspaceType: string;
   canManage: boolean;
   isSuperAdmin: boolean;
   imageModel: string | null;
@@ -76,6 +80,7 @@ export function SettingsClient(props: {
 }) {
   const [pending, startTransition] = useTransition();
   const [wsName, setWsName] = useState(props.workspaceName);
+  const [wsType, setWsType] = useState(props.workspaceType as WorkspaceTypeId);
   const [imageModel, setImageModel] = useState(props.imageModel ?? DEFAULT_MODEL);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("EDITOR");
@@ -117,6 +122,34 @@ export function SettingsClient(props: {
           <Separator />
         </>
       )}
+
+      {/* Account type — sets the photography + concept style of future
+          generations. Editable by owner/admin; read-only for everyone else. */}
+      <div className="space-y-1.5">
+        <Label>Account type</Label>
+        <AccountTypePicker
+          value={wsType}
+          disabled={!props.canManage || pending}
+          onChange={(id) => {
+            if (id === wsType) return;
+            const prev = wsType;
+            setWsType(id);
+            startTransition(async () => {
+              try {
+                await setWorkspaceType(id);
+                toast.success("Account type updated");
+              } catch (e) {
+                setWsType(prev);
+                toast.error(errorMessage(e));
+              }
+            });
+          }}
+        />
+        <p className="text-xs text-muted-foreground">
+          Sets the photography &amp; concept style of future generations. Existing creatives are unaffected.
+        </p>
+      </div>
+      <Separator />
 
       {/* Image model — platform super-admin only. Sets the model every run in
           this workspace prefers (fallback cascade kept behind it). */}

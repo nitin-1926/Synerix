@@ -29,6 +29,9 @@ export const PROFILE_CHANNELS = [
 ] as const;
 
 export interface WorkspaceProfile {
+  /** Canonical account type (Prisma WorkspaceType). Kept as string so this
+   * module stays client-safe. */
+  type: string | null;
   industry: string | null;
   primaryUseCase: string | null;
   salesChannel: string | null;
@@ -36,7 +39,11 @@ export interface WorkspaceProfile {
 
 /** Should this workspace see the AI Models surface (nav + on-model mode)? */
 export function showsModelSurface(profile: WorkspaceProfile): boolean {
-  // No profile yet → show everything (don't hide features on incomplete data).
+  // Apparel account types always get the Models surface.
+  if (profile.type === "APPAREL_ON_MODEL" || profile.type === "FASHION_EDITORIAL") return true;
+  // FMCG_PRODUCT is also the schema default, so it can't distinguish a real
+  // FMCG choice from a never-classified legacy workspace — fall back to the
+  // legacy profile answers, and show everything on incomplete data.
   if (!profile.industry && !profile.primaryUseCase) return true;
   return profile.industry === "apparel" || profile.primaryUseCase === "on_model";
 }

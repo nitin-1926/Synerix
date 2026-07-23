@@ -67,6 +67,29 @@ New entries go at the **top** of the Log section (reverse chronological).
 
 ## Log
 
+### 2026-07-23 — Workspace account types drive photography style (FMCG / e-com apparel / premium fashion)
+
+- Type: feature
+- Scope: src/lib/workspace-type.ts (new), src/components/account-type-picker.tsx (new), src/app/(admin)/admin/new-workspace-dialog.tsx, src/app/(app)/onboarding/wizard.tsx, src/app/actions/brand.ts, src/lib/workspace-profile{,-server}.ts, src/app/(app)/settings/{page,settings-client}.tsx, src/app/actions/workspace.ts, src/lib/pipeline/image-prompt.ts, src/trigger/generation-run.ts, tests
+
+Reasoning / RCA / research:
+    - Three customer segments (Gillco-style FMCG campaigns, normal e-com apparel, premium fashion) needed distinct generation styles, selectable at workspace level incl. onboarding. Key finding: the `WorkspaceType` enum already existed with exactly these 3 values but only `FASHION_EDITORIAL` branched anywhere, and onboarding used a parallel legacy classification (`industry`/`primaryUseCase`) that never set it — two disconnected systems. Chose to make `WorkspaceType` the single source of truth rather than add a fourth field; zero migrations needed.
+    - Photography language reverse-engineered from live references: schein.in (e-com apparel = soft diffused daylight, warm beige/cream minimal architectural sets, muted pastels, garment-hero full figure + crisp fabric macro detail) and theblueman.net (premium fashion = character-driven campaign: styled model w/ accessories, environmental sets with depth/props, directional/rim light, rich confident grade). Screenshotted both sites' product photos and wrote `ON_MODEL_DIRECTION` + ACCOUNT STYLE blocks against what's actually in frame, not generic "editorial" adjectives.
+    - Deliberately did NOT ban campaign concepts for APPAREL_ON_MODEL accounts — an e-com apparel brand still runs festival campaigns; its ACCOUNT STYLE block steers them tasteful/minimal instead of forbidding them. FMCG adds no block (base behavior IS its style).
+    - Mode selection in the studio stays product-category driven (unchanged) — workspace type sets style, product category sets mechanics; an FMCG workspace with an apparel product still gets on-model.
+    - `showsModelSurface` keys on type first, but FMCG_PRODUCT is also the schema default so it can't distinguish a real choice from a never-classified legacy workspace — kept the legacy-profile fallback (incomplete data → show everything) instead of hiding the Models tab on old workspaces.
+    - Decisions from My Lord: type is owner/admin editable in settings (not super-admin-only like the image model); onboarding's Industry + Mainly-creating selects are replaced by the required 3-card picker (salesChannel kept, legacy columns no longer written).
+
+Implementation summary:
+    - Shared `WORKSPACE_TYPES` metadata + `AccountTypePicker` radio-card component extracted from the admin dialog; reused in admin, onboarding, settings.
+    - `saveWorkspaceProfile` persists `workspace.type`; new `setWorkspaceType` action reuses `requireManager`; settings shows the picker read-only for non-managers.
+    - Rewrote both `ON_MODEL_DIRECTION` strings (schein/blueman anchored) and extended the brief-level ACCOUNT STYLE injection to a 3-way switch in generation-run.ts.
+    - Verified: tsc/lint clean, 65 vitest pass (new showsModelSurface matrix + updated direction assertions); live smoke on dev server — settings picker persists + reverts, onboarding renders picker and required-radio blocks submit without a choice.
+
+Follow-ups deferred:
+    - Prod data flags (My Lord to fix via the new settings card): "Synerix Apparel" and "E2E Tests" workspaces are typed FMCG_PRODUCT but are apparel accounts.
+    - Pre-existing cosmetic bug spotted: the super-admin image-model Select renders raw `__default__` in its trigger instead of the "Default (quality-first cascade)" label.
+
 ### 2026-07-22 — Super-admin workspace image-model picker (7 models incl. cheap Chinese Runware models)
 
 - Type: feature
