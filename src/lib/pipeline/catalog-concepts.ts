@@ -53,6 +53,13 @@ const SHOTS: Shot[] = [
   },
 ];
 
+/** Pose-driven runs get the pose from the run itself, so the body must not
+ * dictate a competing one — it sets the backdrop and camera only. */
+const NEUTRAL_SHOT: Shot = {
+  name: "Studio shot",
+  body: "Full-length studio frame on a warm off-white seamless backdrop with a soft floor gradient and a gentle contact shadow. Camera at chest height, straight and undistorted, the full figure centred with the garment reading clearly from head to hem.",
+};
+
 function toConcept(shot: Shot, palette: string[]): CreativeConcept {
   const empty = { eyebrow: null, headline: "", subhead: null, cta: "" };
   return {
@@ -71,12 +78,18 @@ function toConcept(shot: Shot, palette: string[]): CreativeConcept {
   } as CreativeConcept;
 }
 
+/**
+ * Build `count` catalog shot briefs. Pose-driven runs (the user picked poses in
+ * the studio) always get exactly one neutral brief — there the poses are the
+ * variation axis and the caller renders one creative per pose.
+ */
 export function buildCatalogConcepts(opts: {
   count: number;
   poseDriven?: boolean;
   palette?: string[];
 }): CreativeConcept[] {
   const palette = opts.palette ?? [];
+  if (opts.poseDriven) return [toConcept(NEUTRAL_SHOT, palette)];
   const n = Math.max(1, opts.count);
   return Array.from({ length: n }, (_, i) => toConcept(SHOTS[i % SHOTS.length], palette));
 }
