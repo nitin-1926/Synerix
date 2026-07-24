@@ -20,7 +20,9 @@ const verdictSchema = z.object({
     .describe("Does the model's face and overall identity (gender, age range, skin tone, build, hair) clearly match the MODEL reference photo? Noticeable face drift or a different-looking person = false."),
   garmentFaithful: z
     .boolean()
-    .describe("Does the worn garment match the GARMENT reference photo — same colour, print/pattern, neckline, sleeves, length and cut? Restyled, recoloured or redesigned = false."),
+    .describe(
+      "Does the worn garment match the GARMENT reference photo — same colour, print/pattern, neckline, sleeve length, HEM LENGTH and cut? Judge the hem strictly: a hip- or knee-length tunic rendered as an ankle-length gown (or the reverse) is false, as is invented embellishment (beading, appliqué, borders) the reference does not have.",
+    ),
   singleFigure: z
     .boolean()
     .describe("Is there exactly ONE figure in ONE single photograph (no front/back split, no side-by-side panels, no repeated or mirrored figure, no collage)?"),
