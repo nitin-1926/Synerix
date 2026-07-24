@@ -73,6 +73,14 @@ type RunWithRels = Awaited<ReturnType<typeof loadRun>>;
 export const generationRun = task({
   id: "generation-run",
   maxDuration: 900,
+  // The default preset is small-1x = 0.5 GB, and this task holds several
+  // multi-megapixel PNGs in memory at once per concurrent concept (plate +
+  // composited render + sharp raster + base64 copies of three images for the
+  // fidelity QA call), times maxConcurrentConcepts. That OOM-killed a 3-pose
+  // 9:16 production run mid-render — and an OOM kill is a process kill, so
+  // catchError never ran and the run sat non-terminal.
+  machine: { preset: "medium-2x" }, // 2 vCPU / 4 GB
+
   retry: { maxAttempts: 1 }, // per-concept isolation inside; whole-run retry would double-bill
   run: async (payload: { runId: string }) => {
     const { runId } = payload;
