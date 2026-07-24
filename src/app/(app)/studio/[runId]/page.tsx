@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { getSignedUrls, getSignedThumbUrls } from "@/lib/storage";
 import { BAKEOFF_VARIANTS, IMAGE_MODEL_LABELS } from "@/lib/image/provider";
 import { loadEditorProps } from "@/lib/editor-data";
+import { healStalledRun } from "@/lib/run-heal";
 import { StudioCanvas } from "./studio-canvas";
 import type { PipelineState } from "@/lib/pipeline/schemas";
 
@@ -38,31 +39,13 @@ export default async function RunPage({
   });
   if (!run) notFound();
 
-  // Self-healing: a run stuck non-terminal for 30+ min means the worker died;
-  // fail it and refund undelivered creatives (its catchError never fired).
-  if (!TERMINAL.includes(run.status) && Date.now() - run.startedAt.getTime() > 30 * 60 * 1000) {
-    const { CREDIT_COSTS } = await import("@/lib/ai/models");
-    const { reconcileRunRefund } = await import("@/lib/credits");
-    const delivered = run.creatives.filter((cr) => cr.status === "READY").length;
-    const nextStatus = delivered > 0 ? "PARTIAL" : "FAILED";
-    // This runs on GET render, so two concurrent tabs/refreshes can enter here
-    // together. A conditional transition (only flip if still non-terminal) means
-    // exactly ONE render performs the recovery; the refund is additionally
-    // idempotent (reconciled against prior REFUND for this run), so a race can
-    // never inflate credits.
-    const flipped = await prisma.generationRun.updateMany({
-      where: { id: run.id, status: { notIn: ["COMPLETE", "PARTIAL", "FAILED"] } },
-      data: { status: nextStatus, finishedAt: new Date(), error: "Run stalled (worker lost) — auto-failed after 30 min" },
-    });
-    if (flipped.count > 0 && Number(run.creditsDebited) > 0) {
-      await reconcileRunRefund({
-        workspaceId: run.workspaceId,
-        generationRunId: run.id,
-        owedRefund: Number(run.creditsDebited) - delivered * CREDIT_COSTS.perConcept,
-        note: "Run stalled — automatic refund",
-      });
-    }
-    run.status = nextStatus;
+  // Self-healing: a dead worker (OOM kill / crash) never runs catchError, so
+  // the row would sit non-terminal forever. Heal the run being viewed here and
+  // sweep the rest on a schedule (trigger/heal-runs.ts) — the recovery is
+  // idempotent and race-safe, so both paths can fire.
+  if (!TERMINAL.includes(run.status)) {
+    const healed = await healStalledRun(run.id);
+    if (healed) run.status = healed;
   }
 
   const pipeline = (run.pipeline ?? {}) as PipelineState;
