@@ -57,6 +57,13 @@ export function StudioCanvas(props: {
     enabled: Boolean(props.triggerRunId && props.publicToken),
   });
   const liveStatus = (run?.metadata?.status as string) ?? props.status;
+  // The task mirrors its own status into metadata — but a killed worker (OOM,
+  // crash, timeout) never gets to write it, which left this screen spinning
+  // forever. The Trigger run's OWN status still reports the death, so treat it
+  // as terminal here rather than waiting for metadata that will never arrive.
+  const workerDead = Boolean(
+    run && ["FAILED", "CRASHED", "SYSTEM_FAILURE", "INTERRUPTED", "TIMED_OUT", "EXPIRED", "CANCELED"].includes(run.status),
+  );
   const done = Number(run?.metadata?.done ?? 0);
   const conceptCount = Number(run?.metadata?.conceptCount ?? props.conceptCount ?? 0);
 
@@ -67,7 +74,9 @@ export function StudioCanvas(props: {
   const hasRealtime = Boolean(props.triggerRunId && props.publicToken);
   const lastProgress = useRef({ done: 0, status: props.status });
   useEffect(() => {
-    if (TERMINAL.includes(liveStatus)) {
+    if (TERMINAL.includes(liveStatus) || workerDead) {
+      // A dead worker leaves the DB row non-terminal until the healer flips it;
+      // refreshing re-renders the page, which heals it and refunds.
       router.refresh();
       return;
     }
@@ -81,14 +90,14 @@ export function StudioCanvas(props: {
     }
     const interval = setInterval(() => router.refresh(), 15_000);
     return () => clearInterval(interval);
-  }, [liveStatus, done, hasRealtime, router]);
+  }, [liveStatus, done, hasRealtime, workerDead, router]);
 
   // Failed work items never become selectable options — show them as such
   // instead of leaving eternal "crafting…" skeletons (or hiding them entirely
   // on PARTIAL runs).
   const failedItems = Object.entries(props.conceptStatus).filter(([, s]) => s === "failed");
   const pendingSlots = Math.max(0, conceptCount - props.concepts.length - failedItems.length);
-  const generating = !props.isTerminal && !TERMINAL.includes(liveStatus);
+  const generating = !props.isTerminal && !TERMINAL.includes(liveStatus) && !workerDead;
 
   return (
     <div className="flex flex-col gap-4 lg:flex-row lg:gap-5">
@@ -193,10 +202,12 @@ export function StudioCanvas(props: {
       <div className="min-w-0 flex-1">
         {props.editorProps ? (
           <CreativeEditor key={props.editorProps.creativeId} {...props.editorProps} />
-        ) : props.failed ? (
+        ) : props.failed || workerDead ? (
           <div className="flex min-h-[60vh] flex-col items-center justify-center rounded-2xl border border-destructive/30 bg-destructive/5 p-8 text-center">
             <p className="font-medium text-destructive">This run failed</p>
-            <p className="mt-1 max-w-sm text-sm text-destructive/80">{props.error ?? "Something went wrong."} Your credits were refunded.</p>
+            <p className="mt-1 max-w-sm text-sm text-destructive/80">
+              {props.error ?? "Something went wrong."} Your credits were refunded.
+            </p>
             <Link href="/studio" className="mt-4 text-sm font-medium text-primary hover:underline">Start a new one</Link>
           </div>
         ) : (
