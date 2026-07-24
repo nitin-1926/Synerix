@@ -35,6 +35,9 @@ export type CreativeEditPayload =
 export const creativeEdit = task({
   id: "creative-edit",
   maxDuration: 300,
+  // Decodes a full-size plate, re-composites it and can call an image model —
+  // the 0.5 GB default preset is not enough headroom (see generation-run).
+  machine: { preset: "medium-1x" }, // 1 vCPU / 2 GB
   retry: { maxAttempts: 1 }, // a retry would re-spend the image call after a refund
   run: async (payload: CreativeEditPayload) => {
     metadata.set("status", "editing");
