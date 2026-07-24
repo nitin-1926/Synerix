@@ -206,7 +206,7 @@ export function StudioCanvas(props: {
           <div className="flex min-h-[60vh] flex-col items-center justify-center rounded-2xl border border-destructive/30 bg-destructive/5 p-8 text-center">
             <p className="font-medium text-destructive">This run failed</p>
             <p className="mt-1 max-w-sm text-sm text-destructive/80">
-              {props.error ?? "Something went wrong."} Your credits were refunded.
+              {props.error ?? (workerDead ? "The generation worker stopped unexpectedly." : "Something went wrong.")} Your credits were refunded.
             </p>
             <Link href="/studio" className="mt-4 text-sm font-medium text-primary hover:underline">Start a new one</Link>
           </div>
