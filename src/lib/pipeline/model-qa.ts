@@ -56,7 +56,7 @@ export async function checkOnModelFidelity(opts: {
             { type: "image", image: opts.render },
             {
               type: "text",
-              text: "Judge the generated image against both references. Identity: same person as the MODEL reference (face, gender, age range, skin tone, build)? Garment: same clothing as the GARMENT reference (colour, print, cut, neckline, sleeves, length)? Composition: exactly one figure, one single photograph? Ignore background, lighting style and pose differences — those are allowed to vary.",
+              text: "Judge the generated image against both references. Identity: same person as the MODEL reference (face, gender, age range, skin tone, build)? Garment: same clothing as the GARMENT reference — colour, print, cut, neckline, sleeve length, where the HEM falls on the body, and no invented embellishment? Composition: exactly one figure, one single photograph? Ignore background, lighting style and pose differences — those are allowed to vary. The garment reference may be shown on a hanger or a mannequin; judge the garment itself, not how it is displayed.",
             },
           ],
         },
