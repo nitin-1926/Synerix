@@ -48,3 +48,18 @@ export async function healStalledRun(runId: string): Promise<GenerationStatus | 
   }
   return nextStatus;
 }
+
+/** Sweep every stalled run. Used by the scheduled healer so recovery never
+ * depends on a user opening the studio page for that specific run. */
+export async function healAllStalledRuns(): Promise<{ healed: number; runIds: string[] }> {
+  const stalled = await prisma.generationRun.findMany({
+    where: { status: { notIn: TERMINAL }, startedAt: { lt: new Date(Date.now() - RUN_STALL_MS) } },
+    select: { id: true },
+    take: 100,
+  });
+  const runIds: string[] = [];
+  for (const { id } of stalled) {
+    if (await healStalledRun(id)) runIds.push(id);
+  }
+  return { healed: runIds.length, runIds };
+}
