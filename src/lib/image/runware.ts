@@ -122,7 +122,7 @@ export async function generateImage(p: GenerateImageParams): Promise<GenerateIma
   const task: Record<string, unknown> = {
     taskType: "imageInference",
     taskUUID,
-    positivePrompt: p.prompt,
+    positivePrompt: fitRunwarePrompt(p.prompt),
     model: modelId,
     width,
     height,
@@ -132,7 +132,7 @@ export async function generateImage(p: GenerateImageParams): Promise<GenerateIma
   };
   if (p.negativePrompt) {
     if (NO_NEGATIVE_PROMPT.has(modelId)) {
-      task.positivePrompt = `${p.prompt}\n\nAvoid: ${p.negativePrompt}`.slice(0, 9000);
+      task.positivePrompt = fitRunwarePrompt(`${p.prompt}\n\nAvoid: ${p.negativePrompt}`);
     } else {
       task.negativePrompt = p.negativePrompt;
     }
