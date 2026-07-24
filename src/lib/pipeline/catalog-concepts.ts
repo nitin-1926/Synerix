@@ -7,9 +7,16 @@ import type { CreativeConcept } from "./schemas";
  * Why no LLM here: a PLAIN on-model creative ships the bare model+garment
  * photograph — the compositor renders NO headline, subhead, CTA or logo (see
  * `plainMode` in generation-run). The concept LLM's entire output except the
- * scene line is discarded, so paying for concepting + brief QA + prompt polish
- * bought nothing but latency. The variation a catalog needs is framing, not
- * storytelling.
+ * scene line (four-language copy, big idea, archetype, typography spec) is
+ * discarded, so paying Opus for concepting + Sonnet for brief QA + Opus for
+ * prompt polish bought nothing but latency (~$0.12 and ~45s per creative,
+ * measured on prod runs). The variation a catalog actually needs is framing,
+ * not storytelling, and a fixed shot list gives a client's 800-image drop the
+ * consistency an LLM cannot hold across runs.
+ *
+ * These bodies deliberately carry ONLY the shot: pose, camera, crop, backdrop.
+ * The craft floors (garment fidelity, light quality, single-figure framing,
+ * the schein-anchored catalog direction) are appended by buildOnModelPrompt.
  */
 
 interface Shot {
@@ -17,6 +24,8 @@ interface Shot {
   body: string;
 }
 
+/** Backdrops stay in one warm-neutral family on purpose — a catalog reads as a
+ * set. The variation axis is framing and pose. */
 const SHOTS: Shot[] = [
   {
     name: "Front hero",
@@ -29,6 +38,18 @@ const SHOTS: Shot[] = [
   {
     name: "In motion",
     body: "Full-length walking frame. The model steps naturally toward camera mid-stride, the garment carrying real motion in its fabric and hem, arms swinging loosely, gaze forward. Warm beige studio backdrop kept quiet so the movement of the cloth reads clearly.",
+  },
+  {
+    name: "Side profile",
+    body: "Full-length side frame. The model stands turned away from camera at roughly forty-five degrees, looking off-frame, so the garment's silhouette, side seams, sleeve line and back drape all read. Sand-toned wall with a soft directional shadow falling behind the figure.",
+  },
+  {
+    name: "Seated",
+    body: "Full-length seated frame. The model sits on a simple pale wooden block, posture relaxed and upright, hands easy, one leg extended, so the garment's drape falls naturally across the lap and shoulders. Warm neutral studio backdrop, uncluttered.",
+  },
+  {
+    name: "Architectural",
+    body: "Full-length environmental frame. The model stands beside a quiet beige architectural detail — a subtle plaster arch or a low step riser — lit by soft window light from one side, posture poised and still. Minimal set with gentle depth, nothing competing with the clothing.",
   },
 ];
 
