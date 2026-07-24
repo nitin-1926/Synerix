@@ -95,6 +95,23 @@ export interface GenerateImageResult {
   taskUUID: string;
 }
 
+/**
+ * Runware rejects a long positivePrompt outright (`invalidPositivePrompt`),
+ * which silently made EVERY on-model render fail on Runware models — our
+ * on-model prompt is capped at 4500 chars. Trim from the MIDDLE: the head
+ * carries the two-reference fidelity contract and the tail carries the craft
+ * floors (single figure, framing, safe zones); only the scene body in between
+ * can be lost without breaking the render.
+ */
+const RUNWARE_PROMPT_MAX = Number(process.env.RUNWARE_PROMPT_MAX ?? 2900);
+
+export function fitRunwarePrompt(prompt: string, max = RUNWARE_PROMPT_MAX): string {
+  if (prompt.length <= max) return prompt;
+  const head = Math.floor(max * 0.35);
+  const tail = max - head - 5;
+  return `${prompt.slice(0, head)}\n...\n${prompt.slice(-tail)}`;
+}
+
 export async function generateImage(p: GenerateImageParams): Promise<GenerateImageResult> {
   const apiKey = process.env.RUNWARE_API_KEY;
   if (!apiKey) throw new Error("RUNWARE_API_KEY missing");
