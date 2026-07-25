@@ -31,6 +31,24 @@ export function isBaked(creative: { concept: unknown }): boolean {
   return (creative.concept as ConceptWithTypography)?.typographyMode === "baked";
 }
 
+/**
+ * The workspace's pinned image model as generateScene params (soft-prefer, so
+ * the resilience cascade stays behind it). EVERY paid image call routes through
+ * this: a workspace pinned to a cheap model must not be silently billed the
+ * premium default just because the call happens in the editor. With no pin, the
+ * premium tier stands — a paid edit holds the same bar as generation.
+ */
+export async function workspaceModelParams(workspaceId: string) {
+  const ws = await prisma.workspace.findUnique({
+    where: { id: workspaceId },
+    select: { imageModel: true },
+  });
+  const v = resolveWorkspaceImageModel(ws?.imageModel);
+  return v
+    ? { provider: v.provider, tier: v.tier, softPrefer: true as const, runwareModel: v.runwareModel }
+    : { tier: "hero" as const };
+}
+
 export async function loadOwnedCreative(creativeId: string, workspaceId: string) {
   const creative = await prisma.creative.findFirst({
     where: { id: creativeId, brand: { workspaceId }, deletedAt: null },
