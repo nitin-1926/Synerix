@@ -12,11 +12,19 @@ The concept stack's output is discarded on this path — PLAIN composites no tex
 - Run a real bake-off before pinning a cheaper image model.
 
 ## Plan
-- [ ] `src/lib/pipeline/catalog-concepts.ts` — deterministic shot briefs
-- [ ] generation-run: lite branch skips concepts / brief-QA / enhancer
-- [ ] fidelity-QA retry budget per path
-- [ ] persist the fidelity verdict for PLAIN creatives
-- [ ] workspace image-model pin honoured in the editor paths
-- [ ] fix: Runware rejected our 4500-char on-model prompt
-- [ ] bake-off: 4 garments × 4 models
+- [x] `src/lib/pipeline/catalog-concepts.ts` — deterministic shot briefs (6-shot table + neutral pose-driven brief)
+- [x] generation-run: lite branch skips concepts / brief-QA / enhancer / brand-research refresh
+- [x] fidelity-QA retry budget per path (`LITE_QA_MAX_RETRIES`, default 1 vs 2)
+- [x] persist the fidelity verdict for PLAIN creatives (was invisible on the highest-volume path)
+- [x] tests: catalog-concepts (3) + runware prompt fit (2)
+- [x] admin costs list: "Spend by pipeline stage · last 30 days" + clickable run rows
+- [x] e2e: `PACK_QA_MAX_RETRIES=0` / `LITE_QA_MAX_RETRIES=0` (retries were the suite's biggest line)
+- [x] workspace image-model pin honoured in the editor paths (was silently NB Pro)
+- [x] fix: Runware rejected our 4500-char on-model prompt → every Seedream/Qwen/Wan on-model render failed
+- [ ] bake-off: 4 garments × 4 models, judge fidelity, recommend the pin
 - [ ] DEVLOG entry
+
+## Open for My Lord
+- "Compare" pref + a workspace pin = 2× credits debited, 1 render delivered (generate.ts:149 vs
+  generation-run.ts:147). Needs a decision: pin wins, pref wins, or refund the unused variant.
+- `generate-model.ts` renders AI models on NB Pro ($0.134) — one-time per model, cheap to downgrade.
