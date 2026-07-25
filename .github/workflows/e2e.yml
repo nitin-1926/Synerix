@@ -47,6 +47,12 @@ jobs:
       MODEL_RESEARCH: claude-haiku-4-5-20251001
       GEMINI_IMAGE_MODEL: gemini-3.1-flash-image
       IMAGE_PROVIDER: gemini
+      # e2e asserts the pipeline completes, not that the render is faithful, so
+      # fidelity QA never re-renders here — a corrective render is a full extra
+      # image and was the single biggest line in the suite's bill ($0.20 vs
+      # $0.08 on the same run shape).
+      PACK_QA_MAX_RETRIES: "0"
+      LITE_QA_MAX_RETRIES: "0"
     steps:
       - uses: actions/checkout@v4
 

@@ -6,6 +6,7 @@ import { downloadFromStorage, storageKeys, uploadBuffer } from "@/lib/storage";
 import { reconcileRunRefund } from "@/lib/credits";
 import { assembleOccasionBrief } from "@/lib/pipeline/brief";
 import { generateConcepts } from "@/lib/pipeline/concepts";
+import { buildCatalogConcepts } from "@/lib/pipeline/catalog-concepts";
 import { validateAndRepairConcepts, enhanceConceptPrompts } from "@/lib/pipeline/validate-concepts";
 import { intelToEvidenceBlock, type BrandIntel } from "@/lib/pipeline/brand-intel";
 import type { brandResearch } from "./brand-research";
@@ -73,6 +74,14 @@ type RunWithRels = Awaited<ReturnType<typeof loadRun>>;
 export const generationRun = task({
   id: "generation-run",
   maxDuration: 900,
+  // The default preset is small-1x = 0.5 GB, and this task holds several
+  // multi-megapixel PNGs in memory at once per concurrent concept (plate +
+  // composited render + sharp raster + base64 copies of three images for the
+  // fidelity QA call), times maxConcurrentConcepts. That OOM-killed a 3-pose
+  // 9:16 production run mid-render — and an OOM kill is a process kill, so
+  // catchError never ran and the run sat non-terminal.
+  machine: { preset: "medium-2x" }, // 2 vCPU / 4 GB
+
   retry: { maxAttempts: 1 }, // per-concept isolation inside; whole-run retry would double-bill
   run: async (payload: { runId: string }) => {
     const { runId } = payload;
@@ -132,11 +141,19 @@ export const generationRun = task({
     const onModelDirection: OnModelDirection =
       workspace?.type === "FASHION_EDITORIAL" ? "editorial" : "catalog";
 
+    // Lite path: a PLAIN on-model run ships the bare model+garment photograph
+    // (no headline, CTA or logo is ever composited), so the concept LLM stack
+    // authored copy and art direction that were thrown away. These runs skip
+    // concepting/brief-QA/enhancement entirely and render deterministic catalog
+    // shot briefs instead — see catalog-concepts.ts.
+    const litePlain = onModel && run.brandingMode === "PLAIN";
+
     const ctx: ConceptCtx = {
       runId, run, refBuffer, refMime, extraRefs, logoBuffer, logoAssetKey: logoAsset?.storageKey,
       aspects, masterAspect, language, intel, studioComposite, tracker,
       onModel, modelBuffer, modelMime: run.aiModel?.mimeType ?? "image/png",
       onModelDirection,
+      qaRetries: litePlain ? LITE_QA_MAX_RETRIES : PACK_QA_MAX_RETRIES,
       variantTag: "",
     };
 
@@ -200,7 +217,9 @@ export const generationRun = task({
       const brandIntel = (run.brand.creativeIntel as BrandIntel | null) ?? null;
       const intelAgeMs = run.brand.creativeIntelAt ? Date.now() - run.brand.creativeIntelAt.getTime() : Infinity;
       const STALE_MS = Number(process.env.BRAND_INTEL_STALE_MS ?? 1000 * 60 * 60 * 24 * 30);
-      if (!brandIntel || intelAgeMs > STALE_MS) {
+      // Lite runs never read brand intel, so they don't pay to refresh it — a
+      // branded run on the same brand will kick the research off when it needs it.
+      if (!litePlain && (!brandIntel || intelAgeMs > STALE_MS)) {
         try {
           await tasks.trigger<typeof brandResearch>("brand-research", { brandId: run.brandId });
         } catch (e) {
@@ -216,37 +235,48 @@ export const generationRun = task({
       // Every other run generates one concept per requested option.
       const multiPose = onModel && run.modelPoses.length > 0;
       const conceptTarget = multiPose ? 1 : Math.min(run.conceptCount, LIMITS.maxConceptsPerRun);
-      let concepts = await generateConcepts(
-        occasionBrief,
-        conceptTarget,
-        tracker,
-        brandPalette.length ? brandPalette : undefined,
-        intelToEvidenceBlock(brandIntel),
-        { exactProduct: ctx.studioComposite, onModelPlain: onModel && run.brandingMode === "PLAIN" },
-      );
+      let concepts: CreativeConcept[];
+      if (litePlain) {
+        // Deterministic catalog shot briefs — no concepting, no brief QA, no
+        // enhancer (their output is discarded on this path; see the module).
+        concepts = buildCatalogConcepts({ count: conceptTarget, poseDriven: multiPose, palette: brandPalette });
+        logger.info("lite path: deterministic catalog briefs", { concepts: concepts.length, poseDriven: multiPose });
+        await updatePipeline(runId, (p) => {
+          (p as PipelineState & { lite?: string }).lite = "plain-on-model";
+        });
+      } else {
+        concepts = await generateConcepts(
+          occasionBrief,
+          conceptTarget,
+          tracker,
+          brandPalette.length ? brandPalette : undefined,
+          intelToEvidenceBlock(brandIntel),
+          { exactProduct: ctx.studioComposite, onModelPlain: onModel && run.brandingMode === "PLAIN" },
+        );
 
-      // ---- Stage 2b: semantic brief QA + repair, then photographic prompt
-      // polish — both BEFORE any image spend. Fail-open: a QA/enhancer outage
-      // renders the authored concepts unchanged (never kills a paid run).
-      try {
-        const { concepts: validated, report } = await validateAndRepairConcepts({ concepts, occasionBrief, tracker });
-        concepts = validated;
-        await updatePipeline(runId, (p) => { (p as PipelineState & { briefQa?: typeof report }).briefQa = report; });
-        if (report.flagged) logger.warn("brief QA flagged concepts", { flagged: report.flagged, repaired: report.repaired, issues: report.issues });
-      } catch (e) {
-        logger.warn("brief QA unavailable — rendering authored concepts", { error: (e as Error).message });
-        // Marker write must never outrank the run it describes (fail-open²).
-        await updatePipeline(runId, (p) => {
-          ((p as PipelineState & { degraded?: string[] }).degraded ??= []).push("brief-qa-skipped");
-        }).catch(() => {});
-      }
-      try {
-        concepts = await enhanceConceptPrompts({ concepts, tracker });
-      } catch (e) {
-        logger.warn("prompt enhancer unavailable — rendering authored prompts", { error: (e as Error).message });
-        await updatePipeline(runId, (p) => {
-          ((p as PipelineState & { degraded?: string[] }).degraded ??= []).push("enhancer-skipped");
-        }).catch(() => {});
+        // ---- Stage 2b: semantic brief QA + repair, then photographic prompt
+        // polish — both BEFORE any image spend. Fail-open: a QA/enhancer outage
+        // renders the authored concepts unchanged (never kills a paid run).
+        try {
+          const { concepts: validated, report } = await validateAndRepairConcepts({ concepts, occasionBrief, tracker });
+          concepts = validated;
+          await updatePipeline(runId, (p) => { (p as PipelineState & { briefQa?: typeof report }).briefQa = report; });
+          if (report.flagged) logger.warn("brief QA flagged concepts", { flagged: report.flagged, repaired: report.repaired, issues: report.issues });
+        } catch (e) {
+          logger.warn("brief QA unavailable — rendering authored concepts", { error: (e as Error).message });
+          // Marker write must never outrank the run it describes (fail-open²).
+          await updatePipeline(runId, (p) => {
+            ((p as PipelineState & { degraded?: string[] }).degraded ??= []).push("brief-qa-skipped");
+          }).catch(() => {});
+        }
+        try {
+          concepts = await enhanceConceptPrompts({ concepts, tracker });
+        } catch (e) {
+          logger.warn("prompt enhancer unavailable — rendering authored prompts", { error: (e as Error).message });
+          await updatePipeline(runId, (p) => {
+            ((p as PipelineState & { degraded?: string[] }).degraded ??= []).push("enhancer-skipped");
+          }).catch(() => {});
+        }
       }
 
       // Work items. Normal runs: one per concept, times the variant lineup on
@@ -391,6 +421,8 @@ interface ConceptCtx {
   modelMime: string;
   /** Photoshoot treatment for ON_MODEL renders, resolved from the workspace type. */
   onModelDirection: OnModelDirection;
+  /** Corrective re-render budget for fidelity QA on this run. */
+  qaRetries: number;
   tracker: CostTracker;
   /** Bake-off / model pick: render on this variant. `soft` keeps the fallback
    * chain behind the preferred provider (user picks); bake-off never falls back. */
@@ -497,6 +529,10 @@ async function generatePlate(ctx: ConceptCtx, concept: CreativeConcept, aspect: 
  * env-tunable). Keeps the last attempt either way; the verdict rides along
  * for human review. */
 const PACK_QA_MAX_RETRIES = Number(process.env.PACK_QA_MAX_RETRIES ?? 2);
+/** Lite (PLAIN on-model) budget. A corrective re-render costs a full image;
+ * on a bulk catalog drop the second one rarely changes the verdict, so this
+ * path trades the long tail for predictable unit cost. */
+const LITE_QA_MAX_RETRIES = Number(process.env.LITE_QA_MAX_RETRIES ?? 1);
 async function ensurePackFidelity(
   ctx: ConceptCtx,
   opts: {
@@ -511,8 +547,8 @@ async function ensurePackFidelity(
   let gen = opts.gen;
   let verdict = await checkPackFidelity({ render: gen.buffer, reference: ctx.refBuffer!, tracker: ctx.tracker });
   let retried = false;
-  for (let attempt = 1; attempt <= PACK_QA_MAX_RETRIES && !verdict.pass; attempt++) {
-    logger.warn("pack fidelity failed, re-rendering", { attempt, of: PACK_QA_MAX_RETRIES, issues: verdict.issues });
+  for (let attempt = 1; attempt <= ctx.qaRetries && !verdict.pass; attempt++) {
+    logger.warn("pack fidelity failed, re-rendering", { attempt, of: ctx.qaRetries, issues: verdict.issues });
     const strictPrompt = `${opts.prompt}\n\nCRITICAL CORRECTION: a previous render altered the product's packaging (${verdict.issues}). Reproduce the reference pack EXACTLY — every word of label text spelled identically, same colours, same logo, same layout. Do not restyle or reinterpret the packaging in any way.`;
     gen = await generateScene({
       prompt: strictPrompt,
@@ -550,8 +586,8 @@ async function ensureOnModelFidelity(
   let gen = opts.gen;
   let verdict = await check(gen.buffer);
   let retried = false;
-  for (let attempt = 1; attempt <= PACK_QA_MAX_RETRIES && !verdict.pass; attempt++) {
-    logger.warn("on-model fidelity failed, re-rendering", { attempt, of: PACK_QA_MAX_RETRIES, issues: verdict.issues });
+  for (let attempt = 1; attempt <= ctx.qaRetries && !verdict.pass; attempt++) {
+    logger.warn("on-model fidelity failed, re-rendering", { attempt, of: ctx.qaRetries, issues: verdict.issues });
     const strictPrompt = `${opts.prompt}\n\nCRITICAL CORRECTION: a previous render drifted from the references (${verdict.issues}). The model MUST be the exact person from IMAGE 1 (same face, gender, age, skin tone, build, hair) and the garment MUST be the exact clothing from IMAGE 2 (same colour, print, cut, neckline, sleeves, length) — one single figure in one single photograph.`;
     gen = await generateScene({
       prompt: strictPrompt,
@@ -785,7 +821,9 @@ async function composeAllAspects(
         await prisma.creativeRender.create({
           data: { creativeId, aspectRatio: aspect, overlaySpec: spec as unknown as Prisma.InputJsonValue, composedImageKey: key, status: "COMPOSED" },
         });
-        critics[aspect] = { chosen: "plain", brandingMode: "PLAIN" };
+        // Carry the fidelity verdict even here — PLAIN on-model is the highest
+        // volume path, so its identity/garment QA outcome must be measurable.
+        critics[aspect] = { chosen: "plain", brandingMode: "PLAIN", packQa: layout.plateQa?.[aspect] };
         return { spec, key, aspect };
       }
 

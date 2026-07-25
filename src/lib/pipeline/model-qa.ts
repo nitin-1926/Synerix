@@ -20,7 +20,9 @@ const verdictSchema = z.object({
     .describe("Does the model's face and overall identity (gender, age range, skin tone, build, hair) clearly match the MODEL reference photo? Noticeable face drift or a different-looking person = false."),
   garmentFaithful: z
     .boolean()
-    .describe("Does the worn garment match the GARMENT reference photo — same colour, print/pattern, neckline, sleeves, length and cut? Restyled, recoloured or redesigned = false."),
+    .describe(
+      "Does the worn garment match the GARMENT reference photo — same colour, print/pattern, neckline, sleeve length, HEM LENGTH and cut? Judge the hem strictly: a hip- or knee-length tunic rendered as an ankle-length gown (or the reverse) is false, as is invented embellishment (beading, appliqué, borders) the reference does not have.",
+    ),
   singleFigure: z
     .boolean()
     .describe("Is there exactly ONE figure in ONE single photograph (no front/back split, no side-by-side panels, no repeated or mirrored figure, no collage)?"),
@@ -54,7 +56,7 @@ export async function checkOnModelFidelity(opts: {
             { type: "image", image: opts.render },
             {
               type: "text",
-              text: "Judge the generated image against both references. Identity: same person as the MODEL reference (face, gender, age range, skin tone, build)? Garment: same clothing as the GARMENT reference (colour, print, cut, neckline, sleeves, length)? Composition: exactly one figure, one single photograph? Ignore background, lighting style and pose differences — those are allowed to vary.",
+              text: "Judge the generated image against both references. Identity: same person as the MODEL reference (face, gender, age range, skin tone, build)? Garment: same clothing as the GARMENT reference — colour, print, cut, neckline, sleeve length, where the HEM falls on the body, and no invented embellishment? Composition: exactly one figure, one single photograph? Ignore background, lighting style and pose differences — those are allowed to vary. The garment reference may be shown on a hanger or a mannequin; judge the garment itself, not how it is displayed.",
             },
           ],
         },

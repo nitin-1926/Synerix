@@ -1,26 +1,30 @@
-# 2026-07-23 — workspace account types (FMCG / e-com apparel / premium fashion)
-(prev round archived: tasks/todo-r4-archive.md; plan: ~/.ccpm/profiles/work/plans/warm-singing-comet.md)
+# 2026-07-25 — cost reduction for the e-commerce apparel path
+(prev round archived in git history; account-types feature shipped 2026-07-23)
 
-## Decisions (from My Lord)
-- 3 segments = existing WorkspaceType enum (no migration). References: schein.in (e-com apparel), theblueman.net (premium fashion).
-- Settings: owner/admin (canManage) editable. Onboarding: 3-card picker REPLACES industry+usecase selects (keep salesChannel).
+## Problem (measured, prod ApiCostLog)
+Worst real PLAIN on-model run = **$0.524 / creative**: on-model renders $0.402 (NB Pro
+$0.134 × 3 — 1 render + 2 fidelity retries), concepts (Opus) $0.085, enhancer $0.020,
+brief-QA $0.013, model-QA $0.004. Client wants ≤ $0.5 charge for 800+ images.
+The concept stack's output is discarded on this path — PLAIN composites no text or logo.
+
+## Decisions (My Lord)
+- Lite path gated on `ON_MODEL + PLAIN` (not on account type wholesale).
+- Run a real bake-off before pinning a cheaper image model.
 
 ## Plan
-- [x] src/lib/workspace-type.ts — shared WORKSPACE_TYPES metadata (client-safe)
-- [x] src/components/account-type-picker.tsx — shared radio-card picker
-- [x] admin new-workspace-dialog → use shared picker/metadata
-- [x] onboarding wizard: ProfileFields → AccountTypePicker (required) + salesChannel only
-- [x] brand.ts saveWorkspaceProfile: persist workspace.type + salesChannel; stop writing industry/useCase
-- [x] workspace-profile.ts showsModelSurface: type-first, legacy profile fallback (callers unchanged — profile carries type)
-- [x] workspace.ts setWorkspaceType (requireManager) + settings card (read-only for non-managers)
-- [x] image-prompt.ts: rewrite ON_MODEL_DIRECTION catalog (schein) + editorial (blueman)
-- [x] generation-run.ts: 3-way ACCOUNT STYLE brief block (FMCG none / APPAREL catalog / EDITORIAL campaign)
-- [x] tests: showsModelSurface matrix + updated direction-string assertions
-- [x] verify: tsc ✓ lint ✓ vitest 65 ✓; prod type audit done; DEVLOG entry written
+- [x] `src/lib/pipeline/catalog-concepts.ts` — deterministic shot briefs (6-shot table + neutral pose-driven brief)
+- [x] generation-run: lite branch skips concepts / brief-QA / enhancer / brand-research refresh
+- [x] fidelity-QA retry budget per path (`LITE_QA_MAX_RETRIES`, default 1 vs 2)
+- [x] persist the fidelity verdict for PLAIN creatives (was invisible on the highest-volume path)
+- [x] tests: catalog-concepts (3) + runware prompt fit (2)
+- [x] admin costs list: "Spend by pipeline stage · last 30 days" + clickable run rows
+- [x] e2e: `PACK_QA_MAX_RETRIES=0` / `LITE_QA_MAX_RETRIES=0` (retries were the suite's biggest line)
+- [x] workspace image-model pin honoured in the editor paths (was silently NB Pro)
+- [x] fix: Runware rejected our 4500-char on-model prompt → every Seedream/Qwen/Wan on-model render failed
+- [ ] bake-off: 4 garments × 4 models, judge fidelity, recommend the pin
+- [ ] DEVLOG entry
 
-## Review — DONE
-- All UI reuses one AccountTypePicker (admin dialog, onboarding, settings). Zero DB migrations.
-- Live smoke: settings picker persists to DB + toast + revert works (dev workspace flipped APPAREL_ON_MODEL→back); onboarding renders 3-card picker, required radio blocks submit.
-- Concept + render prompts now 3-way: FMCG unchanged; APPAREL_ON_MODEL = schein-anchored (soft diffused light, warm beige architectural sets, garment hero); FASHION_EDITORIAL = blueman-anchored (styled character, environmental depth, rim light, rich grade).
-- FLAGS for My Lord: (1) prod workspaces "Synerix Apparel" + "E2E Tests" are typed FMCG_PRODUCT but are apparel — fix via new settings card. (2) Pre-existing: image-model Select shows raw "__default__" instead of its label. (3) dev:next left running on :6969 for your testing.
-- UNCOMMITTED — My Lord tests, then commit via retroactive-commit-history.
+## Open for My Lord
+- "Compare" pref + a workspace pin = 2× credits debited, 1 render delivered (generate.ts:149 vs
+  generation-run.ts:147). Needs a decision: pin wins, pref wins, or refund the unused variant.
+- `generate-model.ts` renders AI models on NB Pro ($0.134) — one-time per model, cheap to downgrade.
