@@ -67,6 +67,35 @@ New entries go at the **top** of the Log section (reverse chronological).
 
 ## Log
 
+### 2026-07-25 — Lite pipeline for PLAIN on-model (6× cheaper per catalog image) + OOM/stall recovery
+
+- Type: feature + fix
+- Scope: src/lib/pipeline/catalog-concepts.ts (new), src/trigger/generation-run.ts, src/trigger/heal-runs.ts (new), src/lib/run-heal.ts (new), src/lib/editor/paid-edits.ts, src/lib/pipeline/typography.ts, src/lib/pipeline/model-qa.ts, src/lib/image/runware.ts, src/app/(admin)/admin/costs/page.tsx, src/app/(app)/studio/[runId]/{page,studio-canvas}.tsx, src/trigger/creative-edit.ts, .github/workflows/e2e.yml, tests
+
+Reasoning / RCA / research:
+    - Trigger: an apparel client wants 800+ images at ≤ $0.5 each; measured unit cost was $0.34–$0.52. Read the real numbers out of `api_cost_log` rather than estimating — worst prod run: on-model renders $0.402 (NB Pro $0.134 × 3 = 1 render + 2 fidelity retries), concepts (Opus) $0.085, enhancer $0.020, brief-QA $0.013, model-QA $0.004.
+    - Key finding: on a PLAIN on-model run the compositor renders NO text and NO logo (`plainMode`), so the concept LLM's four-language copy, big idea, archetype and typography spec are generated and then discarded. ~$0.118/creative and ~45s of latency bought nothing. The variation a catalog needs is framing, not storytelling — and a fixed shot list holds consistency across an 800-image drop better than an LLM can.
+    - Gated the lite path on `ON_MODEL + PLAIN`, NOT on account type: an APPAREL_ON_MODEL workspace still runs branded festival campaigns, and those legitimately need concepting. My Lord chose the narrower gate.
+    - Bake-off (4 garments × 4 models, real runs, ~$1.27 total): NB2 ($0.06) matched or beat NB Pro ($0.134) on 3 of 4 garments; on the fourth it rendered a hip-length tunic as an ankle-length gown and model-QA passed it — so the QA prompt now judges HEM LENGTH and invented embellishment explicitly. Seedream v4 ($0.03) hallucinated beadwork onto a dupatta border and shortened sleeves; gpt-image-2 cropped the model's head (it has no native 4:5 and the crop ate the head). Conclusion: NB2 as the apparel default with the cascade behind it, not Seedream.
+    - Found while bake-offing: EVERY on-model render on a Runware model was failing with `invalidPositivePrompt` — our on-model prompt is capped at 4500 chars and Runware rejects that. Trimming from the middle (not the end) keeps the two-reference fidelity contract in the head and the craft floors in the tail; only the scene body is lossy.
+    - Prod OOM (TASK_PROCESS_OOM_KILLED, 3-pose 9:16 run): generation-run had no `machine` preset, so it ran on small-1x = 0.5 GB while holding several multi-megapixel PNGs per concurrent concept (plate + composite + sharp raster + base64 copies of 3 images for QA). An OOM is a process kill, so `catchError` never ran → the row stayed RENDERING, credits stayed debited, and the studio spun forever.
+    - The spinner had a second, independent cause: studio-canvas derived liveness ONLY from `run.metadata.status`, which the task writes itself. A dead worker can never write it. The Trigger run's own status (CRASHED/SYSTEM_FAILURE/…) was already in hand and ignored.
+    - Stall recovery also only ran when someone loaded that run's studio page (and only after 30 min), so a user who closed the tab kept the spinner and the credits indefinitely.
+
+Implementation summary:
+    - `catalog-concepts.ts`: 6-shot table (framing/pose/backdrop only — craft floors still come from buildOnModelPrompt) + a neutral brief for pose-driven runs. Lite branch skips concepting, brief-QA, the enhancer and the brand-intel refresh.
+    - Fidelity-QA retry budget is now per-path (`LITE_QA_MAX_RETRIES`, default 1 vs 2) and the verdict is finally persisted for PLAIN creatives — the highest-volume path had no measurable QA outcome.
+    - `machine: medium-2x` on generation-run, `medium-1x` on creative-edit; shared `healStalledRun`/`healAllStalledRuns` + a 10-minute `heal-stalled-runs` scheduled task; studio treats a dead Trigger run as terminal and shows the failure panel.
+    - Workspace image-model pin now honoured by the editor paths (baked-text swap, both regen paths, the typography pass) — they hardcoded `tier: "hero"` and silently billed NB Pro to workspaces pinned to a cheap model.
+    - e2e: `PACK_QA_MAX_RETRIES=0` / `LITE_QA_MAX_RETRIES=0` — corrective re-renders were the suite's largest line ($0.20 vs $0.08 on the same run shape).
+    - Admin costs list gained "Spend by pipeline stage · last 30 days" with share-of-total, plus a visible affordance on run rows (the per-run stage split existed but the rows looked unclickable).
+    - Verified: tsc/lint clean, 70 vitest pass; 4 real bake-off runs on prod data confirmed `lite="plain-on-model"` with zero concepting spend (LLM cost per creative $0.118 → $0.001); the stalled prod run was healed and its 6 credits refunded (balance 76 → 82).
+
+Follow-ups deferred:
+    - "Compare" image-model pref + a workspace pin = 2× credits debited but one render delivered (generate.ts:149 vs generation-run.ts:147). Needs a product decision.
+    - The apparel workspace's only READY AI model is male while its garments are womenswear — every bake-off render put a man in a women's anarkali. Model library needs female models before the client drop.
+    - generate-model.ts still renders AI models on NB Pro ($0.134, one-time per model).
+
 ### 2026-07-23 — Workspace account types drive photography style (FMCG / e-com apparel / premium fashion)
 
 - Type: feature
