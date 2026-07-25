@@ -18,6 +18,9 @@ export async function applyTypographyPass(opts: {
   typographySpec?: string | null;
   paletteHexes?: string[];
   aspect: SceneAspect;
+  /** Image-model params (the workspace's pinned model, soft-prefer). Omitted =
+   * the default quality-first cascade. */
+  model?: Pick<Parameters<typeof generateScene>[0], "provider" | "tier" | "softPrefer" | "runwareModel">;
   tracker?: CostTracker;
 }): Promise<{ plate: Buffer; ok: boolean; issues?: string }> {
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -32,6 +35,7 @@ export async function applyTypographyPass(opts: {
       prompt,
       aspect: opts.aspect,
       references: [{ buffer: opts.scenePlate, mime: "image/png" }],
+      ...opts.model,
     });
     opts.tracker?.addImage(gen.costModel, "typography");
     const qa = await checkBakedText({
