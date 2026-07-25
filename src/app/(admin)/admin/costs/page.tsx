@@ -47,7 +47,7 @@ export default async function AdminCostsPage({
 
   const d30 = new Date(Date.now() - 30 * 864e5);
 
-  const [runs, totalRuns, allTime, last30, bySource] = await Promise.all([
+  const [runs, totalRuns, allTime, last30, bySource, byStage] = await Promise.all([
     prisma.generationRun.findMany({
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * PAGE_SIZE,
@@ -74,6 +74,15 @@ export default async function AdminCostsPage({
       _sum: { usd: true },
       orderBy: { _sum: { usd: "desc" } },
     }),
+    // Which pipeline step actually burns the money, across every run in the
+    // window (the per-run split lives on the run detail page).
+    prisma.apiCostLog.groupBy({
+      by: ["stage", "kind", "model"],
+      where: { createdAt: { gte: d30 } },
+      _sum: { usd: true, imageCount: true },
+      _count: { _all: true },
+      orderBy: { _sum: { usd: "desc" } },
+    }),
   ]);
 
   // ONE groupBy for the whole page's per-run totals — never N queries.
@@ -87,6 +96,8 @@ export default async function AdminCostsPage({
     : [];
   const usdByRun = new Map(runSums.map((r) => [r.runId, num(r._sum.usd)]));
 
+  const stageTotal = byStage.reduce((s, g) => s + num(g._sum.usd), 0);
+  void stageTotal; // table lands in the next commit
   const totalPages = Math.max(1, Math.ceil(totalRuns / PAGE_SIZE));
 
   const stats = [
@@ -122,7 +133,13 @@ export default async function AdminCostsPage({
         </p>
       )}
 
-      <div className="mt-6 overflow-x-auto rounded-lg border border-border">
+      <h2 className="mt-8 text-sm font-semibold">
+        Runs
+        <span className="ml-2 font-normal text-xs text-muted-foreground">
+          open a run for its own stage-by-stage split
+        </span>
+      </h2>
+      <div className="mt-2 overflow-x-auto rounded-lg border border-border">
         <table className="w-full min-w-max text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
