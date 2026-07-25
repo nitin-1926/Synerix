@@ -421,6 +421,7 @@ export async function applyRegenInstruction(
   const tracker = new CostTracker();
 
   try {
+    const model = await workspaceModelParams(workspaceId);
     if (baked && concept.scenePlateKey) {
       // Two-pass creatives: edit the WORDLESS scene, then re-set typography —
       // the instruction edit never has to fight existing type pixels.
@@ -428,7 +429,7 @@ export async function applyRegenInstruction(
       const gen = await generateScene({
         prompt: `Edit this advertising scene: ${note}. Keep everything else identical — same product, same composition, same palette (${concept.paletteHexes.join(", ")}). No text, no letters, no logos, no watermarks (only the product's own packaging print).`,
         aspect,
-        tier: "hero", // paid edit — premium model, same bar as generation
+        ...model, // workspace pin, else the premium tier (same bar as generation)
         references: [{ buffer: scenePlate, mime: "image/png" }],
       });
       tracker.addImage(gen.costModel, "editor-regen");
@@ -444,6 +445,7 @@ export async function applyRegenInstruction(
         typographySpec: concept.typographySpec,
         paletteHexes: concept.paletteHexes,
         aspect,
+        model,
         tracker,
       });
       if (!typed.ok) {
@@ -479,7 +481,7 @@ export async function applyRegenInstruction(
     const gen = await generateScene({
       prompt: `Edit this advertising scene: ${note}. Keep everything else identical — same product, same composition, same palette (${concept.paletteHexes.join(", ")}). ${textRule}`,
       aspect,
-      tier: "hero", // paid edit — premium model, same bar as generation
+      ...model, // workspace pin, else the premium tier (same bar as generation)
       references: [{ buffer: currentPlate, mime: "image/png" }],
     });
     tracker.addImage(gen.costModel, "editor-regen");
