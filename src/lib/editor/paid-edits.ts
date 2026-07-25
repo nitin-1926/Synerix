@@ -293,6 +293,7 @@ export async function applyBakedTextSwap(
       typographySpec?: string;
       paletteHexes?: string[];
     };
+    const model = await workspaceModelParams(workspaceId);
     let newPlate: Buffer;
 
     if (concept.scenePlateKey) {
@@ -302,6 +303,7 @@ export async function applyBakedTextSwap(
       const typed = await applyTypographyPass({
         scenePlate,
         tracker,
+        model,
         headline: next.headline,
         cta: next.cta,
         language: next.language,
@@ -334,7 +336,7 @@ export async function applyBakedTextSwap(
           (next.cta ? ` and the call-to-action "${next.cta}"` : "") +
           ` — ${script[next.language] ?? "English"}, spelled EXACTLY as given, every letter and diacritic correct, in the same premium advertising-typography style, position and size as the text it replaces. Keep EVERYTHING else identical: same scene, product, people, lighting, palette. No other text.`,
         aspect: (creative.masterAspect as Aspect) ?? "4:5",
-        tier: "hero", // paid edit — premium model, same bar as generation
+        ...model, // workspace pin, else the premium tier (same bar as generation)
         references: [{ buffer: currentPlate, mime: "image/png" }],
       });
       tracker.addImage(gen.costModel, "editor-baked-text");
