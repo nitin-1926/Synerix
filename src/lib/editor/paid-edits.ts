@@ -31,6 +31,24 @@ export function isBaked(creative: { concept: unknown }): boolean {
   return (creative.concept as ConceptWithTypography)?.typographyMode === "baked";
 }
 
+/**
+ * The workspace's pinned image model as generateScene params (soft-prefer, so
+ * the resilience cascade stays behind it). EVERY paid image call routes through
+ * this: a workspace pinned to a cheap model must not be silently billed the
+ * premium default just because the call happens in the editor. With no pin, the
+ * premium tier stands — a paid edit holds the same bar as generation.
+ */
+export async function workspaceModelParams(workspaceId: string) {
+  const ws = await prisma.workspace.findUnique({
+    where: { id: workspaceId },
+    select: { imageModel: true },
+  });
+  const v = resolveWorkspaceImageModel(ws?.imageModel);
+  return v
+    ? { provider: v.provider, tier: v.tier, softPrefer: true as const, runwareModel: v.runwareModel }
+    : { tier: "hero" as const };
+}
+
 export async function loadOwnedCreative(creativeId: string, workspaceId: string) {
   const creative = await prisma.creative.findFirst({
     where: { id: creativeId, brand: { workspaceId }, deletedAt: null },
@@ -275,6 +293,7 @@ export async function applyBakedTextSwap(
       typographySpec?: string;
       paletteHexes?: string[];
     };
+    const model = await workspaceModelParams(workspaceId);
     let newPlate: Buffer;
 
     if (concept.scenePlateKey) {
@@ -284,6 +303,7 @@ export async function applyBakedTextSwap(
       const typed = await applyTypographyPass({
         scenePlate,
         tracker,
+        model,
         headline: next.headline,
         cta: next.cta,
         language: next.language,
@@ -316,7 +336,7 @@ export async function applyBakedTextSwap(
           (next.cta ? ` and the call-to-action "${next.cta}"` : "") +
           ` — ${script[next.language] ?? "English"}, spelled EXACTLY as given, every letter and diacritic correct, in the same premium advertising-typography style, position and size as the text it replaces. Keep EVERYTHING else identical: same scene, product, people, lighting, palette. No other text.`,
         aspect: (creative.masterAspect as Aspect) ?? "4:5",
-        tier: "hero", // paid edit — premium model, same bar as generation
+        ...model, // workspace pin, else the premium tier (same bar as generation)
         references: [{ buffer: currentPlate, mime: "image/png" }],
       });
       tracker.addImage(gen.costModel, "editor-baked-text");
@@ -401,6 +421,7 @@ export async function applyRegenInstruction(
   const tracker = new CostTracker();
 
   try {
+    const model = await workspaceModelParams(workspaceId);
     if (baked && concept.scenePlateKey) {
       // Two-pass creatives: edit the WORDLESS scene, then re-set typography —
       // the instruction edit never has to fight existing type pixels.
@@ -408,7 +429,7 @@ export async function applyRegenInstruction(
       const gen = await generateScene({
         prompt: `Edit this advertising scene: ${note}. Keep everything else identical — same product, same composition, same palette (${concept.paletteHexes.join(", ")}). No text, no letters, no logos, no watermarks (only the product's own packaging print).`,
         aspect,
-        tier: "hero", // paid edit — premium model, same bar as generation
+        ...model, // workspace pin, else the premium tier (same bar as generation)
         references: [{ buffer: scenePlate, mime: "image/png" }],
       });
       tracker.addImage(gen.costModel, "editor-regen");
@@ -424,6 +445,7 @@ export async function applyRegenInstruction(
         typographySpec: concept.typographySpec,
         paletteHexes: concept.paletteHexes,
         aspect,
+        model,
         tracker,
       });
       if (!typed.ok) {
@@ -459,7 +481,7 @@ export async function applyRegenInstruction(
     const gen = await generateScene({
       prompt: `Edit this advertising scene: ${note}. Keep everything else identical — same product, same composition, same palette (${concept.paletteHexes.join(", ")}). ${textRule}`,
       aspect,
-      tier: "hero", // paid edit — premium model, same bar as generation
+      ...model, // workspace pin, else the premium tier (same bar as generation)
       references: [{ buffer: currentPlate, mime: "image/png" }],
     });
     tracker.addImage(gen.costModel, "editor-regen");

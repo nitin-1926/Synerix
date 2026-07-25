@@ -47,7 +47,7 @@ export default async function AdminCostsPage({
 
   const d30 = new Date(Date.now() - 30 * 864e5);
 
-  const [runs, totalRuns, allTime, last30, bySource] = await Promise.all([
+  const [runs, totalRuns, allTime, last30, bySource, byStage] = await Promise.all([
     prisma.generationRun.findMany({
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * PAGE_SIZE,
@@ -74,6 +74,15 @@ export default async function AdminCostsPage({
       _sum: { usd: true },
       orderBy: { _sum: { usd: "desc" } },
     }),
+    // Which pipeline step actually burns the money, across every run in the
+    // window (the per-run split lives on the run detail page).
+    prisma.apiCostLog.groupBy({
+      by: ["stage", "kind", "model"],
+      where: { createdAt: { gte: d30 } },
+      _sum: { usd: true, imageCount: true },
+      _count: { _all: true },
+      orderBy: { _sum: { usd: "desc" } },
+    }),
   ]);
 
   // ONE groupBy for the whole page's per-run totals — never N queries.
@@ -87,6 +96,7 @@ export default async function AdminCostsPage({
     : [];
   const usdByRun = new Map(runSums.map((r) => [r.runId, num(r._sum.usd)]));
 
+  const stageTotal = byStage.reduce((s, g) => s + num(g._sum.usd), 0);
   const totalPages = Math.max(1, Math.ceil(totalRuns / PAGE_SIZE));
 
   const stats = [
@@ -122,7 +132,58 @@ export default async function AdminCostsPage({
         </p>
       )}
 
-      <div className="mt-6 overflow-x-auto rounded-lg border border-border">
+      {byStage.length > 0 && (
+        <>
+          <h2 className="mt-8 text-sm font-semibold">
+            Spend by pipeline stage · last 30 days
+            <span className="ml-2 font-normal text-xs text-muted-foreground">
+              share of {usd2(stageTotal)}
+            </span>
+          </h2>
+          <div className="mt-2 overflow-x-auto rounded-lg border border-border">
+            <table className="w-full min-w-max text-sm">
+              <thead>
+                <tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  <th className="px-4 py-2.5">Stage</th>
+                  <th className="px-4 py-2.5">Kind</th>
+                  <th className="px-4 py-2.5">Model</th>
+                  <th className="px-4 py-2.5 text-right">Calls</th>
+                  <th className="px-4 py-2.5 text-right">USD</th>
+                  <th className="px-4 py-2.5 text-right">Share</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {byStage.map((s) => {
+                  const usd = num(s._sum.usd);
+                  const share = stageTotal > 0 ? (usd / stageTotal) * 100 : 0;
+                  return (
+                    <tr key={`${s.stage}|${s.kind}|${s.model}`}>
+                      <td className="px-4 py-2.5 font-medium">{s.stage}</td>
+                      <td className="px-4 py-2.5">
+                        <Badge variant="outline">{s.kind}</Badge>
+                      </td>
+                      <td className="px-4 py-2.5 text-muted-foreground">{s.model}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums">{s._count._all}</td>
+                      <td className="px-4 py-2.5 text-right font-medium tabular-nums">{usd4(usd)}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">
+                        {share.toFixed(1)}%
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      <h2 className="mt-8 text-sm font-semibold">
+        Runs
+        <span className="ml-2 font-normal text-xs text-muted-foreground">
+          open a run for its own stage-by-stage split
+        </span>
+      </h2>
+      <div className="mt-2 overflow-x-auto rounded-lg border border-border">
         <table className="w-full min-w-max text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -134,11 +195,12 @@ export default async function AdminCostsPage({
               <th className="px-4 py-2.5">Bake-off</th>
               <th className="px-4 py-2.5 text-right">Credits</th>
               <th className="px-4 py-2.5 text-right">API USD</th>
+              <th className="px-4 py-2.5" />
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {runs.map((run) => (
-              <tr key={run.id} className="relative hover:bg-muted/50">
+              <tr key={run.id} className="relative cursor-pointer hover:bg-muted/50">
                 <td className="px-4 py-2.5 whitespace-nowrap text-muted-foreground">
                   <Link href={`/admin/costs/${run.id}`} className="absolute inset-0" aria-label="Run cost detail" />
                   {dateFmt.format(run.createdAt)}
@@ -156,6 +218,7 @@ export default async function AdminCostsPage({
                 <td className="px-4 py-2.5 text-right font-medium tabular-nums">
                   {usd4(usdByRun.get(run.id) ?? 0)}
                 </td>
+                <td className="px-4 py-2.5 text-right text-muted-foreground">→</td>
               </tr>
             ))}
           </tbody>

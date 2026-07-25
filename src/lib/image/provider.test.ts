@@ -5,6 +5,7 @@ import {
   resolveWorkspaceImageModel,
   WORKSPACE_IMAGE_MODELS,
 } from "./provider";
+import { fitRunwarePrompt } from "./runware";
 import { ASPECT_DIMENSIONS } from "@/lib/composition/types";
 
 describe("resolveSceneChain — quality-first fallback cascade", () => {
@@ -93,5 +94,20 @@ describe("closestGptSize — single-sourced from ASPECT_DIMENSIONS", () => {
       const sizePortrait = w < h;
       expect(sizePortrait).toBe(canvasPortrait); // portrait canvas → portrait size
     }
+  });
+});
+
+describe("fitRunwarePrompt", () => {
+  it("keeps short prompts untouched", () => {
+    expect(fitRunwarePrompt("short prompt", 100)).toBe("short prompt");
+  });
+
+  it("trims the middle so the fidelity head and craft-floor tail both survive", () => {
+    const head = "IMAGE 1 is the MODEL. ".padEnd(300, "h");
+    const tail = "Framing: ONE single photograph.".padStart(300, "t");
+    const fitted = fitRunwarePrompt(`${head}${"x".repeat(4000)}${tail}`, 500);
+    expect(fitted.length).toBeLessThanOrEqual(500);
+    expect(fitted).toMatch(/^IMAGE 1 is the MODEL\./);
+    expect(fitted).toMatch(/ONE single photograph\.$/);
   });
 });
