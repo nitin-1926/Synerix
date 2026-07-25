@@ -5,6 +5,7 @@ import { generateScene, variantsForPref, resolveWorkspaceImageModel, BAKEOFF_VAR
 import { downloadFromStorage, storageKeys, uploadBuffer } from "@/lib/storage";
 import { reconcileRunRefund } from "@/lib/credits";
 import { assembleOccasionBrief } from "@/lib/pipeline/brief";
+import { buildCatalogConcepts } from "@/lib/pipeline/catalog-concepts";
 import { generateConcepts } from "@/lib/pipeline/concepts";
 import { validateAndRepairConcepts, enhanceConceptPrompts } from "@/lib/pipeline/validate-concepts";
 import { intelToEvidenceBlock, type BrandIntel } from "@/lib/pipeline/brand-intel";
