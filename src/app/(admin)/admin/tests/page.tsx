@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TestActiveToggle } from "./test-toggle";
+import { requireSuperAdmin } from "@/lib/auth";
 
 const dateFmt = new Intl.DateTimeFormat("en-IN", {
   day: "numeric",
@@ -12,6 +13,10 @@ const dateFmt = new Intl.DateTimeFormat("en-IN", {
 });
 
 export default async function AdminTestsPage() {
+  // Authorization is enforced HERE, not only in the (admin) layout: a Next.js
+  // layout is not an authorization boundary — it is skipped on RSC segment
+  // requests, so a page that trusts it can serialize admin data to anyone.
+  await requireSuperAdmin();
   const tests = await prisma.test.findMany({
     include: { _count: { select: { testResults: true } } },
     orderBy: { createdAt: "desc" },

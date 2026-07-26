@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, requireWriteAccess } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { sendInviteEmail } from "@/lib/email";
 import { WORKSPACE_IMAGE_MODELS } from "@/lib/image/provider";
@@ -51,7 +51,7 @@ export async function setWorkspaceType(type: string) {
 
 /** Super-admin-only: set (or clear) the workspace's image-model override. */
 export async function setWorkspaceImageModel(modelKey: string | null) {
-  const ctx = await requireAuth();
+  const ctx = await requireWriteAccess();
   if (!ctx.isSuperAdmin) throw new Error("Only platform admins can change the image model");
   const key = modelKey || null;
   if (key && !WORKSPACE_IMAGE_MODELS.some((m) => m.key === key)) throw new Error("Unknown image model");

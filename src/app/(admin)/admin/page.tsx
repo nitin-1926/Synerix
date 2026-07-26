@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { EnterWorkspaceButton, GrantCreditsDialog, RenameWorkspaceDialog } from "./workspace-actions";
 import { NewWorkspaceDialog } from "./new-workspace-dialog";
+import { requireSuperAdmin } from "@/lib/auth";
 
 function formatUSD(n: number) {
   return `$${n.toFixed(2)}`;
@@ -16,6 +17,10 @@ const dateFmt = new Intl.DateTimeFormat("en-IN", {
 });
 
 export default async function AdminWorkspacesPage() {
+  // Authorization is enforced HERE, not only in the (admin) layout: a Next.js
+  // layout is not an authorization boundary — it is skipped on RSC segment
+  // requests, so a page that trusts it can serialize admin data to anyone.
+  await requireSuperAdmin();
   const [workspaces, runs, granted, spent] = await Promise.all([
     prisma.workspace.findMany({
       include: {

@@ -25,6 +25,19 @@ export const ACTIVE_WORKSPACE_COOKIE = "sx-active-ws";
  * UI). When absent, a super-admin is redirected to the dedicated admin home. */
 export const ADMIN_ACTING_COOKIE = "sx-admin-acting";
 
+/** Shared options for the workspace/god-view cookies. Secure in production so
+ * they are never sent over plain HTTP; httpOnly so client script cannot read
+ * or forge them; lax so normal top-level navigation still carries them. */
+export function sessionCookieOptions() {
+  return {
+    httpOnly: true,
+    sameSite: "lax" as const,
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 30,
+  };
+}
+
 /**
  * DEV-ONLY auth bypass. Active only when NODE_ENV !== "production" AND
  * DEV_AUTH_BYPASS=1. Resolves to a stable seeded dev user/workspace so the
@@ -40,12 +53,23 @@ type UserWithMemberships = NonNullable<
 >;
 
 function findUserWithMemberships(where: { id: string } | { email: string }) {
+  // Explicit select, not `include`: this runs on EVERY page render and EVERY
+  // server action, against a database in another region, so it is the one query
+  // whose payload is worth trimming to exactly the six fields the auth context
+  // actually exposes.
   return prisma.user.findUnique({
     where: where as { id: string },
-    include: {
+    select: {
+      id: true,
+      email: true,
+      name: true,
       memberships: {
-        include: { workspace: true },
         orderBy: { createdAt: "asc" },
+        select: {
+          workspaceId: true,
+          role: true,
+          workspace: { select: { id: true, name: true, type: true } },
+        },
       },
     },
   });
@@ -95,12 +119,16 @@ async function ensureMembership(user: UserWithMemberships, superAdmin: boolean):
   if (user.memberships.length > 0) return user;
 
   const pendingInvites = await prisma.workspaceInvite.findMany({
-    // Expired invites (expiresAt in the past) are ignored; a null expiresAt is
-    // a legacy invite created before the column and never expires.
+    // An invite must carry a FUTURE expiry to grant membership. The old rule
+    // also accepted `expiresAt: null` as "legacy, never expires" — meaning any
+    // address ever typed into an invite box (a typo, a churned employee, a
+    // recycled mailbox) could still walk into that workspace years later, with
+    // no revoke path. Every invite created by workspace.ts sets an expiry, so
+    // a null here is a stale row and is treated as expired; re-send to restore.
     where: {
       email: user.email,
       status: "PENDING",
-      OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+      expiresAt: { gt: new Date() },
     },
   });
 
@@ -216,16 +244,28 @@ export const requireAuth = cache(async (): Promise<AuthContext> => {
   };
 });
 
+/**
+ * Guard for any action that spends credits or changes workspace data.
+ *
+ * The VIEWER role existed in the schema and was enforced NOWHERE — `ctx.role`
+ * was read only for member management, so a read-only member could generate
+ * creatives (spending the workspace's credits), delete products and edit the
+ * brand. Roles are hierarchical: OWNER/ADMIN manage members, EDITOR and above
+ * may write, VIEWER may only read.
+ */
+const WRITE_ROLES = new Set(["OWNER", "ADMIN", "EDITOR"]);
+
+export async function requireWriteAccess(): Promise<AuthContext> {
+  const ctx = await requireAuth();
+  if (!ctx.isSuperAdmin && !WRITE_ROLES.has(ctx.role)) {
+    throw new Error("Your access to this workspace is read-only");
+  }
+  return ctx;
+}
+
 /** Guard for the admin console: redirects non-super-admins to the app. */
 export async function requireSuperAdmin(): Promise<AuthContext> {
   const ctx = await requireAuth();
   if (!ctx.isSuperAdmin) redirect("/dashboard");
   return ctx;
-}
-
-/** Guard: throws unless the workspace owns the given brand. */
-export async function assertBrandInWorkspace(brandId: string, workspaceId: string) {
-  const brand = await prisma.brand.findFirst({ where: { id: brandId, workspaceId } });
-  if (!brand) throw new Error("Brand not found in workspace");
-  return brand;
 }

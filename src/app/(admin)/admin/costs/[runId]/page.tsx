@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { requireSuperAdmin } from "@/lib/auth";
 
 export const metadata = { title: "Run costs — Synerix Admin" };
 export const dynamic = "force-dynamic";
@@ -37,6 +38,10 @@ export default async function AdminRunCostPage({
 }: {
   params: Promise<{ runId: string }>;
 }) {
+  // Authorization is enforced HERE, not only in the (admin) layout: a Next.js
+  // layout is not an authorization boundary — it is skipped on RSC segment
+  // requests, so a page that trusts it can serialize admin data to anyone.
+  await requireSuperAdmin();
   const { runId } = await params;
 
   const [run, logs] = await Promise.all([

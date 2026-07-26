@@ -2,6 +2,7 @@ import { ChevronDown } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { requireSuperAdmin } from "@/lib/auth";
 
 interface CategoryEntry {
   category: string;
@@ -34,6 +35,10 @@ const dateFmt = new Intl.DateTimeFormat("en-IN", {
 });
 
 export default async function AdminLeadsPage() {
+  // Authorization is enforced HERE, not only in the (admin) layout: a Next.js
+  // layout is not an authorization boundary — it is skipped on RSC segment
+  // requests, so a page that trusts it can serialize admin data to anyone.
+  await requireSuperAdmin();
   const monthStart = new Date();
   monthStart.setDate(1);
   monthStart.setHours(0, 0, 0, 0);

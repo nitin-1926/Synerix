@@ -3,7 +3,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { signIn, signOut } from "@/lib/nextauth";
-import { requireAuth, ACTIVE_WORKSPACE_COOKIE } from "@/lib/auth";
+import { requireAuth, ACTIVE_WORKSPACE_COOKIE, ADMIN_ACTING_COOKIE, sessionCookieOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
 export async function signInWithGoogle(next?: string) {
@@ -15,6 +15,9 @@ export async function signInWithGoogle(next?: string) {
 export async function signOutAction() {
   const jar = await cookies();
   jar.delete(ACTIVE_WORKSPACE_COOKIE);
+  // The god-view flag used to survive sign-out with its 30-day lifetime, so the
+  // next sign-in on that browser silently landed inside a customer workspace.
+  jar.delete(ADMIN_ACTING_COOKIE);
   await signOut({ redirectTo: "/login" });
 }
 
@@ -31,11 +34,6 @@ export async function setActiveWorkspace(workspaceId: string) {
     if (!ws) throw new Error("Workspace not found");
   }
   const jar = await cookies();
-  jar.set(ACTIVE_WORKSPACE_COOKIE, workspaceId, {
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 30,
-  });
+  jar.set(ACTIVE_WORKSPACE_COOKIE, workspaceId, sessionCookieOptions());
   redirect("/dashboard");
 }
