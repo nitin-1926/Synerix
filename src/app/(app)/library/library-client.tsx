@@ -15,6 +15,8 @@ type CreativeItem = {
   occasion: string;
   url: string | null;
   approved: boolean;
+  /** CSS aspect-ratio ("4 / 5") so the grid reserves space before load. */
+  aspect?: string;
 };
 
 type RunItem = {
@@ -187,7 +189,14 @@ export function LibraryClient(props: {
               >
                 {c.url ? (
                   /* eslint-disable-next-line @next/next/no-img-element */
-                  <img src={c.url} alt={c.name} className="w-full" loading="lazy" />
+                  <img
+                    src={c.url}
+                    alt={c.name}
+                    className="w-full bg-secondary"
+                    style={{ aspectRatio: c.aspect ?? "4 / 5" }}
+                    loading="lazy"
+                    decoding="async"
+                  />
                 ) : (
                   <div className="aspect-[4/5] bg-secondary" />
                 )}

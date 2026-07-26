@@ -1,11 +1,11 @@
 import { notFound } from "next/navigation";
-import { auth as triggerAuth } from "@trigger.dev/sdk";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getSignedUrls, getSignedThumbUrls } from "@/lib/storage";
 import { BAKEOFF_VARIANTS, IMAGE_MODEL_LABELS } from "@/lib/image/provider";
 import { loadEditorProps } from "@/lib/editor-data";
 import { healStalledRun } from "@/lib/run-heal";
+import { realtimeToken } from "@/lib/realtime-token";
 import { StudioCanvas } from "./studio-canvas";
 import type { PipelineState } from "@/lib/pipeline/schemas";
 
@@ -51,15 +51,11 @@ export default async function RunPage({
   const pipeline = (run.pipeline ?? {}) as PipelineState;
   const isTerminal = TERMINAL.includes(run.status);
 
-  // Realtime token (read-only, this run) for live progress.
-  let publicToken: string | null = null;
-  if (!isTerminal && run.triggerRunId) {
-    try {
-      publicToken = await triggerAuth.createPublicToken({ scopes: { read: { runs: [run.triggerRunId] } }, expirationTime: "30m" });
-    } catch {
-      publicToken = null;
-    }
-  }
+  // Realtime token (read-only, this run) for live progress. Minted through a
+  // request-deduped, 25-minute cache: this page re-renders on every progress
+  // tick, and each render used to block the whole RSC response on a
+  // cross-region Trigger.dev API call before a single byte could be sent.
+  const publicToken = !isTerminal && run.triggerRunId ? await realtimeToken(run.triggerRunId) : null;
 
   // Concept thumbnails for the left rail.
   const readyCreatives = run.creatives.filter((cr) => cr.status === "READY");

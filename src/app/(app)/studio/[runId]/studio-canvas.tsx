@@ -3,9 +3,17 @@
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { useRealtimeRun } from "@trigger.dev/react-hooks";
 import { ArrowLeft, Loader2, Paintbrush, ScanSearch, Sparkles, Wand2 } from "lucide-react";
-import { CreativeEditor } from "@/app/(app)/library/[creativeId]/editor";
+// The editor is 865 lines plus its preview stage, and on this route it renders
+// only AFTER a creative is selected — a run that is still generating never
+// shows it. Loading it lazily keeps that weight off the critical path of the
+// page users stare at the longest.
+const CreativeEditor = dynamic(
+  () => import("@/app/(app)/library/[creativeId]/editor").then((m) => m.CreativeEditor),
+  { loading: () => <EditorSkeleton /> },
+);
 import type { EditorProps } from "@/lib/editor-data";
 import { cn } from "@/lib/utils";
 
@@ -73,6 +81,8 @@ export function StudioCanvas(props: {
   // changes); the interval is only a fallback when no public token was minted.
   const hasRealtime = Boolean(props.triggerRunId && props.publicToken);
   const lastProgress = useRef({ done: 0, status: props.status });
+  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (refreshTimer.current) clearTimeout(refreshTimer.current); }, []);
   useEffect(() => {
     if (TERMINAL.includes(liveStatus) || workerDead) {
       // A dead worker leaves the DB row non-terminal until the healer flips it;
@@ -84,7 +94,12 @@ export function StudioCanvas(props: {
       const prev = lastProgress.current;
       if (done !== prev.done || liveStatus !== prev.status) {
         lastProgress.current = { done, status: liveStatus };
-        router.refresh();
+        // Coalesce bursts: several concepts can land within a second and each
+        // router.refresh() refetches the WHOLE route segment tree (layout auth,
+        // credit balance, brand query, signed URLs). One refresh per second is
+        // as much fidelity as a thumbnail grid needs.
+        if (refreshTimer.current) clearTimeout(refreshTimer.current);
+        refreshTimer.current = setTimeout(() => router.refresh(), 900);
       }
       return;
     }
@@ -319,4 +334,8 @@ function GeneratingView(props: {
       </div>
     </div>
   );
+}
+
+function EditorSkeleton() {
+  return <div className="min-h-[60vh] animate-pulse rounded-2xl border border-border bg-card" />;
 }

@@ -1,4 +1,8 @@
+import { notFound } from "next/navigation";
 import { listAiModels } from "@/app/actions/models";
+import { requireAuth } from "@/lib/auth";
+import { getWorkspaceProfile } from "@/lib/workspace-profile-server";
+import { showsModelSurface } from "@/lib/workspace-profile";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { AutoRefresh } from "@/components/auto-refresh";
@@ -14,6 +18,12 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export default async function ModelsPage() {
+  // The Models tab is hidden for non-apparel account types on /brand and
+  // /products, but the route itself was reachable by URL — gate it at the page
+  // so the account-type decision holds everywhere, not just in the nav.
+  const { workspaceId } = await requireAuth();
+  const profile = await getWorkspaceProfile(workspaceId);
+  if (!showsModelSurface(profile)) notFound();
   const models = await listAiModels();
   const generating = models.some((m) => m.status === "PENDING" || m.status === "RUNNING");
 

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { prisma } from "@/lib/db";
 import type { CreditReason } from "@/generated/prisma/client";
 
@@ -140,7 +141,10 @@ export async function grantCredits(opts: {
   });
 }
 
-export async function getBalance(workspaceId: string): Promise<number> {
+/** Request-deduped: the app layout and the dashboard page both read the
+ * balance on every render, which was two round trips to a database on the
+ * other side of the world for the same number. */
+export const getBalance = cache(async (workspaceId: string) : Promise<number> => {
   const credits = await prisma.workspaceCredits.findUnique({ where: { workspaceId } });
   return toNum(credits?.balance);
-}
+});

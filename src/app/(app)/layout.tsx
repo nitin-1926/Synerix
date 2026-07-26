@@ -8,6 +8,11 @@ import { redirect } from "next/navigation";
 // page while the generation kept going. 60s absorbs the worst cold path; all
 // genuinely slow work already lives in Trigger tasks, not actions.
 export const maxDuration = 60;
+
+// Auth-gated surface: never index, never let it compete with the marketing
+// pages for brand queries.
+export const metadata = { robots: { index: false, follow: false } };
+
 import { requireAuth, ADMIN_ACTING_COOKIE } from "@/lib/auth";
 import { getBalance } from "@/lib/credits";
 import { prisma } from "@/lib/db";
