@@ -3,6 +3,10 @@ import { ArrowRight } from "lucide-react";
 
 export const metadata = {
   title: "Synerix: Practical business consulting for Indian MSMEs",
+  description:
+    "A hands-on consulting practice for Indian MSMEs, plus Synerix Studio: AI ad creatives and e-commerce product photography built from your own product photos.",
+  alternates: { canonical: "/" },
+  openGraph: { url: "/", title: "Synerix: Practical business consulting for Indian MSMEs" },
 };
 
 const STATS = [

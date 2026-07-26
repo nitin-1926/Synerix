@@ -1,7 +1,11 @@
 import Link from "next/link";
+import { StructuredData } from "@/components/structured-data";
+import { FAQS, breadcrumbLd, faqLd, graph, studioProductLd } from "@/lib/structured-data";
 import { ArrowRight, CalendarDays, Languages, Package, PenTool, ShieldCheck, Sparkles } from "lucide-react";
 
 export const metadata = {
+  alternates: { canonical: "/synerix-studio" },
+  openGraph: { url: "/synerix-studio" },
   title: "Synerix Studio: AI ad creatives for Indian businesses",
   description:
     "Add your brand and products, and generate ad creatives for the Indian market. Built from your real product photos, with crisp brand typography and copy in four languages.",
@@ -33,6 +37,16 @@ const STEPS = [
 export default function StudioProductPage() {
   return (
     <main>
+      <StructuredData
+        data={graph(
+          studioProductLd,
+          faqLd,
+          breadcrumbLd([
+            { name: "Home", path: "/" },
+            { name: "Synerix Studio", path: "/synerix-studio" },
+          ]),
+        )}
+      />
       {/* ====== Hero ====== */}
       <section className="mk-hero-bg mk-grain relative overflow-hidden bg-mk-ink pb-24 pt-40 text-white md:pb-28 md:pt-48">
         <div className="mx-auto max-w-6xl px-5 md:px-8">
@@ -211,6 +225,24 @@ export default function StudioProductPage() {
             Explore Synerix Consulting
             <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
           </Link>
+        </div>
+      </section>
+
+      {/* ====== FAQ ====== */}
+      <section className="border-t border-mk-line bg-mk-paper py-20 md:py-24">
+        <div className="mx-auto max-w-3xl px-5 md:px-8">
+          <p className="mk-mono text-[11px] text-mk-ink/50">FAQ</p>
+          <h2 className="mk-display mt-3 text-3xl font-medium leading-tight md:text-4xl">
+            Questions people ask before they start.
+          </h2>
+          <dl className="mt-10 divide-y divide-mk-line border-y border-mk-line">
+            {FAQS.map((f) => (
+              <div key={f.q} className="py-6">
+                <dt className="text-lg font-medium text-mk-ink">{f.q}</dt>
+                <dd className="mt-2 text-[15px] leading-relaxed text-mk-ink/70">{f.a}</dd>
+              </div>
+            ))}
+          </dl>
         </div>
       </section>
 
