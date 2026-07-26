@@ -51,7 +51,16 @@ export function ChatWidget() {
       setStreaming(true);
 
       const userTurn: ChatMessage = { role: "user", content };
-      const history = [...messages, userTurn].slice(-MAX_HISTORY);
+      // Keep the window aligned to a user turn: an odd-length transcript sliced
+      // to a fixed size starts on an ASSISTANT turn, which the model rejects —
+      // so long (engaged) conversations broke with no error at all. Also drop
+      // any empty assistant turn, which used to fail the server's min(1) check
+      // and brick the conversation permanently.
+      const windowed = [...messages, userTurn]
+        .filter((m) => m.content.trim().length > 0)
+        .slice(-MAX_HISTORY);
+      const firstUser = windowed.findIndex((m) => m.role === "user");
+      const history = firstUser > 0 ? windowed.slice(firstUser) : windowed;
       setMessages([...history, { role: "assistant", content: "" }]);
 
       const controller = new AbortController();
@@ -97,7 +106,12 @@ export function ChatWidget() {
         }
       } catch {
         if (!controller.signal.aborted) {
-          setMessages(history);
+          // Keep whatever already streamed — dropping it forces the visitor to
+          // retype the question, which on mobile is where streams drop most.
+          setMessages((prev) => {
+            const last = prev[prev.length - 1];
+            return last?.role === "assistant" && last.content.trim().length === 0 ? history : prev;
+          });
           setError("Could not reach the assistant. Check your connection and try again.");
         }
       } finally {
@@ -153,7 +167,13 @@ export function ChatWidget() {
           </div>
 
           {/* Messages */}
-          <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+          <div
+            ref={scrollRef}
+            role="log"
+            aria-live="polite"
+            aria-busy={streaming}
+            className="flex-1 space-y-3 overflow-y-auto px-4 py-4"
+          >
             <Bubble role="assistant">{WELCOME}</Bubble>
             {messages.map((m, i) =>
               m.role === "assistant" && m.content === "" && streaming ? (
@@ -177,28 +197,62 @@ export function ChatWidget() {
                 rows={1}
                 value={input}
                 maxLength={MAX_INPUT_CHARS}
-                disabled={streaming}
+                readOnly={streaming}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={onKeyDown}
                 placeholder="Ask about Synerix..."
                 aria-label="Message the Synerix assistant"
                 className="max-h-28 min-h-10 flex-1 resize-none rounded-2xl border border-mk-line-dark bg-mk-navy px-3.5 py-2.5 text-sm text-white placeholder:text-mk-mist/50 focus:outline-none focus:ring-1 focus:ring-mk-cyan disabled:opacity-60"
               />
-              <button
-                type="button"
-                aria-label="Send message"
-                onClick={() => void send(input)}
-                disabled={streaming || !input.trim()}
-                className="flex size-10 shrink-0 items-center justify-center rounded-full bg-mk-cyan text-mk-ink transition-colors hover:bg-mk-cyan-bright disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                <Send className="size-4" aria-hidden />
-              </button>
+              {streaming ? (
+                <button
+                  type="button"
+                  aria-label="Stop the assistant"
+                  onClick={() => abortRef.current?.abort()}
+                  className="flex size-10 shrink-0 items-center justify-center rounded-full bg-mk-navy text-mk-mist transition-colors hover:text-white"
+                >
+                  <span className="block size-3 rounded-[2px] bg-current" aria-hidden />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  aria-label="Send message"
+                  onClick={() => void send(input)}
+                  disabled={!input.trim()}
+                  className="flex size-10 shrink-0 items-center justify-center rounded-full bg-mk-cyan text-mk-ink transition-colors hover:bg-mk-cyan-bright disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <Send className="size-4" aria-hidden />
+                </button>
+              )}
             </div>
           </div>
         </div>
       )}
     </>
   );
+}
+
+/** The model answers in light markdown. Rendering it as a raw text node showed
+ * literal ** and # on the marketing homepage, which reads as a broken reply.
+ * This handles exactly what the system prompt can produce — bold, bullets and
+ * headings — without pulling a markdown library into the marketing bundle. */
+function renderRich(text: string): React.ReactNode {
+  return text.split("\n").map((line, i) => {
+    const heading = /^#{1,6}\s+(.*)$/.exec(line);
+    const bullet = /^\s*[-*]\s+(.*)$/.exec(line);
+    const body = heading?.[1] ?? bullet?.[1] ?? line;
+    const parts = body.split(/(\*\*[^*]+\*\*)/g).map((seg, j) =>
+      seg.startsWith("**") && seg.endsWith("**") && seg.length > 4 ? (
+        <strong key={j}>{seg.slice(2, -2)}</strong>
+      ) : (
+        <span key={j}>{seg}</span>
+      ),
+    );
+    if (heading) return <p key={i} className="mt-1 font-semibold">{parts}</p>;
+    if (bullet) return <p key={i} className="pl-3 -indent-3">{"\u2022 "}{parts}</p>;
+    if (!line.trim()) return <span key={i} className="block h-2" />;
+    return <p key={i}>{parts}</p>;
+  });
 }
 
 function Bubble({ role, children }: { role: "user" | "assistant"; children: React.ReactNode }) {
@@ -211,7 +265,7 @@ function Bubble({ role, children }: { role: "user" | "assistant"; children: Reac
             : "max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-bl-sm bg-mk-navy px-3.5 py-2.5 text-sm leading-relaxed text-mk-mist"
         }
       >
-        {children}
+        {role === "assistant" && typeof children === "string" ? renderRich(children) : children}
       </div>
     </div>
   );
