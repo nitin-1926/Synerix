@@ -23,6 +23,25 @@ const SAFE_ZONES: Record<SceneAspect, string> = {
 const QUALITY =
   "Photoreal commercial advertising photography, editorial quality, sharp focus, controlled natural lighting, authentic Indian people with natural skin tones and correct hands where people appear, no uncanny artifacts.";
 
+// The two worst renders we have ever shipped were text the image model invented:
+// a full fake shopping-app screenshot (carrier status bar, nav and cart icons)
+// and a gibberish serif headline baked across the frame. Both got through
+// because this ban used to be appended ONLY when a concept carried no
+// imagePrompt — which no path is true for any more (the enhancer and the
+// catalog shot list both always set one), so the guard was dead code on 100% of
+// renders. It is unconditional now, and it names the app-UI failure explicitly
+// because product reference photos are often phone screenshots.
+const WORDLESS =
+  "NO TEXT ANYWHERE (absolute): render no letters, words, numbers, headlines, captions, watermarks, signage, price tags, hang tags, size labels or brand labels anywhere in the frame. The ONLY text permitted is text genuinely printed on the real product's own packaging. This is a PHOTOGRAPH, never a screenshot: no phone or app interface, status bar, carrier or battery or wifi icons, navigation bars, buttons, search fields, cart, heart or menu icons, and no website or app chrome of any kind.";
+
+// Display artefacts a garment reference carries — the hanger it hangs on, the
+// mannequin's head form, the retail hang tag, the stuck-on size sticker — were
+// being reproduced ONTO the model (a rhinestone tiara from a mannequin head, a
+// size "32" label on a model's chest). The reference is a product photograph;
+// only the clothing inside it is the subject.
+const REFERENCE_IS_A_PRODUCT_PHOTO =
+  "The garment reference is a PRODUCT PHOTOGRAPH, not a scene: copy ONLY the clothing itself. Everything present for display purposes must be absent from your render — the hanger, hook, mannequin, stand or head form, the studio background, hang tags, price or size stickers, brand labels attached at the collar, and any other garment visible beside or behind it.";
+
 // Universal framing guard — a single, well-composed photograph with every key
 // subject fully inside the frame. Guards against the two edge failures seen in
 // output: subjects/product touching or cut off by the frame, and split/collage
@@ -41,7 +60,7 @@ const ON_MODEL_FRAMING =
 // Appended AFTER the concept's scene body so a stray concept that still writes
 // a location/story cannot override the deliverable the user actually chose.
 const PLAIN_ECOMMERCE =
-  "STRICT E-COMMERCE SHOWCASE (this overrides any scene direction above): a clean apparel product-page photograph — seamless studio backdrop or minimal neutral setting only; the garment fully visible as the hero with drape and details readable; no location scenes, no storytelling staging, no props beyond at most a simple stool or block, and absolutely no other people.";
+  "STRICT E-COMMERCE SHOWCASE (this overrides any scene direction above): a clean apparel product-page photograph — seamless studio backdrop or minimal neutral setting only; the garment fully visible as the hero with drape and details readable; no location scenes, no storytelling staging, no props beyond at most a simple stool or block, and absolutely no other people. STYLING IS FIXED so every frame of this product cuts together as one shoot: plain matching bottoms in a tone drawn from the garment itself, simple neutral closed footwear (never sports sneakers with formal or festive wear, never barefoot), and no jewellery, watch, sunglasses, bag, dupatta or headwear unless that piece is part of the garment in the reference.";
 
 /**
  * On-model art direction, keyed by what the account sells. Both are ALWAYS
@@ -97,12 +116,21 @@ export function buildScenePassPrompt(opts: {
   aspect: SceneAspect;
   dissectionPrompt?: string | null;
   hasProduct: boolean;
+  /** Per-SKU product truth (sceneDo / sceneDont). It used to reach only the
+   * concept LLM, so nothing stopped the RENDER from showing the product wrongly
+   * — a pale, matte, undercooked poori sitting in a shallow pan of water-like
+   * liquid, which the SKU's own MUST NOT SHOW list forbids. */
+  productTruth?: { mustShow: string[]; mustNotShow: string[] } | null;
 }): string {
   const body = opts.concept.imagePrompt?.trim() || opts.concept.sceneDescription;
+  const truthLine =
+    opts.productTruth && (opts.productTruth.mustShow.length || opts.productTruth.mustNotShow.length)
+      ? `PRODUCT TRUTH (non-negotiable, overrides the scene text above where they conflict).${opts.productTruth.mustShow.length ? ` The product must appear as it genuinely is when used: ${opts.productTruth.mustShow.join("; ")}.` : ""}${opts.productTruth.mustNotShow.length ? ` NEVER show: ${opts.productTruth.mustNotShow.join("; ")}.` : ""}`
+      : "";
   const refLine = opts.hasProduct
-    ? `The attached reference photo(s) ARE the exact product: render it faithfully — real packaging, label, shape and colours preserved, its own label text sharp and legible, never redesigned, shown only once.${opts.dissectionPrompt ? ` Reference: ${opts.dissectionPrompt}` : ""}`
+    ? `The attached reference photo(s) ARE the exact product: render it faithfully — real packaging, label, shape and colours preserved, its own label text sharp and legible, never redesigned, shown only once. Copy only the product: anything present in the reference purely for display (a hanger, mannequin or stand, a hang tag, a price or size sticker, the studio background, neighbouring products) must NOT appear in your scene.${opts.dissectionPrompt ? ` Reference: ${opts.dissectionPrompt}` : ""}`
     : "";
-  return joinCapped([], body, [refLine, QUALITY, SAFE_ZONES[opts.aspect], FRAMING].filter(Boolean), 4000);
+  return joinCapped([], body, [refLine, truthLine, QUALITY, SAFE_ZONES[opts.aspect], FRAMING, WORDLESS].filter(Boolean), 4000);
 }
 
 /**
@@ -167,6 +195,7 @@ export function buildOnModelPrompt(opts: {
   parts.push(
     `Dress the model from IMAGE 1 in the garment from IMAGE 2. GARMENT FIDELITY (critical): reproduce the garment's exact colour, print/pattern, fabric, neckline, sleeves, length and cut faithfully. Do NOT restyle, recolour, re-pattern or redesign it. Fit it naturally to the body with correct drape, folds and shadows.${garmentPrompt ? ` Garment reference: ${garmentPrompt}` : ""}`,
   );
+  parts.push(REFERENCE_IS_A_PRODUCT_PHOTO);
   if (pose?.trim()) {
     parts.push(
       `POSE (follow this): the model is ${pose.trim()}. Keep it natural and flattering for the garment, with correct anatomy and hands.`,
@@ -183,7 +212,6 @@ export function buildOnModelPrompt(opts: {
   const tail: string[] = [];
   if (!hasFullPrompt) {
     tail.push(`Palette: lead with ${concept.paletteHexes.join(", ")} as the dominant tones.`);
-    tail.push(`No on-image text, letters, numbers, words, signage with writing, logos or watermarks.`);
   }
   // Photographic craft floors apply to BOTH paths — the concept prompt is
   // written for a generic scene and cannot be relied on for on-model
@@ -191,9 +219,13 @@ export function buildOnModelPrompt(opts: {
   if (opts.plain) tail.push(PLAIN_ECOMMERCE);
   tail.push(ON_MODEL_DIRECTION[direction]);
   tail.push(QUALITY);
-  tail.push(SAFE_ZONES[aspect]);
+  // A PLAIN run composites no overlay, so reserving a calmer/darker headline
+  // band just surrenders up to a third of the catalog frame and dulls the
+  // garment in it. Only branded runs need the safe zone.
+  if (!opts.plain) tail.push(SAFE_ZONES[aspect]);
   tail.push(ON_MODEL_FRAMING);
   tail.push(FRAMING);
+  tail.push(WORDLESS);
   return joinCapped(parts, body, tail, 4500);
 }
 

@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { withRetry } from "./retry";
 
 /**
  * Runware client — multi-model image generation abstraction.
@@ -12,7 +13,9 @@ export type QualityTier = "1k" | "2k";
 export type Aspect = "1:1" | "4:5" | "9:16" | "16:9";
 
 export const IMAGE_MODELS: Record<string, string> = {
-  nano_banana_pro: process.env.RUNWARE_MODEL_NANO_BANANA_PRO ?? "google:4@2",
+  // No Google models here on purpose: Nano Banana Pro/2 go direct to the
+  // Gemini API, which is both cheaper and higher fidelity than the Runware
+  // route. Runware is used for the models we cannot reach directly.
   seedream_v4: process.env.RUNWARE_MODEL_SEEDREAM_V4 ?? "bytedance:5@0",
   seedream_v5_lite: process.env.RUNWARE_MODEL_SEEDREAM_V5_LITE ?? "bytedance:seedream@5.0-lite",
   // Cheaper Chinese models (Alibaba) for cost A/B on simpler use cases; both
@@ -24,7 +27,6 @@ export const IMAGE_MODELS: Record<string, string> = {
 const NO_NEGATIVE_PROMPT = new Set([
   "bytedance:5@0",
   "bytedance:seedream@5.0-lite",
-  "google:4@2",
   "runware:108@1",
   "alibaba:wan@2.7-image",
 ]);
@@ -56,20 +58,6 @@ const DIM_TABLE: Record<string, Record<QualityTier, Record<Aspect, { width: numb
       "4:5": { width: 1728, height: 2304 },
       "9:16": { width: 1600, height: 2848 },
       "16:9": { width: 2848, height: 1600 },
-    },
-  },
-  "google:4@2": {
-    "1k": {
-      "1:1": { width: 1024, height: 1024 },
-      "4:5": { width: 928, height: 1152 },
-      "9:16": { width: 848, height: 1264 },
-      "16:9": { width: 1264, height: 848 },
-    },
-    "2k": {
-      "1:1": { width: 1024, height: 1024 },
-      "4:5": { width: 928, height: 1152 },
-      "9:16": { width: 848, height: 1264 },
-      "16:9": { width: 1264, height: 848 },
     },
   },
 };
@@ -225,23 +213,3 @@ export function bufferToDataUri(buf: Buffer, mime = "image/png"): string {
   return `data:${mime};base64,${buf.toString("base64")}`;
 }
 
-async function withRetry<T>(
-  fn: () => Promise<T>,
-  opts: { attempts: number; baseDelayMs: number; label: string },
-): Promise<T> {
-  let lastErr: unknown;
-  for (let i = 0; i < opts.attempts; i++) {
-    try {
-      return await fn();
-    } catch (e) {
-      lastErr = e;
-      const msg = (e as Error).message;
-      const transient = /\b(429|5\d\d|timeout|ETIMEDOUT|ECONNRESET|fetch failed)\b/i.test(msg);
-      if (i === opts.attempts - 1 || !transient) throw e;
-      const wait = opts.baseDelayMs * Math.pow(2, i) + Math.floor(Math.random() * 400);
-      console.warn(`[retry:${opts.label}] attempt ${i + 1} failed (${msg.slice(0, 120)}) — ${wait}ms`);
-      await new Promise((r) => setTimeout(r, wait));
-    }
-  }
-  throw lastErr;
-}

@@ -69,7 +69,7 @@ describe("buildOnModelPrompt", () => {
     expect(p).toMatch(/GARMENT FIDELITY/i);
     expect(p).toMatch(/do NOT restyle/i);
     expect(p).toContain(concept.sceneDescription);
-    expect(p).toMatch(/No on-image text/i);
+    expect(p).toMatch(/NO TEXT ANYWHERE/);
   });
 
   it("subordinates any person in the scene text to the model reference (identity from IMAGE 1)", () => {

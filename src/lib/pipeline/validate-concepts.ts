@@ -37,7 +37,7 @@ const VALIDATOR_SYSTEM = `You are the print-production QA director at a top Indi
 
 For EACH concept, check ONLY these failure classes:
 1. PRODUCT-WRONG SCENE: the imagePrompt/sceneDescription contradicts the product-intelligence block (its category, preparation, finished form, or any SCENE MUST SHOW / MUST NOT SHOW rule in the brief).
-2. PLACEMENT MISMATCH: productPlacement='product_hero' but the imagePrompt describes the pack/product in the scene (double-render risk), or productPlacement='lifestyle' but the imagePrompt never stages the product.
+2. MULTI-FRAME BRIEF: the imagePrompt asks for more than ONE photograph of ONE moment — a triptych, split screen, side-by-side, before/after, grid, storyboard, or the same subject shown at several times of day. An image model renders these as a broken collage. Also flag a scene that never stages the product at all.
 3. NOT WORDLESS: the imagePrompt asks the image model to render any text, lettering, numbers, signage or logos beyond what is printed on the real product's packaging, or it fails to reserve a clean negative-space zone for the later headline.
 4. INVENTED CLAIMS: any copy block or prompt invents offers, discounts, prices, "free" anything, certifications, awards or statistics that the occasion brief did not explicitly state.
 5. BROKEN COPY: a headline over 8 words, a missing CTA, an em/en dash (— –) in any copy field, or copy in the wrong script for its language slot (hi must be Devanagari, pa must be Gurmukhi, hinglish must be Latin script).
@@ -46,7 +46,7 @@ For EACH concept, check ONLY these failure classes:
 
 Judge against the brief you are given, not your own taste. If a concept passes all seven checks, it is ok=true with no issues. Never invent an issue to seem thorough.`;
 
-const REPAIR_SYSTEM = `You are the senior creative director who wrote a concept brief that production QA flagged. Fix ONLY the flagged issues, keeping everything that worked: the concept's name, big idea, archetype and creative angle stay unless an issue forces a change. Preserve all standing rules: photoreal WORDLESS imagePrompt with an explicit reserved negative-space zone, correct product staging per productPlacement, brand palette leading, no invented offers or claims, no em/en dashes anywhere, headline ≤ 6 words in all four languages (en / hinglish Latin script / hi Devanagari / pa Gurmukhi). Return the complete corrected concept.`;
+const REPAIR_SYSTEM = `You are the senior creative director who wrote a concept brief that production QA flagged. Fix ONLY the flagged issues, keeping everything that worked: the concept's name, big idea, archetype and creative angle stay unless an issue forces a change. Preserve all standing rules: photoreal WORDLESS imagePrompt with an explicit reserved negative-space zone, the real product staged correctly in ONE single photograph, brand palette leading, no invented offers or claims, no em/en dashes anywhere, headline ≤ 6 words in all four languages (en / hinglish Latin script / hi Devanagari / pa Gurmukhi). Return the complete corrected concept.`;
 
 async function judge(
   concepts: CreativeConcept[],
@@ -149,7 +149,7 @@ export async function enhanceConceptPrompts(opts: {
     schema: enhancedSchema,
     system: ENHANCE_SYSTEM,
     prompt: `Polish these ${opts.concepts.length} prompts (return one entry per index):\n${JSON.stringify(
-      opts.concepts.map((c, index) => ({ index, productPlacement: c.productPlacement, imagePrompt: c.imagePrompt })),
+      opts.concepts.map((c, index) => ({ index, imagePrompt: c.imagePrompt })),
       null,
       1,
     )}`,
@@ -160,7 +160,9 @@ export async function enhanceConceptPrompts(opts: {
     const polished = object.prompts.find((p) => p.index === i)?.imagePrompt?.trim();
     // Guard the invariants we can check deterministically; on any doubt, the
     // author's original prompt wins (the enhancer is a bonus, never a risk).
-    if (!polished || polished.length < 300 || /[—–]/.test(polished)) return c;
-    return { ...c, imagePrompt: polished };
+    // A stray em/en dash is NOT doubt — it is one character we can fix, and
+    // discarding the whole polished prompt over it threw away a paid Opus pass.
+    if (!polished || polished.length < 300) return c;
+    return { ...c, imagePrompt: polished.replace(/\s*[—–]\s*/g, ", ").replace(/,\s*,/g, ", ") };
   });
 }
