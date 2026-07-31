@@ -5,9 +5,9 @@ import { revalidatePath } from "next/cache";
 import { tasks } from "@trigger.dev/sdk";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { requireAuth } from "@/lib/auth";
+import { requireWriteAccess } from "@/lib/auth";
 import { ensureBrand } from "@/lib/ensure-brand";
-import { storageKeys, uploadBuffer } from "@/lib/storage";
+import { deleteObjects, storageKeys, uploadBuffer } from "@/lib/storage";
 import type { productDissect } from "@/trigger/product-dissect";
 import type { productCutout } from "@/trigger/product-cutout";
 
@@ -24,7 +24,7 @@ const productSchema = z.object({
 });
 
 export async function createProduct(formData: FormData) {
-  const auth = await requireAuth();
+  const auth = await requireWriteAccess();
   const brand = await ensureBrand(auth.workspaceId, auth.workspaceName);
 
   const parsed = productSchema.safeParse(Object.fromEntries(formData));
@@ -48,27 +48,33 @@ export async function createProduct(formData: FormData) {
     },
   });
 
-  let first = true;
-  for (const f of files) {
-    const imageId = crypto.randomUUID();
-    const ext = f.type.split("/")[1] === "jpeg" ? "jpg" : f.type.split("/")[1];
-    const key = storageKeys.productImage(product.id, imageId, ext);
-    await uploadBuffer(key, Buffer.from(await f.arrayBuffer()), f.type);
-    await prisma.productImage.create({
-      data: { id: imageId, productId: product.id, storageKey: key, mimeType: f.type, isPrimary: first },
-    });
-    first = false;
-  }
+  // Uploads run in PARALLEL and the rows go in as one createMany. Sequentially
+  // this was (upload + insert) x N against storage and a database in another
+  // region — five photos meant ten serial cross-region round trips while the
+  // user watched a spinner.
+  const uploads = await Promise.all(
+    files.map(async (f, i) => {
+      const imageId = crypto.randomUUID();
+      const ext = f.type.split("/")[1] === "jpeg" ? "jpg" : f.type.split("/")[1];
+      const key = storageKeys.productImage(product.id, imageId, ext);
+      await uploadBuffer(key, Buffer.from(await f.arrayBuffer()), f.type);
+      return { id: imageId, productId: product.id, storageKey: key, mimeType: f.type, isPrimary: i === 0 };
+    }),
+  );
+  await prisma.productImage.createMany({ data: uploads });
 
-  await tasks.trigger<typeof productDissect>("product-dissect", { productId: product.id });
-  await tasks.trigger<typeof productCutout>("product-cutout", { productId: product.id });
+  // Both tasks read the same rows and neither depends on the other's handle.
+  await Promise.all([
+    tasks.trigger<typeof productDissect>("product-dissect", { productId: product.id }),
+    tasks.trigger<typeof productCutout>("product-cutout", { productId: product.id }),
+  ]);
   revalidatePath("/products");
   return { ok: true, productId: product.id };
 }
 
 // Inline variant for the studio create flow: one photo, returns the product as JSON.
 export async function createProductInline(formData: FormData) {
-  const auth = await requireAuth();
+  const auth = await requireWriteAccess();
   const brand = await ensureBrand(auth.workspaceId, auth.workspaceName);
 
   const parsed = productSchema.safeParse(Object.fromEntries(formData));
@@ -112,7 +118,7 @@ export async function createProductInline(formData: FormData) {
 /** Add photos to an existing product (up to MAX_IMAGES total). Dissection uses
  * only the primary image, so no re-analysis is triggered. */
 export async function addProductImages(productId: string, formData: FormData) {
-  const auth = await requireAuth();
+  const auth = await requireWriteAccess();
   const product = await prisma.product.findFirst({
     where: { id: productId, brand: { workspaceId: auth.workspaceId } },
     include: { _count: { select: { images: true } } },
@@ -128,15 +134,18 @@ export async function addProductImages(productId: string, formData: FormData) {
     if (f.size > MAX_BYTES) return { error: `${f.name} is over 8 MB` };
   }
 
-  for (const f of files) {
-    const imageId = crypto.randomUUID();
-    const ext = f.type.split("/")[1] === "jpeg" ? "jpg" : f.type.split("/")[1];
-    const key = storageKeys.productImage(product.id, imageId, ext);
-    await uploadBuffer(key, Buffer.from(await f.arrayBuffer()), f.type);
-    await prisma.productImage.create({
-      data: { id: imageId, productId: product.id, storageKey: key, mimeType: f.type, isPrimary: false },
-    });
-  }
+  // Parallel, same reasoning as createProduct: serial cross-region uploads were
+  // the whole wait here.
+  const added = await Promise.all(
+    files.map(async (f) => {
+      const imageId = crypto.randomUUID();
+      const ext = f.type.split("/")[1] === "jpeg" ? "jpg" : f.type.split("/")[1];
+      const key = storageKeys.productImage(product.id, imageId, ext);
+      await uploadBuffer(key, Buffer.from(await f.arrayBuffer()), f.type);
+      return { id: imageId, productId: product.id, storageKey: key, mimeType: f.type, isPrimary: false };
+    }),
+  );
+  await prisma.productImage.createMany({ data: added });
 
   await tasks.trigger<typeof productCutout>("product-cutout", { productId: product.id });
   revalidatePath(`/products/${product.id}`);
@@ -145,18 +154,30 @@ export async function addProductImages(productId: string, formData: FormData) {
 }
 
 export async function deleteProduct(productId: string) {
-  const auth = await requireAuth();
+  const auth = await requireWriteAccess();
   const product = await prisma.product.findFirst({
     where: { id: productId, brand: { workspaceId: auth.workspaceId } },
+    include: { images: { select: { storageKey: true, cutoutKey: true } } },
   });
   if (!product) return { error: "Not found" };
+
+  // Collect keys BEFORE the delete — ProductImage cascades, so after this the
+  // rows are gone and the objects would be unreachable orphans.
+  const keys = product.images.flatMap((i) => [i.storageKey, i.cutoutKey].filter(Boolean) as string[]);
   await prisma.product.delete({ where: { id: product.id } });
+  // After the row is gone: a failed object delete leaves recoverable garbage,
+  // whereas deleting objects first would break a live product if the DB delete
+  // then failed.
+  await deleteObjects(keys).catch((e) =>
+    console.warn(`[products] object cleanup failed for ${product.id}: ${(e as Error).message}`),
+  );
+
   revalidatePath("/products");
   return { ok: true };
 }
 
 export async function redissectProduct(productId: string) {
-  const auth = await requireAuth();
+  const auth = await requireWriteAccess();
   const product = await prisma.product.findFirst({
     where: { id: productId, brand: { workspaceId: auth.workspaceId } },
   });

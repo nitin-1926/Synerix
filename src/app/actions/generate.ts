@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { tasks } from "@trigger.dev/sdk";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { requireAuth } from "@/lib/auth";
+import { requireWriteAccess } from "@/lib/auth";
 import { CREDIT_COSTS, LIMITS } from "@/lib/ai/models";
 import { debitCredits, reconcileRunRefund, InsufficientCreditsError } from "@/lib/credits";
 import type { generationRun } from "@/trigger/generation-run";
@@ -34,7 +34,7 @@ const startSchema = z.object({
 });
 
 export async function startGenerationRun(formData: FormData) {
-  const auth = await requireAuth();
+  const auth = await requireWriteAccess();
   const brand = await prisma.brand.findFirst({ where: { workspaceId: auth.workspaceId } });
   if (!brand) return { error: "Set up your brand first" };
 
@@ -146,8 +146,28 @@ export async function startGenerationRun(formData: FormData) {
     : d.fidelityMode === "ON_MODEL"
       ? Math.max(1, modelPoses.length)
       : d.optionCount;
-  const variantMultiplier = d.imageModel === "compare" ? 2 : 1;
-  const cost = bakeoff ? 0 : CREDIT_COSTS.perConcept * conceptCount * variantMultiplier;
+  // "Compare" renders every option on BOTH premium models. A workspace-level
+  // image-model pin overrides that in the worker (generation-run resolves the
+  // pin before the per-run pref), so charging 2x here would bill twice for one
+  // render. Honour the pin in the price too — the customer must never pay for a
+  // variant the pipeline is not going to produce.
+  const workspacePin = await prisma.workspace.findUnique({
+    where: { id: auth.workspaceId },
+    select: { imageModel: true },
+  });
+  const comparePref = d.imageModel === "compare" && !workspacePin?.imageModel;
+  const variantMultiplier = comparePref ? 2 : 1;
+  // Every requested aspect is a NATIVE render (one image call each), so a
+  // 3-format run costs 3x the image spend while debiting 1x — a real margin
+  // hole. But switching it on silently multiplies with the compare multiplier
+  // (a 4-concept x 4-aspect compare run goes 16 credits -> 64) and that is a
+  // PRICING decision, not a bug fix, so it ships behind a flag that is OFF by
+  // default. Set CREDITS_PER_ASPECT=1 to charge per rendered plate.
+  const aspectMultiplier =
+    process.env.CREDITS_PER_ASPECT === "1" ? Math.max(1, requestedAspects.length) : 1;
+  const cost = bakeoff
+    ? 0
+    : CREDIT_COSTS.perConcept * conceptCount * variantMultiplier * aspectMultiplier;
 
   // Branding mode applies to apparel on-model only; elsewhere always branded.
   // Per-run choice wins, else the brand's default.
@@ -157,6 +177,9 @@ export async function startGenerationRun(formData: FormData) {
   const run = await prisma.generationRun.create({
     data: {
       workspaceId: auth.workspaceId,
+      // Feeds the creative's frozen R2 prefix — set here, at the only place a
+      // run is created, so every render can be traced to who asked for it.
+      createdByUserId: auth.userId,
       brandId: brand.id,
       calendarEntryId,
       productId: d.productId || null,

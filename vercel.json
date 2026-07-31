@@ -1,0 +1,16 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "regions": ["hnd1"],
+  "//": [
+    "hnd1 = Tokyo, chosen to sit NEXT TO THE DATABASE, not next to the user.",
+    "Supabase (Postgres + Storage) is in aws-1-ap-northeast-1 (Tokyo) and every page makes",
+    "6-11 SEQUENTIAL queries, so co-locating with the database wins: N x ~1ms beats",
+    "N x ~90ms, even though a user in India then pays ~120ms once for the HTML.",
+    "Hobby allows exactly one region, which is all this needs.",
+    "WHEN THE DATABASE MOVES TO MUMBAI (ap-south-1), CHANGE THIS TO bom1 — with the",
+    "database local, the only latency left is user-to-function and Mumbai wins both legs.",
+    "Supabase cannot change an existing project's region: that move means creating a new",
+    "project in ap-south-1 and migrating into it."
+  ]
+}
