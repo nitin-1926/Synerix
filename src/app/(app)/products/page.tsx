@@ -35,7 +35,16 @@ export default async function ProductsPage({
   const [products, profile] = await Promise.all([
     prisma.product.findMany({
       where: { brandId: brand.id },
-      include: { images: { orderBy: [{ isPrimary: "desc" }], take: 1 } },
+      // The grid shows a thumbnail, a name and a status badge. `include` was
+      // dragging dissectionFull (a full vision-analysis blob) and productIntel
+      // for EVERY product — on a page that re-fetches every 8 seconds while any
+      // photo is still analysing.
+      select: {
+        id: true,
+        name: true,
+        dissectionStatus: true,
+        images: { orderBy: [{ isPrimary: "desc" }], take: 1, select: { storageKey: true } },
+      },
       orderBy: { createdAt: "desc" },
     }),
     getWorkspaceProfile(auth.workspaceId),
@@ -47,7 +56,7 @@ export default async function ProductsPage({
 
   return (
     <div>
-      <AutoRefresh active={analyzing} />
+      <AutoRefresh active={analyzing} intervalMs={15_000} />
       {onboarding && (
         <div className="mb-6 rounded-xl bg-primary/10 px-4 py-3 text-sm text-foreground ring-1 ring-primary/20">
           <span className="font-semibold text-primary">Step 2 of 2:</span> add your first product — a
