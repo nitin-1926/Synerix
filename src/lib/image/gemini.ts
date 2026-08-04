@@ -5,6 +5,8 @@
  * (product + logo) and aspect ratio control.
  */
 
+import { withRetry } from "./retry";
+
 const GEMINI_IMAGE_MODEL = process.env.GEMINI_IMAGE_MODEL ?? "gemini-3-pro-image";
 const ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models";
 
@@ -87,20 +89,3 @@ export async function generateImageGemini(p: GeminiGenParams): Promise<Buffer> {
   );
 }
 
-async function withRetry<T>(fn: () => Promise<T>, o: { label: string; attempts: number; baseDelayMs: number }): Promise<T> {
-  let last: unknown;
-  for (let i = 0; i < o.attempts; i++) {
-    try {
-      return await fn();
-    } catch (e) {
-      last = e;
-      const msg = (e as Error).message;
-      const transient = /\b(429|5\d\d|overloaded|high demand|timeout|ETIMEDOUT|ECONNRESET|fetch failed)\b/i.test(msg);
-      if (i === o.attempts - 1 || !transient) throw e;
-      const wait = o.baseDelayMs * 2 ** i + Math.floor(Math.random() * 500);
-      console.warn(`[retry:${o.label}] attempt ${i + 1}: ${msg.slice(0, 100)} — ${wait}ms`);
-      await new Promise((r) => setTimeout(r, wait));
-    }
-  }
-  throw last;
-}

@@ -24,10 +24,30 @@ export default async function LibraryPage({
   const [creatives, creativeTotal, runs, runTotal] = await Promise.all([
     prisma.creative.findMany({
       where: { brandId: brand.id, status: "READY", deletedAt: null },
-      include: {
-        renders: { where: { status: "COMPOSED" }, take: 1 },
+      // `select`, not `include`: the grid needs a name, a thumbnail key and an
+      // aspect. `include` returned SELECT * for 60 rows, dragging the full
+      // `concept`, `qa` and `critic` JSON blobs (and the whole generation run,
+      // pipeline JSON included) across the wire for a page that shows a picture
+      // and a caption.
+      select: {
+        id: true,
+        approved: true,
+        masterAspect: true,
+        renders: {
+          where: { status: "COMPOSED" },
+          take: 1,
+          select: { composedImageKey: true, aspectRatio: true },
+        },
+        concept: true,
         generationRun: {
-          include: { calendarEntry: { include: { festivalOccurrence: { include: { festival: true } } } } },
+          select: {
+            calendarEntry: {
+              select: {
+                customTitle: true,
+                festivalOccurrence: { select: { festival: { select: { name: true } } } },
+              },
+            },
+          },
         },
       },
       orderBy: { createdAt: "desc" },
@@ -61,6 +81,10 @@ export default async function LibraryPage({
     return {
       id: c.id,
       name: concept.name,
+      // The grid needs an intrinsic ratio to reserve space; without it a
+      // masonry column starts at zero height and every arriving image reflows
+      // the page under the user's finger.
+      aspect: (render?.aspectRatio ?? c.masterAspect ?? "4:5").replace(":", " / "),
       occasion:
         c.generationRun.calendarEntry?.festivalOccurrence?.festival.name ??
         c.generationRun.calendarEntry?.customTitle ??

@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Check, TriangleAlert } from "lucide-react";
+import { useFingerprint } from "@/components/fingerprint";
 
 export interface WizardQuestion {
   id: string;
@@ -116,6 +117,7 @@ export function BusinessHealthWizard({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const advanceTimer = useRef<number | null>(null);
+  const { visitorId, eventId } = useFingerprint();
 
   const totalSteps = INFO_STEPS.length + questions.length;
   const infoStep = step < INFO_STEPS.length ? INFO_STEPS[step] : null;
@@ -255,6 +257,8 @@ export function BusinessHealthWizard({
           testScore: score,
           testId: testId ?? "",
           answers,
+          visitorId,
+          fingerprintEventId: eventId,
         }),
       });
       const result = await response.json();

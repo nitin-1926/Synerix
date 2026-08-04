@@ -17,6 +17,8 @@ import {
 } from "@/components/ui/select";
 import { BrandKitTabs } from "@/components/brand-kit-tabs";
 import { BrandKitForm } from "./brand-kit-form";
+import { RefreshIntelButton } from "./refresh-intel";
+import { CREDIT_COSTS } from "@/lib/ai/models";
 import { LogoPicker } from "./logo-picker";
 import { LogoUpload } from "./logo-upload";
 import { ApparelDefaultControl } from "./apparel-default";
@@ -138,6 +140,32 @@ export default async function BrandPage() {
               </div>
             </div>
           </BrandKitForm>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-8">
+        <CardHeader>
+          <CardTitle className="text-base">Brand research</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Web-grounded evidence about your category — the ad patterns, customer language and
+            angles that work. Every generation reads this when building its brief. Refresh it after
+            a repositioning or a new product line.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <RefreshIntelButton
+            brandId={brand.id}
+            cost={CREDIT_COSTS.brandIntel}
+            lastRefreshedAt={
+              brand.creativeIntelAt
+                ? brand.creativeIntelAt.toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })
+                : null
+            }
+          />
         </CardContent>
       </Card>
 

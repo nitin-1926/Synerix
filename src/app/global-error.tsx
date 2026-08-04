@@ -1,10 +1,14 @@
 "use client";
 
 import { useEffect } from "react";
-import * as Sentry from "@sentry/nextjs";
 
 // Root error boundary: catches render crashes that escape every route-level
-// boundary and reports them (must render its own <html>/<body>).
+// boundary and must render its own <html>/<body>.
+//
+// No error-reporting SDK is wired in. Sentry was removed while still inert — no
+// DSN had ever been set, so it reported nothing while costing 90 MB — and
+// PostHog is the intended replacement. Until then the digest below is the link
+// to the full server-side stack in the Vercel runtime logs.
 export default function GlobalError({
   error,
   reset,
@@ -13,7 +17,7 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    Sentry.captureException(error);
+    console.error("[global-error]", error.digest ?? "", error);
   }, [error]);
 
   return (

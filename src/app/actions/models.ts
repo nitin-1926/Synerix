@@ -4,9 +4,9 @@ import { revalidatePath } from "next/cache";
 import { tasks } from "@trigger.dev/sdk";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, requireWriteAccess } from "@/lib/auth";
 import { ensureBrand } from "@/lib/ensure-brand";
-import { getSignedThumbUrls } from "@/lib/storage";
+import { deleteObjects, getSignedThumbUrls } from "@/lib/storage";
 import type { generateModel } from "@/trigger/generate-model";
 
 /** List the AI-model library available to this workspace: shared GLOBAL presets
@@ -40,7 +40,7 @@ const generateSchema = z.object({
 
 /** Create a BRAND-scoped model row (PENDING) and kick off generation. */
 export async function generateBrandModel(formData: FormData) {
-  const auth = await requireAuth();
+  const auth = await requireWriteAccess();
   const brand = await ensureBrand(auth.workspaceId, auth.workspaceName);
 
   const parsed = generateSchema.safeParse(Object.fromEntries(formData));
@@ -63,12 +63,16 @@ export async function generateBrandModel(formData: FormData) {
 
 /** Delete a brand-scoped model (presets cannot be deleted by users). */
 export async function deleteAiModel(modelId: string) {
-  const auth = await requireAuth();
+  const auth = await requireWriteAccess();
   const model = await prisma.aiModel.findFirst({
     where: { id: modelId, scope: "BRAND", brand: { workspaceId: auth.workspaceId } },
   });
   if (!model) return { error: "Model not found" };
+  const key = model.storageKey;
   await prisma.aiModel.delete({ where: { id: model.id } });
+  await deleteObjects(key ? [key] : []).catch((e) =>
+    console.warn(`[models] object cleanup failed for ${model.id}: ${(e as Error).message}`),
+  );
   revalidatePath("/models");
   return { ok: true };
 }

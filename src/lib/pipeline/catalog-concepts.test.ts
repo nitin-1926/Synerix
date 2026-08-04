@@ -26,3 +26,32 @@ describe("buildCatalogConcepts", () => {
     expect(concept.copy.en.headline).toBe("");
   });
 });
+
+describe("render-prompt guards (regressions found in shipped output)", () => {
+  const [concept] = buildCatalogConcepts({ count: 1 });
+
+  it("bans baked text and app UI on the PLAIN path — the guard used to be dead code", () => {
+    const prompt = buildOnModelPrompt({ concept, aspect: "4:5", direction: "catalog", plain: true });
+    expect(prompt).toMatch(/NO TEXT ANYWHERE/);
+    expect(prompt).toMatch(/never a screenshot/i);
+  });
+
+  it("does not reserve a headline safe-zone on PLAIN runs (nothing is composited there)", () => {
+    const plain = buildOnModelPrompt({ concept, aspect: "4:5", direction: "catalog", plain: true });
+    const branded = buildOnModelPrompt({ concept, aspect: "4:5", direction: "catalog" });
+    expect(plain).not.toMatch(/headline overlay/i);
+    expect(branded).toMatch(/headline overlay/i);
+  });
+
+  it("tells the model the garment reference is a product photo, not a scene", () => {
+    const prompt = buildOnModelPrompt({ concept, aspect: "4:5", direction: "catalog", plain: true });
+    expect(prompt).toMatch(/PRODUCT PHOTOGRAPH/);
+    expect(prompt).toMatch(/hang tags/);
+  });
+
+  it("locks styling so one product's frames cut together as one shoot", () => {
+    const prompt = buildOnModelPrompt({ concept, aspect: "4:5", direction: "catalog", plain: true });
+    expect(prompt).toMatch(/STYLING IS FIXED/);
+    expect(prompt).toMatch(/never barefoot/);
+  });
+});

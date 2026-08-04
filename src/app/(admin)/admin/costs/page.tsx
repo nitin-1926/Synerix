@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { requireSuperAdmin } from "@/lib/auth";
 
 export const metadata = { title: "Costs — Synerix Admin" };
 // Always fresh — this is an observability view.
@@ -42,6 +43,10 @@ export default async function AdminCostsPage({
 }: {
   searchParams: Promise<{ page?: string }>;
 }) {
+  // Authorization is enforced HERE, not only in the (admin) layout: a Next.js
+  // layout is not an authorization boundary — it is skipped on RSC segment
+  // requests, so a page that trusts it can serialize admin data to anyone.
+  await requireSuperAdmin();
   const { page: pageParam } = await searchParams;
   const page = Math.max(1, Number.parseInt(pageParam ?? "1", 10) || 1);
 

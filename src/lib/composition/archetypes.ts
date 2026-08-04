@@ -198,12 +198,25 @@ export function buildOverlaySpec(input: ArchetypeInput): OverlaySpec {
           x: pad, y, w: W - pad * 2, h: Math.round(H * 0.3),
         }),
       );
+      // The benefit line belongs in the ad, not only in the concept JSON: this
+      // archetype used to drop it entirely. It sits just above the CTA, inside
+      // the bottom scrim, so the big top headline keeps its air.
+      const ctaTop = H - safeBottom - Math.round(W * 0.085);
+      if (input.copy.subhead) {
+        layers.push(
+          baseLayer("subhead", input.copy.subhead, {
+            fontWeight: 400, fontSizePx: Math.round(W * 0.03), minFontSizePx: 18,
+            lineHeight: 1.4, color: "#f1e9dd",
+            x: pad, y: ctaTop - Math.round(H * 0.08), w: W - pad * 2, h: Math.round(H * 0.07),
+          }),
+        );
+      }
       if (input.copy.cta) {
         layers.push(
           baseLayer("cta", input.copy.cta, {
             fontSizePx: Math.round(W * 0.03), minFontSizePx: 20, align: "left",
             color: ctaText,
-            x: pad, y: H - safeBottom - Math.round(W * 0.085), w: Math.round(W * 0.5), h: Math.round(W * 0.085),
+            x: pad, y: ctaTop, w: Math.round(W * 0.5), h: Math.round(W * 0.085),
             pill: { bg: accent, paddingX: Math.round(W * 0.04), paddingY: Math.round(W * 0.017), radius: 999 },
           }),
         );
@@ -216,7 +229,15 @@ export function buildOverlaySpec(input: ArchetypeInput): OverlaySpec {
       spec.scrims.push({ direction: "bottom-up", color: "0,0,0", maxOpacity: 0.6, coverage: 0.5 });
       const blockW = W - pad * 2.6;
       const cx = (W - blockW) / 2;
-      let y = H - safeBottom - Math.round(H * 0.26);
+      // Anchored by the block's own height: the CTA pill is sized from WIDTH
+      // while the old offset was a fraction of HEIGHT, so on a landscape canvas
+      // the pill fell off the bottom edge.
+      const framedBlockH =
+        (input.copy.eyebrow ? Math.round(W * 0.05) : 0) +
+        Math.round(H * 0.18) +
+        (input.copy.subhead ? Math.round(H * 0.075) : 0) +
+        (input.copy.cta ? Math.round(W * 0.075) : 0);
+      let y = Math.max(safeTop, H - safeBottom - framedBlockH);
       if (input.copy.eyebrow) {
         layers.push(
           baseLayer("eyebrow", input.copy.eyebrow, {
@@ -234,6 +255,16 @@ export function buildOverlaySpec(input: ArchetypeInput): OverlaySpec {
         }),
       );
       y += Math.round(H * 0.18);
+      if (input.copy.subhead) {
+        layers.push(
+          baseLayer("subhead", input.copy.subhead, {
+            fontWeight: 400, fontSizePx: Math.round(W * 0.028), minFontSizePx: 17, align: "center",
+            lineHeight: 1.45, color: "#f1e9dd",
+            x: cx, y, w: blockW, h: Math.round(H * 0.06),
+          }),
+        );
+        y += Math.round(H * 0.075);
+      }
       if (input.copy.cta) {
         layers.push(
           baseLayer("cta", input.copy.cta, {
@@ -261,17 +292,35 @@ export function buildOverlaySpec(input: ArchetypeInput): OverlaySpec {
           }),
         );
       }
+      // Stack upward from the CTA so the headline, the benefit line and the
+      // pill can never collide or leave the frame on any canvas ratio.
+      const badgeCtaTop = H - safeBottom - Math.round(W * 0.075);
+      const badgeSubheadH = Math.round(H * 0.06);
+      const badgeSubheadTop = input.copy.subhead
+        ? badgeCtaTop - badgeSubheadH - Math.round(H * 0.015)
+        : badgeCtaTop;
+      const badgeHeadlineH = Math.round(H * 0.16);
+      const badgeHeadlineTop = Math.max(safeTop, badgeSubheadTop - badgeHeadlineH - Math.round(H * 0.02));
       layers.push(
         baseLayer("headline", input.copy.headline, {
           fontSizePx: Math.round(W * 0.08), minFontSizePx: 36, lineHeight: 1.2,
-          x: pad, y: H - safeBottom - Math.round(H * 0.24), w: W - pad * 2, h: Math.round(H * 0.16),
+          x: pad, y: badgeHeadlineTop, w: W - pad * 2, h: badgeHeadlineH,
         }),
       );
+      if (input.copy.subhead) {
+        layers.push(
+          baseLayer("subhead", input.copy.subhead, {
+            fontWeight: 400, fontSizePx: Math.round(W * 0.03), minFontSizePx: 18,
+            lineHeight: 1.4, color: "#f1e9dd",
+            x: pad, y: badgeSubheadTop, w: W - pad * 2, h: badgeSubheadH,
+          }),
+        );
+      }
       if (input.copy.cta) {
         layers.push(
           baseLayer("cta", input.copy.cta, {
             fontSizePx: Math.round(W * 0.028), minFontSizePx: 18, color: ctaText,
-            x: pad, y: H - safeBottom - Math.round(W * 0.075), w: Math.round(W * 0.45), h: Math.round(W * 0.075),
+            x: pad, y: badgeCtaTop, w: Math.round(W * 0.45), h: Math.round(W * 0.075),
             pill: { bg: accent, paddingX: Math.round(W * 0.037), paddingY: Math.round(W * 0.015), radius: 999 },
           }),
         );
@@ -284,7 +333,16 @@ export function buildOverlaySpec(input: ArchetypeInput): OverlaySpec {
       // Scene-dominant; copy block lower-left over a bottom scrim (the
       // classic festive product ad).
       spec.scrims.push({ direction: "bottom-up", color: "0,0,0", maxOpacity: 0.62, coverage: 0.52 });
-      let y = H - safeBottom - Math.round(H * 0.3);
+      // Anchor the block by its OWN height instead of a fixed H*0.3 offset. A
+      // full block (eyebrow + headline + subhead + CTA) needs ~0.37H, so the
+      // fixed offset pushed the CTA pill 31px past the bottom edge — it shipped
+      // sliced off on 4 of 7 sampled branded creatives.
+      const blockH =
+        (input.copy.eyebrow ? Math.round(W * 0.052) : 0) +
+        Math.round(H * 0.175) +
+        (input.copy.subhead ? Math.round(H * 0.095) : 0) +
+        (input.copy.cta ? Math.round(W * 0.075) : 0);
+      let y = Math.max(safeTop, H - safeBottom - blockH);
       if (input.copy.eyebrow) {
         layers.push(
           baseLayer("eyebrow", input.copy.eyebrow, {

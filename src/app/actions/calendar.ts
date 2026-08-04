@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { requireAuth } from "@/lib/auth";
+import { requireWriteAccess } from "@/lib/auth";
 
 const customSchema = z.object({
   title: z.string().trim().min(1).max(80),
@@ -12,7 +12,7 @@ const customSchema = z.object({
 });
 
 export async function createCustomEntry(formData: FormData) {
-  const auth = await requireAuth();
+  const auth = await requireWriteAccess();
   const brand = await prisma.brand.findFirst({ where: { workspaceId: auth.workspaceId } });
   if (!brand) return { error: "Set up your brand first" };
   const parsed = customSchema.safeParse(Object.fromEntries(formData));
@@ -28,17 +28,6 @@ export async function createCustomEntry(formData: FormData) {
       customContext: parsed.data.note ? { note: parsed.data.note } : undefined,
     },
   });
-  revalidatePath("/calendar");
-  return { ok: true };
-}
-
-export async function deleteCustomEntry(entryId: string) {
-  const auth = await requireAuth();
-  const entry = await prisma.calendarEntry.findFirst({
-    where: { id: entryId, workspaceId: auth.workspaceId, kind: "CUSTOM" },
-  });
-  if (!entry) return { error: "Not found" };
-  await prisma.calendarEntry.delete({ where: { id: entry.id } });
   revalidatePath("/calendar");
   return { ok: true };
 }

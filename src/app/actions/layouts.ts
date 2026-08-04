@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireAuth } from "@/lib/auth";
-import { downloadFromStorage, storageKeys, uploadBuffer } from "@/lib/storage";
+import { requireAuth, requireWriteAccess } from "@/lib/auth";
+import { downloadFromStorage, renderPrefix, storageKeys, uploadBuffer } from "@/lib/storage";
 import { renderOverlay } from "@/lib/composition/render";
 import { buildOverlaySpec } from "@/lib/composition/archetypes";
 import { analyzePlate } from "@/lib/composition/analyze";
@@ -150,7 +150,7 @@ export async function listLayoutVariants(creativeId: string): Promise<{
  * re-composite from the stored plates (free, no AI), and snapshot a new version.
  */
 export async function applyLayout(creativeId: string, templateId: string): Promise<{ ok?: boolean; error?: string }> {
-  const auth = await requireAuth();
+  const auth = await requireWriteAccess();
   const t = TEMPLATES.find((x) => x.id === templateId);
   if (!t) return { error: "Unknown layout" };
   const creative = await loadForLayout(creativeId, auth.workspaceId);
@@ -166,7 +166,11 @@ export async function applyLayout(creativeId: string, templateId: string): Promi
       const language = ((render.overlaySpec as unknown as OverlaySpec).language ?? "en") as CopyLanguage;
       const spec = await specForTemplate(t, render.aspectRatio, plate, inputs, language);
       const composed = await renderOverlay(spec, { plate, logo });
-      const key = storageKeys.composedRender(creative.id, render.aspectRatio, nextIndex);
+      const key = storageKeys.composedRender({
+        prefix: renderPrefix(creative),
+        aspect: render.aspectRatio,
+        version: nextIndex,
+      });
       await uploadBuffer(key, composed, "image/png");
       await prisma.creativeRender.update({
         where: { id: render.id },

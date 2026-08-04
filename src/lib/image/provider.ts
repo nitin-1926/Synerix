@@ -7,6 +7,7 @@ import sharp from "sharp";
 import { generateImageGemini, type GeminiAspect } from "./gemini";
 import { generateImage as generateRunware, downloadImage, type Aspect } from "./runware";
 import { ASPECT_DIMENSIONS } from "@/lib/composition/types";
+import { withRetry } from "./retry";
 
 /** gpt-image-2 PNGs ship C2PA content-credential chunks that @napi-rs/canvas
  * cannot decode (its fallback throws "Invalid SVG image" downstream in the
@@ -73,15 +74,17 @@ export const BAKEOFF_VARIANTS: BakeoffVariant[] = [
   { key: "seedream", provider: "seedream", tier: "default" },
 ];
 
-/** User-facing image-model picker (create form). Premium models only —
- * quality over cost per owner decision. "compare" renders every concept on
- * BOTH models (double credits) so outputs are comparable side by side. */
-export type ImageModelPref = "nb-pro" | "gpt-image-2" | "compare";
-export const IMAGE_MODEL_PREFS: { id: ImageModelPref; label: string; hint: string }[] = [
-  { id: "nb-pro", label: "Nano Banana Pro", hint: "Best pack & label fidelity" },
-  { id: "gpt-image-2", label: "GPT Image 2", hint: "Alternative premium render" },
-  { id: "compare", label: "Both — compare", hint: "Every option on both models · 2× credits" },
-];
+/**
+ * Stored per-run image-model preference.
+ *
+ * The picker this was built for was never added to the create form — no input
+ * named `imageModel` exists — so nothing WRITES anything but the default. The
+ * type and resolver stay because 6 historical runs carry `"compare"` and the
+ * studio page still renders their side-by-side output; only the unused
+ * `IMAGE_MODEL_PREFS` option list was removed. Delete the rest only after those
+ * runs are gone.
+ */
+type ImageModelPref = "nb-pro" | "gpt-image-2" | "compare";
 
 const PREF_VARIANT: Record<Exclude<ImageModelPref, "compare">, BakeoffVariant> = {
   "nb-pro": { key: "nb-pro", provider: "gemini", tier: "hero" },
@@ -297,23 +300,6 @@ async function generateGptImage2(p: SceneGenParams): Promise<Buffer> {
   return withRetry(attempt, { label: "gpt-image-2", attempts: 3, baseDelayMs: 2000 });
 }
 
-async function withRetry<T>(fn: () => Promise<T>, o: { label: string; attempts: number; baseDelayMs: number }): Promise<T> {
-  let last: unknown;
-  for (let i = 0; i < o.attempts; i++) {
-    try {
-      return await fn();
-    } catch (e) {
-      last = e;
-      const msg = (e as Error).message ?? String(e);
-      const transient = /\b(429|5\d\d|overloaded|high demand|timeout|ETIMEDOUT|ECONNRESET|fetch failed)\b/i.test(msg);
-      if (i === o.attempts - 1 || !transient) throw e;
-      const wait = o.baseDelayMs * 2 ** i + Math.floor(Math.random() * 500);
-      console.warn(`[retry:${o.label}] attempt ${i + 1}: ${msg.slice(0, 100)} — ${wait}ms`);
-      await new Promise((res) => setTimeout(res, wait));
-    }
-  }
-  throw last;
-}
 
 /**
  * OpenAI gpt-image only offers three output sizes; it CANNOT render 4:5 or 9:16

@@ -3,7 +3,13 @@ import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { EnquiryForm } from "@/components/marketing/enquiry-form";
 import { WHATSAPP_DISPLAY, WHATSAPP_URL } from "@/lib/contact";
 
-export const metadata = { title: "Consulting" };
+export const metadata = {
+  title: "MSME business consulting: cash flow, operations, growth",
+  description:
+    "Hands-on consulting for Indian MSMEs across cash flow, operations, supply chain, sales and growth. Start with a free Business Health Check.",
+  alternates: { canonical: "/consulting" },
+  openGraph: { url: "/consulting" },
+};
 
 const SERVICES = [
   {

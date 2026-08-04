@@ -18,12 +18,14 @@
     "@ai-sdk/google": "^3.0.80",
     "@anthropic-ai/sdk": "^0.100.1",
     "@auth/prisma-adapter": "^2.11.2",
+    "@aws-sdk/client-s3": "^3.1100.0",
+    "@aws-sdk/s3-request-presigner": "^3.1100.0",
     "@base-ui/react": "^1.5.0",
+    "@fingerprint/react": "^3.0.0",
     "@mendable/firecrawl-js": "^4.25.1",
     "@napi-rs/canvas": "^1.0.0",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
-    "@sentry/nextjs": "^10.62.0",
     "@supabase/supabase-js": "^2.106.2",
     "@trigger.dev/react-hooks": "4.5.0",
     "@trigger.dev/sdk": "4.5.0",
@@ -40,7 +42,6 @@
     "prisma": "^7.8.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
-    "shadcn": "^4.13.0",
     "sharp": "^0.34.5",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.6.0",
@@ -59,11 +60,13 @@
     "concurrently": "^10.0.3",
     "eslint": "^9",
     "eslint-config-next": "15.5.18",
+    "shadcn": "4.13.0",
     "tailwindcss": "^4",
     "trigger.dev": "4.5.0",
     "tsx": "^4.22.3",
     "typescript": "^5",
-    "vitest": "^3.2.6"
+    "vitest": "^3.2.6",
+    "wrangler": "^4.117.0"
   },
   "allowScripts": {
     "esbuild@0.28.0": true,
@@ -73,9 +76,9 @@
     "sharp@0.34.5": true,
     "unrs-resolver@1.12.2": true,
     "@prisma/engines@7.8.0": true,
-    "@sentry/cli@2.58.6": true,
     "fsevents@2.3.3": true,
     "msw@2.14.6": true,
     "prisma@7.8.0": true
-  }
+  },
+  "pnpm": {}
 }

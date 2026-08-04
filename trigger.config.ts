@@ -1,7 +1,6 @@
 import { defineConfig } from "@trigger.dev/sdk";
 import { prismaExtension } from "@trigger.dev/build/extensions/prisma";
 import { additionalFiles, syncEnvVars } from "@trigger.dev/build/extensions/core";
-import * as Sentry from "@sentry/node";
 import { config as loadEnv } from "dotenv";
 
 // Deploy-time env for the config itself (the worker gets its env from the
@@ -17,25 +16,24 @@ loadEnv({ path: ".env" });
 const WORKER_ENV_VARS = [
   "DATABASE_URL",
   "DIRECT_URL",
-  "NEXT_PUBLIC_SUPABASE_URL",
-  "SUPABASE_SERVICE_ROLE_KEY",
+  // Object storage is Cloudflare R2, not Supabase. Missing these does not
+  // degrade the worker — it kills it: the FIRST thing generation-run does is
+  // downloadFromStorage() for the product reference, and src/lib/storage.ts
+  // throws outright when the credentials are absent. The old Supabase entries
+  // were left here after the R2 migration, so a deploy to any environment
+  // without hand-entered R2 vars would have failed 100% of image work.
+  "R2_ACCOUNT_ID",
+  "R2_ACCESS_KEY_ID",
+  "R2_SECRET_ACCESS_KEY",
+  "R2_BUCKET",
   "ANTHROPIC_API_KEY",
   "GOOGLE_GENERATIVE_AI_API_KEY",
   "OPENAI_API_KEY",
   "RUNWARE_API_KEY",
   "FIRECRAWL_API_KEY",
   "FAL_KEY",
-  "SENTRY_DSN",
 ];
 
-// Error monitoring for task workers. No-op until SENTRY_DSN is set.
-if (process.env.SENTRY_DSN) {
-  Sentry.init({
-    dsn: process.env.SENTRY_DSN,
-    environment: process.env.NODE_ENV ?? "development",
-    tracesSampleRate: 0,
-  });
-}
 
 export default defineConfig({
   project: "proj_gtjzmmmwfafgaloqpzgf",
@@ -46,13 +44,6 @@ export default defineConfig({
   runtime: "node-22",
   logLevel: "log",
   maxDuration: 3600,
-  onFailure: async ({ payload, error, ctx }) => {
-    if (!process.env.SENTRY_DSN) return;
-    Sentry.captureException(error, {
-      extra: { taskId: ctx.task.id, runId: ctx.run.id, payload },
-    });
-    await Sentry.flush(2_000);
-  },
   retries: {
     enabledInDev: true,
     default: {

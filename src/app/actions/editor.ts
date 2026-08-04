@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { tasks, auth as triggerAuth } from "@trigger.dev/sdk";
 import { prisma } from "@/lib/db";
-import { requireAuth } from "@/lib/auth";
+import { requireWriteAccess } from "@/lib/auth";
 import { debitCredits, grantCredits, InsufficientCreditsError } from "@/lib/credits";
 import { CREDIT_COSTS } from "@/lib/ai/models";
 import { computeLogoBox, contactLayer } from "@/lib/composition/archetypes";
@@ -79,7 +79,7 @@ const textEditSchema = z.object({
 });
 
 export async function updateCreativeText(input: z.infer<typeof textEditSchema>) {
-  const auth = await requireAuth();
+  const auth = await requireWriteAccess();
   const parsed = textEditSchema.safeParse(input);
   if (!parsed.success) return { error: "Invalid edit: " + (parsed.error.issues[0]?.message ?? "") };
   const { creativeId, language, texts } = parsed.data;
@@ -134,7 +134,7 @@ export async function updateLogoPlacement(
   position: "TL" | "TR" | "TC" | "BL" | "BR",
   scale: number,
 ) {
-  const auth = await requireAuth();
+  const auth = await requireWriteAccess();
   const creative = await loadOwnedCreative(creativeId, auth.workspaceId);
   if (!creative.masterPlateKey) return { error: "Creative has no master scene" };
   const s = Math.max(0.5, Math.min(2, scale));
@@ -168,7 +168,7 @@ export async function updateLogoPlacementFree(
   creativeId: string,
   placement: { fx: number; fy: number; fw: number },
 ) {
-  const auth = await requireAuth();
+  const auth = await requireWriteAccess();
   const parsed = logoPlacementSchema.safeParse(placement);
   if (!parsed.success) return { error: "Invalid placement: " + (parsed.error.issues[0]?.message ?? "") };
   const { fx, fy, fw } = parsed.data;
@@ -208,7 +208,7 @@ export async function updateLogoPlacementFree(
  * line content is brand-locked (Brand.contactLine); the editor only flips
  * visibility and re-composites (free, no AI). */
 export async function toggleContactLine(creativeId: string, show: boolean) {
-  const auth = await requireAuth();
+  const auth = await requireWriteAccess();
   const creative = await loadOwnedCreative(creativeId, auth.workspaceId);
   if (!creative.masterPlateKey) return { error: "Creative has no master scene" };
   const line = creative.brand.contactLine?.trim();
@@ -230,7 +230,7 @@ export async function toggleContactLine(creativeId: string, show: boolean) {
 }
 
 export async function switchCreativeLanguage(creativeId: string, language: CopyLanguage) {
-  const auth = await requireAuth();
+  const auth = await requireWriteAccess();
   const creative = await loadOwnedCreative(creativeId, auth.workspaceId);
   if (!creative.masterPlateKey) return { error: "Creative has no master scene" };
 
@@ -264,7 +264,7 @@ export async function switchCreativeLanguage(creativeId: string, language: CopyL
 }
 
 export async function renderNewAspect(creativeId: string, aspect: Aspect) {
-  const auth = await requireAuth();
+  const auth = await requireWriteAccess();
   if (!["1:1", "4:5", "9:16", "16:9"].includes(aspect)) return { error: "Bad aspect" };
   const creative = await loadOwnedCreative(creativeId, auth.workspaceId);
   if (!creative.masterPlateKey) return { error: "Creative has no master scene" };
@@ -279,7 +279,7 @@ export async function renderNewAspect(creativeId: string, aspect: Aspect) {
 }
 
 export async function regenerateWithInstruction(creativeId: string, instruction: string) {
-  const auth = await requireAuth();
+  const auth = await requireWriteAccess();
   const note = instruction.trim().slice(0, 400);
   if (note.length < 4) return { error: "Describe the change you want" };
   const creative = await loadOwnedCreative(creativeId, auth.workspaceId);
@@ -292,7 +292,7 @@ export async function regenerateWithInstruction(creativeId: string, instruction:
 }
 
 export async function revertToVersion(creativeId: string, versionIndex: number) {
-  const auth = await requireAuth();
+  const auth = await requireWriteAccess();
   const creative = await loadOwnedCreative(creativeId, auth.workspaceId);
   const target = await prisma.creativeVersion.findUnique({
     where: { creativeId_index: { creativeId, index: versionIndex } },

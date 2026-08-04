@@ -14,10 +14,6 @@ export function accentBar(x: number, y: number, w: number, h: number, role: Colo
 }
 
 /** Full-width hairline rule (divider). */
-export function ruleLine(x: number, y: number, w: number, color = "rgba(255,255,255,0.35)", widthPx = 2, z = 2): ShapeLayer {
-  return { kind: "line", x, y, w, h: 0, stroke: { color, widthPx }, z };
-}
-
 /** Thin inset frame around the whole canvas (editorial border). */
 export function cornerFrame(canvasW: number, canvasH: number, inset: number, color = "rgba(255,255,255,0.55)", widthPx = 3, z = 0): ShapeLayer {
   return { kind: "frame", x: inset, y: inset, w: canvasW - inset * 2, h: canvasH - inset * 2, stroke: { color, widthPx }, radius: 6, z };
@@ -34,19 +30,6 @@ export function sideAccent(x: number, y: number, h: number, w = 8, role: ColorRo
 }
 
 /** Circular offer badge (the badge TEXT is a separate text layer placed over it). */
-export function offerBadge(cx: number, cy: number, r: number, role: ColorRole = "accent", z = 1): ShapeLayer {
-  return {
-    kind: "ellipse",
-    x: cx - r,
-    y: cy - r,
-    w: r * 2,
-    h: r * 2,
-    colorRole: role,
-    shadow: { color: "rgba(0,0,0,0.30)", blur: 24, offsetY: 6 },
-    z,
-  };
-}
-
 export type DeviceStyle = "minimal" | "bars" | "frame" | "block" | "side";
 
 /**

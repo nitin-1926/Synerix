@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { tasks } from "@trigger.dev/sdk";
-import { requireSuperAdmin, ACTIVE_WORKSPACE_COOKIE, ADMIN_ACTING_COOKIE } from "@/lib/auth";
+import { requireSuperAdmin, ACTIVE_WORKSPACE_COOKIE, ADMIN_ACTING_COOKIE, sessionCookieOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { grantCredits } from "@/lib/credits";
 import type { brandIngest } from "@/trigger/brand-ingest";
@@ -68,7 +68,7 @@ export async function adminCreateWorkspace(input: { name: string; type?: string;
 
   // Enter the new workspace in god-view so the admin finishes setup inside it.
   const jar = await cookies();
-  const opts = { httpOnly: true, sameSite: "lax" as const, path: "/", maxAge: 60 * 60 * 24 * 30 };
+  const opts = sessionCookieOptions();
   jar.set(ACTIVE_WORKSPACE_COOKIE, workspace.id, opts);
   jar.set(ADMIN_ACTING_COOKIE, "1", opts);
   // With a URL we ingested a brand → land on the dashboard. Without one, go to
@@ -97,7 +97,7 @@ export async function enterCustomerWorkspace(workspaceId: string) {
   const ws = await prisma.workspace.findUnique({ where: { id: workspaceId } });
   if (!ws) throw new Error("Workspace not found");
   const jar = await cookies();
-  const opts = { httpOnly: true, sameSite: "lax" as const, path: "/", maxAge: 60 * 60 * 24 * 30 };
+  const opts = sessionCookieOptions();
   jar.set(ACTIVE_WORKSPACE_COOKIE, workspaceId, opts);
   jar.set(ADMIN_ACTING_COOKIE, "1", opts);
   redirect("/dashboard");

@@ -86,3 +86,42 @@ describe("computeLogoBox", () => {
     expect(box.x + box.w / 2).toBeCloseTo(center, 0);
   });
 });
+
+// The copy block used to be anchored by a fixed fraction of canvas height while
+// its real height depended on which roles were present — so a full block pushed
+// the CTA pill off the bottom edge. Verified sliced off on 4 of 7 sampled
+// branded creatives before the fix.
+const fullCopy = {
+  eyebrow: { en: "Festive Everyday", hinglish: "Festive Everyday", hi: "उत्सव", pa: "ਤਿਉਹਾਰ" },
+  headline: { en: "Made For Your Moments", hinglish: "Made For Your Moments", hi: "आपके पलों के लिए", pa: "ਤੁਹਾਡੇ ਪਲਾਂ ਲਈ" },
+  subhead: { en: "Puja mornings to evening plans, one graceful piece.", hinglish: "Puja se shaam tak.", hi: "सुबह से शाम तक।", pa: "ਸਵੇਰ ਤੋਂ ਸ਼ਾਮ ਤੱਕ।" },
+  cta: { en: "Order on WhatsApp", hinglish: "WhatsApp par order karein", hi: "ऑर्डर करें", pa: "ਆਰਡਰ ਕਰੋ" },
+};
+const ARCHETYPES_UNDER_TEST = ["headline_bottom", "big_type_top", "framed_card", "badge_offer"] as const;
+const ASPECTS = ["4:5", "1:1", "9:16", "16:9"] as const;
+
+describe("copy block fits the canvas (no layer may fall off the frame)", () => {
+  for (const archetype of ARCHETYPES_UNDER_TEST) {
+    for (const aspect of ASPECTS) {
+      it(`${archetype} @ ${aspect} keeps every layer inside the canvas with a full copy block`, () => {
+        const spec = buildOverlaySpec({ ...base, archetype, aspectRatio: aspect, copy: fullCopy });
+        const { width: W, height: H } = ASPECT_DIMENSIONS[aspect];
+        for (const l of spec.textLayers) {
+          expect(l.y, `${l.role} top`).toBeGreaterThanOrEqual(0);
+          expect(l.x, `${l.role} left`).toBeGreaterThanOrEqual(0);
+          expect(l.y + l.h, `${l.role} bottom overflows ${H}`).toBeLessThanOrEqual(H);
+          expect(l.x + l.w, `${l.role} right overflows ${W}`).toBeLessThanOrEqual(W);
+        }
+      });
+    }
+  }
+
+  it("every archetype renders the subhead — the benefit line used to be silently dropped by three of four", () => {
+    for (const archetype of ARCHETYPES_UNDER_TEST) {
+      const spec = buildOverlaySpec({ ...base, archetype, copy: fullCopy });
+      const roles = spec.textLayers.map((l) => l.role);
+      expect(roles, `${archetype} lost the subhead`).toContain("subhead");
+      expect(roles, `${archetype} lost the CTA`).toContain("cta");
+    }
+  });
+});

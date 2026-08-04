@@ -22,17 +22,37 @@ export const LLM_PRICING: Record<string, ModelPrice> = {
   "gemini-2.5-flash": { in: num(process.env.PRICE_GEMINI_FLASH_IN, 0.3), out: num(process.env.PRICE_GEMINI_FLASH_OUT, 2.5) },
 };
 
-// Per generated image, keyed by model id (Runware ids and direct-API ids).
+// Per generated image, keyed by the cost-model id a provider actually returns.
+// Verified against provider pricing pages, July 2026. Keep this table honest:
+// an understated price makes a run look profitable when it is not.
+//
+// Routing note: Nano Banana Pro / Nano Banana 2 go DIRECT to the Gemini API and
+// GPT Image 2 goes direct to OpenAI — only the Seedream/Qwen/Wan entries are
+// Runware. Priced entries for Runware-hosted Google/FLUX models were removed:
+// nothing routes there, and Runware charges MORE than the direct API anyway.
 export const IMAGE_PRICING: Record<string, number> = {
   "bytedance:5@0": num(process.env.PRICE_SEEDREAM_V4, 0.03), // Seedream V4 (Runware)
   "bytedance:seedream@5.0-lite": num(process.env.PRICE_SEEDREAM_V5_LITE, 0.026),
-  "google:4@2": num(process.env.PRICE_NANO_BANANA_PRO, 0.06), // Nano Banana Pro (Runware)
-  "bfl:5@1": num(process.env.PRICE_FLUX2_PRO, 0.05),
   "gemini-3-pro-image": num(process.env.PRICE_NANO_BANANA_PRO_DIRECT, 0.134), // Nano Banana Pro (direct, 1K-2K)
-  "gemini-3.1-flash-image": num(process.env.PRICE_NANO_BANANA_2_DIRECT, 0.06), // Nano Banana 2 (direct, default)
+  "gemini-3.1-flash-image": num(process.env.PRICE_NANO_BANANA_2_DIRECT, 0.067), // Nano Banana 2 (direct, 1K default)
   "gpt-image-2": num(process.env.PRICE_GPT_IMAGE_2, 0.08),
+  // Runware models reachable through the workspace image-model picker; without
+  // entries here they silently fell back to IMAGE_PRICE_DEFAULT.
+  "runware:108@1": num(process.env.PRICE_QWEN_IMAGE, 0.03), // Qwen-Image
+  "alibaba:wan@2.7-image": num(process.env.PRICE_WAN_27, 0.03), // Wan 2.7
 };
+
+/** Nano Banana Pro is billed by output resolution: 1K/2K vs 4K. */
+const NANO_BANANA_PRO_4K = num(process.env.PRICE_NANO_BANANA_PRO_4K, 0.24);
 const IMAGE_PRICE_DEFAULT = num(process.env.PRICE_IMAGE_DEFAULT, 0.04);
+
+/** Fallback for an unpriced LLM id — deliberately NOT zero. A missing price
+ * should overstate the bill and get noticed, never hide spend. Set to the
+ * frontier tier so a mispriced slot is loud in the cost report. */
+const LLM_PRICE_FALLBACK: ModelPrice = {
+  in: num(process.env.PRICE_LLM_FALLBACK_IN, 5),
+  out: num(process.env.PRICE_LLM_FALLBACK_OUT, 25),
+};
 
 /** Normalize AI SDK usage across versions (inputTokens vs promptTokens). */
 export interface RawUsage {
@@ -76,13 +96,27 @@ export class CostTracker {
 
   addLLM(model: string, usage: RawUsage | undefined, stage: string) {
     const { input, output } = normalizeUsage(usage);
-    const price = LLM_PRICING[model] ?? { in: 0, out: 0 };
-    const usd = (input / 1e6) * price.in + (output / 1e6) * price.out;
+    // A miss used to price the call at exactly $0 and say nothing — and every
+    // model slot is env-overridable, so one MODEL_CONCEPTS change could zero
+    // out the most expensive stage in the pipeline without a single warning.
+    const price = LLM_PRICING[model];
+    if (!price) {
+      console.warn(`[cost] no LLM price for "${model}" (stage ${stage}) — billing at the fallback rate`);
+    }
+    const { in: pin, out: pout } = price ?? LLM_PRICE_FALLBACK;
+    const usd = (input / 1e6) * pin + (output / 1e6) * pout;
     this.llm.push({ stage, model, inputTokens: input, outputTokens: output, usd });
   }
 
-  addImage(modelId: string, stage: string) {
-    const usd = IMAGE_PRICING[modelId] ?? IMAGE_PRICE_DEFAULT;
+  addImage(modelId: string, stage: string, opts?: { fourK?: boolean }) {
+    const base = IMAGE_PRICING[modelId];
+    if (base === undefined) {
+      console.warn(`[cost] no image price for "${modelId}" (stage ${stage}) — billing at the default rate`);
+    }
+    const usd =
+      opts?.fourK && modelId === "gemini-3-pro-image"
+        ? NANO_BANANA_PRO_4K
+        : (base ?? IMAGE_PRICE_DEFAULT);
     this.images.push({ stage, model: modelId, usd });
   }
 

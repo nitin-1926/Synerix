@@ -20,7 +20,16 @@ export default async function StudioPage({
   const [products, aiModels, balance, occasion, entry, upcoming] = await Promise.all([
     prisma.product.findMany({
       where: { brandId: brand.id },
-      include: { images: { orderBy: [{ isPrimary: "desc" }], take: 1 } },
+      // The picker needs id/name/category/status/thumbnail — not the cached
+      // vision blobs (dissectionFull, productIntel) that `include` was pulling
+      // for every product on every visit to the create form.
+      select: {
+        id: true,
+        name: true,
+        category: true,
+        dissectionStatus: true,
+        images: { orderBy: [{ isPrimary: "desc" }], take: 1, select: { storageKey: true } },
+      },
       orderBy: { createdAt: "desc" },
     }),
     listAiModels(),

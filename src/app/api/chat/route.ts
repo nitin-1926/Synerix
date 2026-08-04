@@ -66,13 +66,81 @@ export async function POST(req: Request): Promise<Response> {
     return jsonError("Invalid messages payload", 400);
   }
 
+  // A conversation must start with a user turn and alternate; a client-side
+  // window that begins on an assistant turn is rejected by Gemini and used to
+  // fail the whole request silently.
+  const messages = parsed.data.messages.slice(
+    parsed.data.messages.findIndex((m) => m.role === "user"),
+  );
+  if (messages.length === 0) return jsonError("Conversation must start with a question", 400);
+
   const result = streamText({
-    model: google("gemini-flash-latest"),
+    // Pinned, not a floating "-latest" alias: the alias moved onto a thinking
+    // model whose reasoning tokens are billed against maxOutputTokens, so the
+    // budget was being spent before any visible text was produced.
+    model: google(process.env.CHAT_MODEL ?? "gemini-2.5-flash"),
     system: SYSTEM_PROMPT,
-    messages: parsed.data.messages,
+    messages,
     temperature: 0.4,
-    maxOutputTokens: 500,
+    maxOutputTokens: 1200,
+    providerOptions: {
+      google: { thinkingConfig: { thinkingBudget: 0 } },
+    },
   });
 
-  return result.toTextStreamResponse();
+  // toTextStreamResponse() is built on `textStream`, which forwards ONLY
+  // text-delta parts and DROPS error parts — so a model error, a safety block
+  // or an exhausted budget closed the body with HTTP 200 and partial text, and
+  // the widget rendered half a sentence with no error and no server trace.
+  // Reading fullStream lets a failure reach both the log and the user.
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      let wroteText = false;
+      try {
+        for await (const part of result.fullStream) {
+          if (part.type === "text-delta") {
+            const delta = (part as { text?: string }).text ?? "";
+            if (delta) {
+              wroteText = true;
+              controller.enqueue(encoder.encode(delta));
+            }
+          } else if (part.type === "error") {
+            console.error("[chat] stream error", part.error);
+            controller.enqueue(
+              encoder.encode(
+                wroteText
+                  ? "\n\n(Sorry, that answer was cut short. Please ask again.)"
+                  : "Sorry, I could not answer that just now. Please try again, or email consulting.synerix@gmail.com.",
+              ),
+            );
+            break;
+          }
+        }
+        if (!wroteText) {
+          controller.enqueue(
+            encoder.encode(
+              "Sorry, I could not answer that just now. Please try again, or email consulting.synerix@gmail.com.",
+            ),
+          );
+        }
+      } catch (e) {
+        console.error("[chat] stream threw", e);
+        controller.enqueue(encoder.encode("\n\n(The connection dropped. Please ask again.)"));
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+      // Without these a CDN or proxy may buffer the whole body and deliver it
+      // at once, which reads as "it doesn't stream".
+      "Cache-Control": "no-cache, no-store, no-transform",
+      "X-Accel-Buffering": "no",
+      "Content-Encoding": "identity",
+    },
+  });
 }

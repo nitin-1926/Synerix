@@ -1,8 +1,8 @@
 import { task, tasks, logger, metadata } from "@trigger.dev/sdk";
 import { prisma } from "@/lib/db";
-import { CREDIT_COSTS, LIMITS } from "@/lib/ai/models";
+import { LIMITS } from "@/lib/ai/models";
 import { generateScene, variantsForPref, resolveWorkspaceImageModel, BAKEOFF_VARIANTS, type BakeoffVariant, type SceneAspect } from "@/lib/image/provider";
-import { downloadFromStorage, storageKeys, uploadBuffer } from "@/lib/storage";
+import { creativeStoragePrefix, downloadFromStorage, renderPrefix, storageKeys, uploadBuffer } from "@/lib/storage";
 import { reconcileRunRefund } from "@/lib/credits";
 import { assembleOccasionBrief } from "@/lib/pipeline/brief";
 import { generateConcepts } from "@/lib/pipeline/concepts";
@@ -60,6 +60,9 @@ async function loadRun(runId: string) {
   return prisma.generationRun.findUniqueOrThrow({
     where: { id: runId },
     include: {
+      // slug (not name) is @unique, so it is both the sanitized workspace name
+      // and a guarantee that two same-named workspaces cannot share a prefix.
+      workspace: { select: { slug: true } },
       brand: { include: { assets: { where: { isPrimaryLogo: true }, take: 1 } } },
       // Up to 3 product angles: multi-reference renders are markedly more
       // product-faithful than a single photo (brand_os finding).
@@ -346,9 +349,13 @@ export const generationRun = task({
     }
 
     // Partial refund — only charge for delivered creatives. Bake-off runs
-    // debit nothing, so there is nothing to refund.
+    // debit nothing, so there is nothing to refund. The per-item price is
+    // derived from what was actually debited rather than assuming one credit
+    // pack per concept: a multi-aspect or compare run is charged per rendered
+    // item, so a flat perConcept refund would short-change the customer.
     if (failed > 0 && Number(run.creditsDebited) > 0) {
-      const refund = failed * CREDIT_COSTS.perConcept;
+      const perItem = Number(run.creditsDebited) / Math.max(1, succeeded + failed);
+      const refund = Math.round(failed * perItem * 100) / 100;
       if (refund > 0) {
         await reconcileRunRefund({ workspaceId: run.workspaceId, generationRunId: runId, owedRefund: refund, note: `${failed} concept(s) failed — partial refund` });
       }
@@ -382,6 +389,10 @@ export const generationRun = task({
     // of the old unconditional FULL refund (which double-refunded a partial run
     // and gave free credits for already-delivered creatives).
     const delivered = await prisma.creative.count({ where: { generationRunId: run.id, status: "READY" } });
+    // Same per-item price as the partial-refund path above: derive it from the
+    // debit, never from a fixed per-concept assumption.
+    const expectedItems = Math.max(1, run.conceptCount * Math.max(1, run.requestedAspects.length));
+    const perItemCredits = Number(run.creditsDebited) / expectedItems;
     await prisma.generationRun.update({
       where: { id: payload.runId },
       data: {
@@ -394,7 +405,7 @@ export const generationRun = task({
       await reconcileRunRefund({
         workspaceId: run.workspaceId,
         generationRunId: run.id,
-        owedRefund: Number(run.creditsDebited) - delivered * CREDIT_COSTS.perConcept,
+        owedRefund: Math.max(0, Number(run.creditsDebited) - delivered * perItemCredits),
         note: "Run errored — refund undelivered creatives",
       });
     }
@@ -507,6 +518,7 @@ async function generatePlate(ctx: ConceptCtx, concept: CreativeConcept, aspect: 
       aspect,
       dissectionPrompt: ctx.run.product?.dissectionPrompt,
       hasProduct,
+      productTruth: ctx.intel ? { mustShow: ctx.intel.sceneDo ?? [], mustNotShow: ctx.intel.sceneDont ?? [] } : null,
     });
     let gen = await generateScene({ prompt, aspect, references: refs, ...model });
     ctx.tracker.addImage(gen.costModel, "in-scene");
@@ -545,7 +557,10 @@ async function ensurePackFidelity(
   },
 ): Promise<{ gen: Awaited<ReturnType<typeof generateScene>>; fidelityQa: NonNullable<PlateResult["fidelityQa"]> }> {
   let gen = opts.gen;
-  let verdict = await checkPackFidelity({ render: gen.buffer, reference: ctx.refBuffer!, tracker: ctx.tracker });
+  const productTruth = ctx.intel
+    ? { mustShow: ctx.intel.sceneDo ?? [], mustNotShow: ctx.intel.sceneDont ?? [] }
+    : null;
+  let verdict = await checkPackFidelity({ render: gen.buffer, reference: ctx.refBuffer!, productTruth, tracker: ctx.tracker });
   let retried = false;
   for (let attempt = 1; attempt <= ctx.qaRetries && !verdict.pass; attempt++) {
     logger.warn("pack fidelity failed, re-rendering", { attempt, of: ctx.qaRetries, issues: verdict.issues });
@@ -560,7 +575,7 @@ async function ensurePackFidelity(
       runwareModel: opts.model.runwareModel,
     });
     ctx.tracker.addImage(gen.costModel, opts.stage);
-    verdict = await checkPackFidelity({ render: gen.buffer, reference: ctx.refBuffer!, tracker: ctx.tracker });
+    verdict = await checkPackFidelity({ render: gen.buffer, reference: ctx.refBuffer!, productTruth, tracker: ctx.tracker });
     retried = true;
   }
   return { gen, fidelityQa: { ...verdict, retried } };
@@ -627,8 +642,15 @@ async function processConcept(ctx: ConceptCtx, concept: CreativeConcept, idx: nu
   const imageModel =
     perAspect.find((r) => r.aspect === ctx.masterAspect)?.costModel ?? perAspect[0]?.costModel ?? null;
 
+  // id and createdAt are set explicitly so the row and its frozen storage
+  // prefix agree — the prefix embeds both the epoch seconds and the short id.
+  const createdAt = new Date();
+  const creativeId = crypto.randomUUID();
   const creative = await prisma.creative.create({
     data: {
+      id: creativeId,
+      createdAt,
+      storagePrefix: newCreativePrefix(ctx, createdAt, creativeId),
       generationRunId: ctx.runId,
       brandId: ctx.run.brandId,
       conceptIndex: idx,
@@ -653,9 +675,8 @@ async function processConcept(ctx: ConceptCtx, concept: CreativeConcept, idx: nu
 
   // All text (headline/eyebrow/subhead/CTA) + the Brand Block are rendered by
   // the canvas overlay with real fonts — never baked into the image.
-  await composeAllAspects(ctx, creative.id, platesByAspect, aspectPlateKeys, {
+  await composeAllAspects(ctx, creative, platesByAspect, aspectPlateKeys, {
     archetype: concept.archetype,
-    productPlacement: concept.productPlacement,
     copy: conceptCopyToRoles(concept.copy),
     typographySpec: concept.typographySpec,
     plateQa: Object.fromEntries(perAspect.filter((r) => r.fidelityQa).map((r) => [r.aspect, r.fidelityQa!])),
@@ -727,8 +748,13 @@ async function processDirect(ctx: ConceptCtx): Promise<void> {
     aspectPlateKeys,
     scenePlateKey: masterKey,
   };
+  const createdAt = new Date();
+  const creativeId = crypto.randomUUID();
   const creative = await prisma.creative.create({
     data: {
+      id: creativeId,
+      createdAt,
+      storagePrefix: newCreativePrefix(ctx, createdAt, creativeId),
       generationRunId: ctx.runId,
       brandId: ctx.run.brandId,
       conceptIndex: 0,
@@ -742,7 +768,7 @@ async function processDirect(ctx: ConceptCtx): Promise<void> {
 
   // Direct mode: logo only, no auto copy (user adds headline via the editor).
   const empty = { en: "", hinglish: "", hi: "", pa: "" };
-  await composeAllAspects(ctx, creative.id, platesByAspect, aspectPlateKeys, {
+  await composeAllAspects(ctx, creative, platesByAspect, aspectPlateKeys, {
     archetype: "headline_bottom",
     copy: { eyebrow: null, headline: empty, subhead: null, cta: null },
     plateQa: Object.fromEntries(perAspect.filter((r) => r.fidelityQa).map((r) => [r.aspect, r.fidelityQa!])),
@@ -755,14 +781,28 @@ const COMPOSE_VARIANTS = Math.max(1, Number(process.env.COMPOSE_VARIANTS ?? 3));
 /** Composite overlay (text + logo) for each aspect onto ITS OWN native plate.
  * For each aspect we evaluate several designed templates as variants, score them
  * deterministically, and keep the best — only the winner is rendered/stored. */
+/**
+ * Frozen R2 prefix for a creative being created now under this run.
+ * `createdByUserId` is null only for rows predating the column that the
+ * backfill somehow missed; "system" keeps such objects addressable rather than
+ * crashing a render.
+ */
+function newCreativePrefix(ctx: ConceptCtx, createdAt: Date, creativeId: string): string {
+  return creativeStoragePrefix({
+    workspaceSlug: ctx.run.workspace.slug,
+    userId: ctx.run.createdByUserId ?? "system",
+    createdAt,
+    creativeId,
+  });
+}
+
 async function composeAllAspects(
   ctx: ConceptCtx,
-  creativeId: string,
+  creative: { id: string; storagePrefix: string | null },
   platesByAspect: Map<string, Buffer>,
   aspectPlateKeys: Record<string, string>,
   layout: {
     archetype: string;
-    productPlacement?: "product_hero" | "lifestyle" | null;
     copy: ReturnType<typeof conceptCopyToRoles>;
     /** Concept's free-text typography direction — mined for the reserved zone. */
     typographySpec?: string | null;
@@ -816,10 +856,10 @@ async function composeAllAspects(
           scrims: [], textLayers: [], language: ctx.language,
         };
         const composed = await renderOverlay(spec, { plate }); // no logo, no overlays
-        const key = storageKeys.composedRender(creativeId, aspect, 0);
+        const key = storageKeys.composedRender({ prefix: renderPrefix(creative), aspect, version: 0 });
         await uploadBuffer(key, composed, "image/png");
         await prisma.creativeRender.create({
-          data: { creativeId, aspectRatio: aspect, overlaySpec: spec as unknown as Prisma.InputJsonValue, composedImageKey: key, status: "COMPOSED" },
+          data: { creativeId: creative.id, aspectRatio: aspect, overlaySpec: spec as unknown as Prisma.InputJsonValue, composedImageKey: key, status: "COMPOSED" },
         });
         // Carry the fidelity verdict even here — PLAIN on-model is the highest
         // volume path, so its identity/garment QA outcome must be measurable.
@@ -871,7 +911,7 @@ async function composeAllAspects(
       // Build candidate variants, score each (deterministic), keep the best.
       const templates = hasHeadline
         ? selectTemplates(
-            { aspect, productPlacement: layout.productPlacement ?? null, signals, busyness: analysis?.busyness, safeBand: analysis?.safeBand, zoneHint, preferPairing: kit.preferPairing },
+            { aspect, productPlacement: null, signals, busyness: analysis?.busyness, safeBand: analysis?.safeBand, zoneHint, preferPairing: kit.preferPairing },
             COMPOSE_VARIANTS,
           )
         : [{ id: "clean-bottom", archetype: "headline_bottom" as const, typePairingId: "clean-sans", deviceStyle: "minimal" as DeviceStyle }];
@@ -935,10 +975,10 @@ async function composeAllAspects(
         }
       }
 
-      const key = storageKeys.composedRender(creativeId, aspect, 0);
+      const key = storageKeys.composedRender({ prefix: renderPrefix(creative), aspect, version: 0 });
       await uploadBuffer(key, composed, "image/png");
       await prisma.creativeRender.create({
-        data: { creativeId, aspectRatio: aspect, overlaySpec: chosen.spec as unknown as Prisma.InputJsonValue, composedImageKey: key, status: "COMPOSED" },
+        data: { creativeId: creative.id, aspectRatio: aspect, overlaySpec: chosen.spec as unknown as Prisma.InputJsonValue, composedImageKey: key, status: "COMPOSED" },
       });
       critics[aspect] = {
         chosen: chosen.templateId,
@@ -963,7 +1003,7 @@ async function composeAllAspects(
 
   const version = await prisma.creativeVersion.create({
     data: {
-      creativeId,
+      creativeId: creative.id,
       index: 0,
       cause: { type: "initial" },
       overlaySpec: primary.spec as unknown as Prisma.InputJsonValue,
@@ -973,7 +1013,7 @@ async function composeAllAspects(
     },
   });
   await prisma.creative.update({
-    where: { id: creativeId },
+    where: { id: creative.id },
     data: { status: "READY", currentVersionId: version.id, critic: critics as Prisma.InputJsonValue },
   });
 }

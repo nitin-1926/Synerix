@@ -27,11 +27,12 @@ export const creativeConceptSchema = z.object({
       "The shoot, like a senior creative director's brief: scene/setting, talent, composition, lens/framing, lighting, palette, mood, and exactly how the real product is staged as the hero.",
     ),
   archetype: z.enum(ARCHETYPES),
-  productPlacement: z
-    .enum(["product_hero", "lifestyle"])
-    .describe(
-      "How the real product appears. 'product_hero' = the product is THE hero on a clean styled surface — it will be composited in pixel-exact afterwards, so describe the scene as a product-LESS backdrop with a deliberate empty hero spot (clear surface, gentle shadow) where the product will sit. 'lifestyle' = the product lives naturally inside a real-life scene (people, food, a kitchen) and the image model stages the real product from its reference photo. Choose 'lifestyle' for human/emotional scenes; 'product_hero' for clean studio/flat-lay product shots.",
-    ),
+  // NOTE: `productPlacement` was removed. Its 'product_hero' mode told the LLM
+  // to describe a product-LESS backdrop with an empty hero spot because the
+  // product would be "composited in pixel-exact afterwards" — but that cut-out
+  // paste was retired, and the render prompt simultaneously instructs the model
+  // to stage the real product from its reference. Contradictory instructions in
+  // one prompt, and 0 of 40 production concepts ever chose it.
   sceneDescription: z
     .string()
     .describe(

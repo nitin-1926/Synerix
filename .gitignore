@@ -64,3 +64,6 @@ graphify-out/
 
 # Playwright MCP browser cache
 .playwright-mcp/
+
+# Local Claude Code agent settings (per-machine)
+.claude/

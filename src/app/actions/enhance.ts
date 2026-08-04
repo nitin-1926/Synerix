@@ -1,6 +1,6 @@
 "use server";
 
-import { requireAuth } from "@/lib/auth";
+import { requireWriteAccess } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { CREDIT_COSTS } from "@/lib/ai/models";
 import { debitCredits, grantCredits, InsufficientCreditsError } from "@/lib/credits";
@@ -17,7 +17,7 @@ export async function enhanceUserPrompt(input: {
   text: string;
   mode: EnhanceMode;
 }): Promise<{ enhanced: string } | { error: string }> {
-  const auth = await requireAuth();
+  const auth = await requireWriteAccess();
   const text = input.text?.trim();
   if (!text || text.length < 8) return { error: "Write a few words first, then enhance." };
   if (text.length > 1500) return { error: "Prompt is too long to enhance (max 1500 chars)." };

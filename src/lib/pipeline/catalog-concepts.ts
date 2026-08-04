@@ -69,7 +69,6 @@ function toConcept(shot: Shot, palette: string[]): CreativeConcept {
     insightRationale: "",
     artDirection: shot.body,
     archetype: "headline_bottom",
-    productPlacement: "lifestyle",
     sceneDescription: shot.body,
     imagePrompt: shot.body,
     typographySpec: "",

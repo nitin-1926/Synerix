@@ -40,10 +40,14 @@ export async function dissectProduct(
   });
   tracker.addLLM(MODELS.dissect, usage1, "dissect-analyze");
 
-  // 2. Compressed scene-replication prefix
+  // 2. Compressed scene-replication prefix.
+  // Ordered by IMPORTANCE, not top-to-bottom: the compressor overshoots the
+  // budget and the trim below removes the tail, and a top-down description's
+  // tail is always the hem, back and side detail — exactly what an apparel
+  // buyer inspects and what garment-fidelity QA is asked to check.
   const { text: prompt, usage: u2 } = await generateText({
     model,
-    prompt: `Compress this product analysis into a scene-replication prompt prefix of AT MOST ${LIMITS.dissectionPromptMaxChars} characters. Keep: shape, proportions, exact colors, pattern, distinctive features. Drop: lighting commentary, filler. Single paragraph, no preamble, no quotes.\n\n${full}`,
+    prompt: `Compress this product analysis into a scene-replication prompt prefix of AT MOST ${LIMITS.dissectionPromptMaxChars} characters. Order by importance: dominant colour and material first, then overall shape/cut/silhouette (for clothing: neckline, sleeve length and where the hem falls), then the single most distinctive embellishment or label feature, then any remaining detail. Describe ONLY the product itself — never the hanger, mannequin, stand, hang tag, size sticker, background or neighbouring items it was photographed with. Drop lighting commentary and filler. Single paragraph, no preamble, no quotes.\n\n${full}`,
   });
   tracker.addLLM(MODELS.dissect, u2, "dissect-summarize");
 
@@ -72,8 +76,23 @@ Be specific and correct about Indian usage. Example for poori atta: it is DEEP-F
 
   return {
     full,
-    prompt: prompt.trim().slice(0, LIMITS.dissectionPromptMaxChars),
+    prompt: trimToSentence(prompt.trim(), LIMITS.dissectionPromptMaxChars),
     intel,
     cost: tracker.summary(),
   };
+}
+
+/**
+ * Trim to the budget on a SENTENCE boundary. Every dissection in production was
+ * a blunt `.slice(400)` that cut mid-word ("...White sticker on hanger. Left: b"),
+ * and that fragment is injected verbatim into the garment-fidelity and
+ * product-reference instructions as the definition of "exact appearance".
+ */
+export function trimToSentence(text: string, max: number): string {
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max);
+  const stop = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("; "), cut.lastIndexOf(", "));
+  if (stop > max * 0.5) return cut.slice(0, stop + 1).trim();
+  const space = cut.lastIndexOf(" ");
+  return (space > 0 ? cut.slice(0, space) : cut).trim();
 }

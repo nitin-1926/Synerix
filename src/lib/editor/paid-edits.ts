@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { CREDIT_COSTS } from "@/lib/ai/models";
 import { grantCredits } from "@/lib/credits";
-import { downloadFromStorage, storageKeys, uploadBuffer } from "@/lib/storage";
+import { downloadFromStorage, renderPrefix, storageKeys, uploadBuffer } from "@/lib/storage";
 import { renderOverlay } from "@/lib/composition/render";
 import { buildOverlaySpec } from "@/lib/composition/archetypes";
 import { analyzePlate } from "@/lib/composition/analyze";
@@ -102,7 +102,11 @@ export async function recompositeAll(
       const spec = render.overlaySpec as unknown as OverlaySpec;
       opts.mutateSpec?.(spec);
       const composed = await renderOverlay(spec, { plate: await plateFor(render.aspectRatio), logo });
-      const key = storageKeys.composedRender(creative.id, render.aspectRatio, nextIndex);
+      const key = storageKeys.composedRender({
+        prefix: renderPrefix(creative),
+        aspect: render.aspectRatio,
+        version: nextIndex,
+      });
       await uploadBuffer(key, composed, "image/png");
       return { renderId: render.id, spec, key, aspect: render.aspectRatio };
     }),
@@ -209,7 +213,19 @@ export async function applyRenderAspect(
 
     // Persist the native plate as THIS aspect's own plate key so later text /
     // language edits re-composite from it (not from a cropped master).
-    const plateKey = storageKeys.masterPlate(creative.generationRunId, `${creative.conceptIndex}-${aspect.replace(":", "x")}`);
+    //
+    // The creative id is in the key because (runId, conceptIndex, aspect) is
+    // NOT unique on a bake-off run: that queue emits one creative per
+    // (concept, variant), so several creatives share conceptIndex 0. Without
+    // this, adding 16:9 to the nb-pro creative and then to the gpt-image-2 one
+    // wrote the same key — the second overwrote the first, and the next text
+    // edit silently re-composited one creative onto the other model's scene
+    // with no error anywhere. Generation avoids this with ctx.variantTag; this
+    // path had no equivalent.
+    const plateKey = storageKeys.masterPlate(
+      creative.generationRunId,
+      `${creative.conceptIndex}-${creative.id.slice(0, 8)}-${aspect.replace(":", "x")}`,
+    );
     await uploadBuffer(plateKey, plate, "image/png");
 
     const showContact = Boolean(refSpec?.textLayers.some((l) => l.role === "contact"));
@@ -244,7 +260,11 @@ export async function applyRenderAspect(
     const logoAsset = creative.brand.assets[0];
     const logo = logoAsset ? await downloadFromStorage(logoAsset.storageKey) : undefined;
     const composed = await renderOverlay(spec, { plate, logo });
-    const key = storageKeys.composedRender(creative.id, aspect, creative.versions[0]?.index ?? 0);
+    const key = storageKeys.composedRender({
+      prefix: renderPrefix(creative),
+      aspect,
+      version: creative.versions[0]?.index ?? 0,
+    });
     await uploadBuffer(key, composed, "image/png");
 
     const nextAspectPlateKeys = { ...(concept.aspectPlateKeys ?? {}), [aspect]: plateKey };

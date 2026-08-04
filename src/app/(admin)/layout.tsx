@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button";
 import { AdminTabs } from "./admin/admin-tabs";
 import { LogOut, ShieldCheck } from "lucide-react";
 
-export const metadata = { title: "Admin — Synerix" };
+// Auth-gated surface: never index, never let it compete with the marketing
+// pages for brand queries.
+export const metadata = { title: "Admin — Synerix", robots: { index: false, follow: false } };
 
 export default async function AdminGroupLayout({ children }: { children: React.ReactNode }) {
   const auth = await requireSuperAdmin();

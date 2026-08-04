@@ -450,6 +450,10 @@ model GenerationRun {
   id              String         @id @default(uuid())
   workspaceId     String
   workspace       Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  // Who triggered this run. Nullable because runs predating the column have no
+  // recoverable creator — those backfill to the workspace owner. Feeds the R2
+  // storage prefix, so it is set before any render is written.
+  createdByUserId String?
   brandId         String
   brand           Brand          @relation(fields: [brandId], references: [id], onDelete: Cascade)
   calendarEntryId String?
@@ -536,6 +540,28 @@ model Creative {
   // (renders and versions stay recoverable).
   deletedAt          DateTime?
 
+  // R2 object prefix for every render of this creative:
+  //   {workspace.slug}/{run.createdByUserId}/{unix seconds}-{first 8 of id}
+  //
+  // @unique is the load-bearing part: without the id suffix this collided on
+  // real data (85 creatives -> 82 prefixes) because concurrent concepts in one
+  // run share a second, and colliding prefixes mean renders silently
+  // overwriting each other.
+  //
+  // Stored rather than derived because the key is the ADDRESS OF THE BYTES —
+  // recomputing it must never be able to disagree with where the object was
+  // actually written. Note the original justification here was wrong and is
+  // corrected deliberately: it claimed the freeze guards against workspace
+  // renames, but renameWorkspace (actions/workspace.ts) and the admin variant
+  // update `name` only — `slug` is never written after creation. And R2 does
+  // support server-side CopyObject in-bucket, so a future re-key is cheaper
+  // than "no cheap server-side move" implied. Do not let either claim make a
+  // re-key look scarier than it is; the real cost is that plate keys also live
+  // untyped inside Creative.concept JSON.
+  //
+  // Nullable only for rows predating the R2 migration.
+  storagePrefix    String?  @unique
+
   currentVersionId String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
@@ -544,6 +570,9 @@ model Creative {
   versions CreativeVersion[]
 
   @@index([brandId, status])
+  // Prisma does not create indexes for relation scalars on PostgreSQL, and the
+  // studio page, the library and every refund path filter creatives by run.
+  @@index([generationRunId])
   @@map("creatives")
 }
 
@@ -595,6 +624,7 @@ enum CreditReason {
   GENERATION
   REGEN_INSTRUCTION
   ENHANCE_PROMPT
+  BRAND_INTEL
   REFUND
 }
 
@@ -687,6 +717,13 @@ model TestResult {
   answers             Json // Array of {questionId, optionId, weightAge}
   categoryAnalysis    Json
   recommendations     Json
+  // Fingerprint device identification, captured at submit. Nullable because it
+  // is best-effort: ad blockers stop the agent outright, so a null here means
+  // "unattributed", never "invalid". visitorId is the stable device; eventId is
+  // the single identification, and is what the server-side Events API takes to
+  // verify the claim rather than trusting the browser.
+  visitorId           String?
+  fingerprintEventId  String?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
@@ -694,5 +731,8 @@ model TestResult {
 
   @@index([email, phoneNumber])
   @@index([testId, createdAt])
+  // The point of storing it: find one device filing many leads under different
+  // identities.
+  @@index([visitorId])
   @@map("test_results")
 }

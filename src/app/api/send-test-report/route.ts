@@ -898,6 +898,13 @@ const emailSchema = z.object({
 			weightAge: z.number(),
 		}),
 	),
+	// Browser-supplied and therefore UNTRUSTED: both are stored for correlation
+	// only and nothing is authorized on their strength. Turning a visitorId into
+	// a claim you can act on means calling the Fingerprint Events API
+	// server-side with fingerprintEventId, which is not wired up yet. Optional
+	// because identification is best-effort (ad blockers).
+	visitorId: z.string().max(100).nullish(),
+	fingerprintEventId: z.string().max(100).nullish(),
 });
 
 // Create nodemailer transporter
@@ -920,8 +927,18 @@ export async function POST(req: NextRequest) {
 		}
 
 		const body = await req.json();
-		const { email, phoneNumber, name, businessName, businessDescription, testScore, testId, answers } =
-			emailSchema.parse(body);
+		const {
+			email,
+			phoneNumber,
+			name,
+			businessName,
+			businessDescription,
+			testScore,
+			testId,
+			answers,
+			visitorId,
+			fingerprintEventId,
+		} = emailSchema.parse(body);
 
 		// Check if user has already taken the test with this exact phone number and email combination.
 		// Boolean-only response — no stored score/date — to avoid leaking other people's results.
@@ -1020,6 +1037,8 @@ export async function POST(req: NextRequest) {
 					answers,
 					categoryAnalysis,
 					recommendations,
+					visitorId: visitorId ?? null,
+					fingerprintEventId: fingerprintEventId ?? null,
 				},
 			});
 		} catch (dbError) {

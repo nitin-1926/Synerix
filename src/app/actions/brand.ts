@@ -6,11 +6,13 @@ import { tasks } from "@trigger.dev/sdk";
 import { z } from "zod";
 import crypto from "node:crypto";
 import { prisma } from "@/lib/db";
-import { requireAuth } from "@/lib/auth";
+import { requireWriteAccess } from "@/lib/auth";
 import { ensureBrand } from "@/lib/ensure-brand";
 import { storageKeys, uploadBuffer } from "@/lib/storage";
 import { PROFILE_CHANNELS } from "@/lib/workspace-profile";
 import { isWorkspaceTypeId } from "@/lib/workspace-type";
+import { CREDIT_COSTS } from "@/lib/ai/models";
+import { debitCredits, grantCredits, InsufficientCreditsError } from "@/lib/credits";
 import type { brandIngest } from "@/trigger/brand-ingest";
 
 const urlSchema = z.string().trim().transform((v) => (/^https?:\/\//i.test(v) ? v : `https://${v}`)).pipe(z.string().url());
@@ -33,7 +35,7 @@ async function saveWorkspaceProfile(workspaceId: string, formData: FormData): Pr
 }
 
 export async function createBrandFromUrl(formData: FormData) {
-  const auth = await requireAuth();
+  const auth = await requireWriteAccess();
   const parsed = urlSchema.safeParse(formData.get("websiteUrl"));
   if (!parsed.success) return { error: "Please enter a valid website URL" };
   await saveWorkspaceProfile(auth.workspaceId, formData);
@@ -87,7 +89,7 @@ const manualSchema = z.object({
 });
 
 export async function createBrandManual(formData: FormData) {
-  const auth = await requireAuth();
+  const auth = await requireWriteAccess();
   const parsed = manualSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
   const d = parsed.data;
@@ -136,7 +138,7 @@ const kitSchema = z.object({
 });
 
 export async function updateBrandKit(formData: FormData) {
-  const auth = await requireAuth();
+  const auth = await requireWriteAccess();
   const brand = await prisma.brand.findFirst({ where: { workspaceId: auth.workspaceId } });
   if (!brand) return { error: "No brand yet" };
   const parsed = kitSchema.safeParse(Object.fromEntries(formData));
@@ -161,7 +163,7 @@ export async function updateBrandKit(formData: FormData) {
 
 /** Default output mode for this brand's apparel on-model creatives. */
 export async function setApparelBrandingDefault(mode: "BRANDED" | "PLAIN") {
-  const auth = await requireAuth();
+  const auth = await requireWriteAccess();
   const brand = await prisma.brand.findFirst({ where: { workspaceId: auth.workspaceId } });
   if (!brand) return { error: "No brand yet" };
   await prisma.brand.update({ where: { id: brand.id }, data: { apparelBrandingDefault: mode } });
@@ -174,7 +176,7 @@ const LOGO_MIME: Record<string, string> = { "image/png": "png", "image/jpeg": "j
 /** Upload a logo file and set it as the brand's primary logo. Lets brands that
  * skipped the website pull add a logo by hand. */
 export async function uploadBrandLogo(formData: FormData) {
-  const auth = await requireAuth();
+  const auth = await requireWriteAccess();
   const brand = await ensureBrand(auth.workspaceId, auth.workspaceName);
   const file = formData.get("logo");
   if (!(file instanceof File) || file.size === 0) return { error: "Choose a logo image" };
@@ -197,7 +199,7 @@ export async function uploadBrandLogo(formData: FormData) {
 }
 
 export async function setPrimaryLogo(assetId: string) {
-  const auth = await requireAuth();
+  const auth = await requireWriteAccess();
   const asset = await prisma.brandAsset.findFirst({
     where: { id: assetId, brand: { workspaceId: auth.workspaceId } },
   });
@@ -211,18 +213,55 @@ export async function setPrimaryLogo(assetId: string) {
   return { ok: true };
 }
 
+/** A refresh inside this window is refused rather than charged again. */
+export const BRAND_INTEL_COOLDOWN_MS = 60 * 60 * 1000;
+
 /**
  * Re-run the Brand Creative Intelligence research (web-grounded category
- * evidence consumed by every generation run's brief stage). One-time cost
- * ~$0.10–0.15; the result is cached on the brand until refreshed again.
+ * evidence consumed by every generation run's brief stage). Real spend of
+ * ~$0.10–0.15 per call, so it costs CREDIT_COSTS.brandIntel and is refunded
+ * automatically if the research fails. The result is cached on the brand until
+ * refreshed again.
  */
 export async function refreshBrandIntel(brandId: string) {
-  const auth = await requireAuth();
+  const auth = await requireWriteAccess();
   const brand = await prisma.brand.findFirst({
     where: { id: brandId, workspaceId: auth.workspaceId },
     include: { products: { select: { name: true }, take: 6 } },
   });
   if (!brand) return { error: "Brand not found" };
+
+  // Cooldown BEFORE the debit. The research is slow, so a double-click or an
+  // impatient re-submit would otherwise bill twice for an identical answer —
+  // and the evidence pack does not change hour to hour.
+  if (brand.creativeIntelAt && Date.now() - brand.creativeIntelAt.getTime() < BRAND_INTEL_COOLDOWN_MS) {
+    const mins = Math.ceil(
+      (BRAND_INTEL_COOLDOWN_MS - (Date.now() - brand.creativeIntelAt.getTime())) / 60000,
+    );
+    return { error: `Already refreshed recently — try again in ${mins} min` };
+  }
+
+  try {
+    await debitCredits({
+      workspaceId: auth.workspaceId,
+      amount: CREDIT_COSTS.brandIntel,
+      reason: "BRAND_INTEL",
+      note: `Brand intelligence refresh — ${brand.name}`,
+    });
+  } catch (e) {
+    if (e instanceof InsufficientCreditsError) {
+      return { error: `Not enough credits (need ${CREDIT_COSTS.brandIntel})` };
+    }
+    throw e;
+  }
+
+  const refund = (note: string) =>
+    grantCredits({
+      workspaceId: auth.workspaceId,
+      amount: CREDIT_COSTS.brandIntel,
+      reason: "REFUND",
+      note,
+    }).catch(() => {});
 
   const { researchBrandIntel } = await import("@/lib/pipeline/brand-intel");
   const dna = brand.dna as {
@@ -251,6 +290,7 @@ export async function refreshBrandIntel(brandId: string) {
     revalidatePath("/brand");
     return { ok: true, searchUsed: intel.searchUsed };
   } catch (e) {
+    await refund("Brand intelligence refresh failed");
     return { error: `Research failed: ${(e as Error).message?.slice(0, 200)}` };
   }
 }
