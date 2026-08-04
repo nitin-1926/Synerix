@@ -78,6 +78,14 @@ npx tsx scripts/setup-launch-workspaces.ts          # dry run
 npx tsx scripts/setup-launch-workspaces.ts --apply
 ```
 
+## Why `vercel.json` pins `hnd1`
+
+`hnd1` = Tokyo, chosen to sit **next to the database, not next to the user**. Supabase Postgres is in `aws-1-ap-northeast-1` and every page makes 6–11 sequential queries, so co-locating with the database wins: N × ~1 ms beats N × ~90 ms, even though a user in India then pays ~120 ms once for the HTML. Hobby allows exactly one region, which is all this needs.
+
+**When the database moves to Mumbai (`ap-south-1`), change this to `bom1`** — with the database local, the only latency left is user-to-function, and Mumbai wins both legs.
+
+This rationale lives here rather than in `vercel.json` because that file is validated against a strict schema that rejects unknown keys — a `"//"` comment block in it fails every deploy with "should NOT have additional property".
+
 ### 6. Vercel
 
 Update the same four env vars in the Vercel project, then flip the region:
