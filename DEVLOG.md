@@ -67,6 +67,558 @@ New entries go at the **top** of the Log section (reverse chronological).
 
 ## Log
 
+### 2026-08-04 — Brand-research refresh becomes a paid, user-triggered action; Sentry removed
+
+- Type: feature
+- Scope: src/app/actions/brand.ts, src/app/(app)/brand/{page.tsx,refresh-intel.tsx}, src/lib/ai/models.ts, src/app/(app)/settings/credits/page.tsx, prisma/schema.prisma + migrations/20260804090000_credit_reason_brand_intel/, trigger.config.ts, src/app/global-error.tsx, deleted src/instrumentation*.ts
+
+Reasoning / RCA / research:
+    - `refreshBrandIntel` had been sitting with zero callers — a complete
+      web-grounded research pass, ~$0.10–0.15 of real spend per call, reachable
+      by nobody. Giving it a button without a price would have been the worse
+      half of the fix: it is the only action in the app that spends real money
+      outside the credit ledger.
+    - Priced at 2 credits, matching `perConcept`, whose underlying image cost
+      sits in the same $0.10–0.15 band. The point is that a credit keeps meaning
+      roughly the same amount of spend whatever it is spent on, rather than
+      being cheap on one surface and expensive on another.
+    - Added a 1-hour cooldown BEFORE the debit rather than relying on the button
+      being disabled. The research takes tens of seconds, so an impatient
+      re-submit or a second tab would otherwise buy an identical answer twice —
+      and category evidence does not change hour to hour.
+    - `BRAND_INTEL` is its own `CreditReason` rather than reusing `GENERATION`.
+      Folding it in would have made the spend invisible in /admin/costs and the
+      ledger at exactly the moment it became a real line item.
+    - **Sentry removed rather than configured.** It had been installed for
+      months with no DSN in any environment and no `withSentryConfig` in
+      next.config.ts, so it uploaded no source maps and reported nothing while
+      costing 90 MB. PostHog is the intended replacement; "installed and inert"
+      was the one state paying a cost for nothing.
+
+Implementation summary:
+    - refreshBrandIntel: cooldown check → debit → research → refund on any
+      failure, mirroring the enhance-prompt pattern already in the codebase.
+    - `RefreshIntelButton` states the credit cost ON the control instead of
+      leaving it to be discovered in the ledger afterwards, and shows the last
+      refresh date so the value of spending again is visible before clicking.
+    - Sentry: deleted both instrumentation files, stripped the init/onFailure
+      blocks and `SENTRY_DSN` from trigger.config.ts, uninstalled
+      `@sentry/nextjs` + `@sentry/node`, dropped the `@sentry/cli` allow-scripts
+      entry. `global-error.tsx` KEPT as the root error boundary — it is useful
+      UI independent of any SDK — now logging the digest that links to the
+      Vercel runtime log.
+    - `tsc`, `eslint`, 107 tests, `next build` green; migration applied.
+
+Follow-ups deferred:
+    - PostHog not wired. `global-error.tsx` carries the note for whoever does it.
+    - `redissectProduct` still has no cooldown and no charge; it is the same
+      shape of problem refreshBrandIntel just had.
+
+### 2026-08-04 — Audit cleanup: ~700 lines removed, env wired into Vercel, two audit findings rejected on evidence
+
+- Type: chore
+- Scope: deleted src/lib/themes.ts, scripts/spikes/, scripts/migrate-legacy-pinata.ts, scripts/setup-launch-workspaces.ts; new src/lib/image/retry.ts; edited src/app/layout.tsx, src/styles/themes.css, src/lib/image/{gemini,provider,runware}.ts, src/lib/workspace-profile.ts, src/app/actions/{review,calendar}.ts, src/lib/auth.ts, src/lib/composition/devices.ts, package.json
+
+Reasoning / RCA / research:
+    - **Two audit findings were wrong and were rejected, not applied.**
+      `regionAverage` was listed as a zero-caller export; it is called at
+      contrast.ts:112. And the recommendation to delete the whole per-run
+      image-model layer would have broken the studio page: a DB check found
+      **6 historical runs with `imageModelPref = 'compare'`** whose side-by-side
+      output still renders. Only the genuinely unreferenced `IMAGE_MODEL_PREFS`
+      option list went; the type and resolver stay with a comment saying when
+      they can go.
+    - Verified every other deletion by grepping for the symbol across src and
+      e2e first — "1 reference" means the definition alone. Nothing was removed
+      on the audit's word.
+    - Kept `refreshBrandIntel` despite zero callers. It is a complete, working
+      ~$0.15/call feature whose only missing piece is a button; deleting it
+      destroys work rather than debt. Flagged for a product decision instead.
+    - Kept `@sentry/nextjs` (90 MB, inert without a DSN). Removing error
+      monitoring immediately before launch is the wrong direction — the fix is
+      to set the DSN, not to delete the integration.
+    - Kept `wrangler` against the audit's advice: it is how the R2 bucket was
+      created and remains the tool for bucket-level admin, which no application
+      code covers.
+    - Kept `getSignedThumbUrls`' unused `_width` for the reason recorded
+      yesterday — removing it silently turns `(keys, 200, 7200)` into a
+      200-second URL TTL and the compiler cannot catch it.
+
+Implementation summary:
+    - `src/lib/themes.ts` deleted (only `DEFAULT_THEME_CLASS` escaped it;
+      inlined as `theme-synerix` in layout.tsx) plus 88 lines of unreachable
+      `.theme-violet-bloom` CSS. The registry described a palette switcher that
+      was never built.
+    - Five spent one-time scripts deleted (legacy Neon->Supabase migration, the
+      already-run launch-workspace setup, two dated spikes). One of the spikes
+      was actively misleading: it still read Supabase Storage for keys that were
+      re-keyed to R2, so every download in it would 404.
+    - `withRetry` existed three times and had DRIFTED — the Runware copy omitted
+      `overloaded` and `high demand` from its transient set, so a provider
+      brownout the other two rode out failed outright there. Consolidated into
+      `src/lib/image/retry.ts` on the superset regex. This is a deduplication,
+      not a new abstraction.
+    - Removed verified zero-caller exports: `deleteCustomEntry`,
+      `assertApproved`, `assertBrandInWorkspace`, `ruleLine`, `offerBadge`,
+      `PROFILE_INDUSTRIES`, `PROFILE_USE_CASES`.
+    - `shadcn` moved from dependencies to devDependencies — it is a CLI, not a
+      runtime library.
+    - Vercel: added the four `R2_*` vars and both Fingerprint vars to production
+      AND preview via the CLI, piping values straight from .env.local so they
+      never entered a transcript. Production had NONE of them — a deploy would
+      have failed every storage read and run no device identification.
+    - `tsc`, `eslint`, 107 tests, `next build` all green after each step.
+
+Follow-ups deferred:
+    - Trigger.dev's CLI has no env-set command (`list`/`get`/`pull` only), so
+      the worker vars are handled by yesterday's `WORKER_ENV_VARS` fix: they
+      sync from the deploy environment on the next `trigger.dev deploy`.
+    - The 34 `PRICE_*`/`MODEL_*`/`MAX_*`/`CREDITS_*` env knobs resolve to their
+      literal defaults everywhere — `vercel env ls` confirms none is set. Left
+      alone pending a check of the Trigger.dev environment, which the CLI cannot
+      list without printing values.
+    - `salesChannel` is written by onboarding and read by nothing.
+
+### 2026-08-04 — Four-lens review of the R2 work: object deletion never existed, worker creds pointed at the dead provider
+
+- Type: fix
+- Scope: trigger.config.ts, src/lib/storage.ts, src/lib/site.ts, src/lib/editor/paid-edits.ts, src/app/actions/{products,models}.ts, scripts/migrate-storage-to-r2.ts, prisma/schema.prisma, src/lib/storage.test.ts (new)
+
+Reasoning / RCA / research:
+    - Ran security, correctness, simplicity and architecture passes over the R2
+      migration. Security found nothing exploitable. The other three each found
+      something the migration itself could not have surfaced.
+    - **Deployed workers had no R2 credentials.** `WORKER_ENV_VARS` in
+      trigger.config.ts still listed the Supabase pair and `syncEnvVars` pushes
+      only what is listed, so any fresh Trigger.dev deploy would have failed
+      100% of image work — the first thing `generation-run` does is
+      `downloadFromStorage` for the product reference, and storage.ts throws
+      outright without credentials. I had noted "add the R2 vars to the
+      dashboard" as a manual follow-up and missed that the repo itself declares
+      the list. A hand-set dashboard value would have hidden this until the next
+      environment.
+    - **There was no object deletion anywhere in the codebase.** No
+      `DeleteObjectCommand`, while `deleteProduct` and `deleteAiModel` hard-delete
+      rows — every deleted product and model had been orphaning its bytes
+      forever, and the thumbnails added last week silently doubled the leak.
+      This also reframes the tenant-prefix debate: per-tenant deletion cannot be
+      the argument for a prefix scheme when no delete path exists at all.
+      (`generate.ts` looked like a third site but is a false positive — it
+      deletes a run created seconds earlier on the insufficient-credits
+      rollback, before any object exists.)
+    - **Bake-off plate keys collided.** `applyRenderAspect` keyed an
+      editor-generated plate by (runId, conceptIndex, aspect), but a bake-off run
+      emits one creative per (concept, variant), so several share conceptIndex 0.
+      Adding an aspect to the second creative overwrote the first's plate, and
+      the next text edit re-composited one creative onto the other model's scene
+      with no error. Generation avoids this with `ctx.variantTag`; this path,
+      added in the same week, had no equivalent.
+    - **Preview deploys were emitting production canonicals** — site.ts read
+      `VERCEL_PROJECT_PRODUCTION_URL` before `VERCEL_URL`, and the former holds
+      the production domain even on a preview. The docblock described exactly
+      the deindexing risk the code then failed to prevent.
+    - Two claims in my own comments were wrong and are corrected in place rather
+      than quietly dropped: the `storagePrefix` freeze was justified by workspace
+      renames (renameWorkspace updates `name` only — the slug is immutable), and
+      "R2 has no cheap server-side move" overstates it (CopyObject is
+      server-side in-bucket). Both would have made a future re-key look scarier
+      than it is.
+
+Implementation summary:
+    - `deleteObjects(keys)` in storage.ts, batched at the 1000-key API cap and
+      deleting the `.thumb.webp` sibling alongside each original; wired into
+      deleteProduct (keys collected BEFORE the cascade) and deleteAiModel. Both
+      delete objects AFTER the row, so a failed cleanup leaves recoverable
+      garbage rather than a live row pointing at deleted bytes.
+    - uploadBuffer now writes the thumb key even when sharp fails, storing the
+      original bytes. Presigning is local and cannot fail, so the read path
+      always hands back a URL — under Supabase a broken thumbnail was omitted
+      and callers rendered nothing, but here an absent object 404s behind a
+      valid URL, and in the library grid the thumb is the ONLY url. The
+      doc comment claiming callers "already fall back" was false; it is now
+      true by construction.
+    - `storageKeys.iteration` deleted outright — it had no caller, so renaming
+      it to a lifecycle-friendly `scratch/` prefix would have been fixing dead
+      code. Replaced with a warning that `runs/` holds the only copy of each
+      master plate and must never get an expiry rule.
+    - Migration script hardened: resume now checks the thumbnail as well as the
+      original (the pair is written non-atomically), failures are tracked as
+      structured records instead of strings split on ":", and the plan aborts if
+      two sources map to one destination — the generic form of the collision
+      caught by hand on 2026-07-31.
+    - New src/lib/storage.test.ts: 16 tests pinning the prefix shape, that
+      `sanitizeSegment` strips traversal, that same-second creatives stay
+      distinct, and that bake-off creatives get distinct plate keys. 107 pass.
+    - `tsc`, `eslint`, 107 tests, `next build` green.
+
+Follow-ups deferred:
+    - Left `getSignedThumbUrls`' unused `_width` parameter in place despite the
+      audit flagging it. Removing it rewrites 8 call sites, two of which pass
+      three arguments — `(keys, 200, 7200)` would silently become
+      `(keys, 7200)`, i.e. a 200-second URL TTL, and the compiler cannot catch
+      it. Not worth that hazard for a cosmetic win while the migration is still
+      unproven in production.
+    - Audit's larger deletion list (dead per-run image-model picker, themes.ts,
+      spent one-time scripts, three copies of withRetry, ~7 zero-caller exports,
+      inert @sentry/nextjs, unused wrangler dep) is real but unexecuted —
+      roughly 800 LOC. Held back deliberately: two items need checks I cannot
+      make from the repo (Trigger.dev/Vercel dashboard env vars, and whether any
+      historical run has imageModelPref='compare'), and `refreshBrandIntel` is a
+      working feature with no button, which is a product call rather than dead
+      code.
+    - Plate keys still live untyped inside `Creative.concept` JSON. That is the
+      real layering violation and the main obstacle to any future re-key; a
+      `plateKey` column on CreativeRender (already one row per aspect, already
+      uniquely indexed on creativeId+aspectRatio) is the fix.
+
+### 2026-07-31 — Storage moves to Cloudflare R2; creatives get a frozen per-workspace prefix
+
+- Type: refactor
+- Scope: src/lib/storage.ts, src/trigger/generation-run.ts, src/app/actions/{generate,layouts}.ts, src/lib/editor/paid-edits.ts, prisma/schema.prisma, prisma/migrations/20260731060000_r2_storage_prefix/, scripts/migrate-storage-to-r2.ts (replaces scripts/copy-storage.ts), .env.example
+
+Reasoning / RCA / research:
+    - Follows the 2026-07-27 reversal. Supabase bundles storage into a plan, so
+      growth forces the $25/mo Pro step; R2 prices storage alone, gives 10 GB
+      free and charges nothing for egress ever. At 440 MB we were already 44%
+      through Supabase's free tier and 4% through R2's.
+    - **The requested path could not be built as specified.** `{workspaceName}/
+      {userId}/{timestamp}` assumed a user on the creative; `GenerationRun` had
+      workspaceId and brandId only, and no user was recorded anywhere. Added
+      `createdByUserId`, set in generate.ts (the single place a run is created)
+      and backfilled to the workspace owner, since the real creator of an
+      existing run is unrecoverable.
+    - Used `workspace.slug`, not `name`. slug is `@unique` and already IS the
+      sanitized name, so two workspaces called "Apparel Studio" cannot collide
+      on a shared prefix — which sanitizing the name would have allowed.
+    - Prefix is FROZEN on the creative (`Creative.storagePrefix`) rather than
+      re-derived per render. Workspaces are renameable and R2 has no cheap
+      server-side move, so a derived prefix would point at objects that are not
+      there after any rename. The stored value records where the bytes ARE.
+    - Thumbnails: sharp at upload, not Cloudflare Images. sharp was already a
+      dependency, so this needs no CF zone, no Worker and no custom domain, and
+      plain presigned URLs keep the private model byte-for-byte as it was.
+    - Chose ONE 600px webp per image over per-width variants. Callers ask for
+      160/200/400/600, but 600px webp is already ~50x smaller than the source
+      PNG; four variants would multiply storage and upload latency to save a few
+      KB. `width` on the read path is now advisory.
+
+Implementation summary:
+    - storage.ts rewritten on @aws-sdk/client-s3 against R2. Presigning is now a
+      LOCAL signature — no network call, where Supabase charged an HTTPS request
+      per key. The unstable_cache stays, but its job changed from saving API
+      calls to holding URLs stable so the browser image cache still hits.
+    - **`composedRender` takes an object now, deliberately.** The old signature
+      was (creativeId, aspect, version) and the new one needed (prefix, aspect,
+      version) — all (string, string, number), so the swap typechecked clean at
+      every call site while silently writing to the wrong path. Switching to a
+      named field turned that into 5 compile errors, and it was 5, not the 3 I
+      had counted by eye.
+    - `renderPrefix()` falls back to the pre-R2 layout for any unbackfilled row,
+      so old and new creatives read through one path instead of branching.
+    - migrate-storage-to-r2.ts moves objects, generates thumbnails on the way,
+      and re-keys creative renders. It rewrites a DB key ONLY after that
+      object's copy succeeded — a key pointing at an object that failed to copy
+      is worse than one still pointing at Supabase.
+    - `npx tsc --noEmit`, `npx eslint`, 91 vitest tests, `npx next build` green.
+
+Executed 2026-07-31:
+    - Bucket `synerix-studio` created with location hint **apac** (all users are
+      in India). 340 objects migrated, 0 failures; 680 objects / 431 MB in R2
+      once thumbnails are counted, none missing. 200 render/version rows re-keyed,
+      0 left on the old path.
+    - **The backfill exposed a collision the design would have shipped.** A bare
+      {workspace}/{userId}/{seconds} prefix produced 82 distinct values for 85
+      creatives — concepts inside a run render concurrently and share a second,
+      so three sets of renders would have silently overwritten each other in R2.
+      conceptIndex was no fix: two of the three collisions were different runs
+      sharing conceptIndex 0. Added a short-id suffix AND a unique index on
+      storagePrefix (20260731070000), so a regression fails at INSERT instead of
+      destroying renders. Caught only because the prefix count was checked
+      against the row count before moving bytes — the migration itself would
+      have reported success.
+    - Smoke-tested presigned reads across e2e-tests, dev, blueman and products
+      prefixes: HTTP 200 on both full and thumbnail. Thumbnails run 27-87x
+      smaller (1.7 MB PNG -> 43 KB webp).
+    - Confirmed no Trigger.dev task calls the unstable_cache-backed helpers —
+      they would throw outside a Next request context; workers only
+      upload/download.
+
+Follow-ups deferred:
+    - 4 orphaned `creatives/...` objects carried over with 0 referencing rows
+      (renders deleted before the move). Harmless; left in place.
+    - `runs/<id>/iterations/` (24 objects, 44 MB of QA-reject scratch) left
+      behind on purpose.
+    - Supabase Storage still holds the originals — keep it until R2 has served
+      real traffic, since it is the only rollback.
+    - Trigger.dev env still needs the four R2_* vars or deployed workers will
+      fail to upload.
+
+### 2026-07-27 — Fingerprint device identification on the marketing funnel
+
+- Type: feature
+- Scope: src/components/fingerprint.tsx, src/app/(marketing)/layout.tsx, src/app/(marketing)/tests/business-health/wizard.tsx, src/app/api/send-test-report/route.ts, prisma/schema.prisma, prisma/migrations/20260727060000_test_result_fingerprint/, .env.example
+
+Reasoning / RCA / research:
+    - Mirrors the nexus setup (`@fingerprint/react` v3, region `ap`, same
+      workspace and key) so both codebases read the same way.
+    - Scoped to `(marketing)` only. The app is invite-only behind Google auth —
+      a signed-in user is already a known identity, so re-identifying them
+      spends quota for nothing. The anonymous funnel is where a device ID pays:
+      the Business Health Check is the lead table, and one device filing
+      repeated leads under different emails is otherwise invisible.
+    - `immediate: true`, same as nexus. I first shipped `immediate: false` to
+      conserve identification quota; My Lord corrected it — the point is
+      tracking every marketing visitor, not only the ones who finish the quiz,
+      and the free plan makes the quota argument moot. Identify on load.
+    - Provider mounts unconditionally even with a blank key. First cut skipped
+      it when unconfigured, which was wrong: `useVisitorData` throws with no
+      provider above it, so local dev without a key would have crashed the quiz
+      rather than degrading.
+    - `visitorId`/`fingerprintEventId` are browser-supplied and nothing is
+      authorized on them. Storing an unverified claim is fine for correlation;
+      acting on one would not be.
+
+Implementation summary:
+    - `FingerprintIdentity` wraps nav/children/footer/chat in the marketing
+      layout and exposes `useFingerprint()`; the wizard reads the already-
+      identified visitor rather than triggering its own call, so a blocked or
+      still-loading agent yields a null visitor and the lead submits regardless.
+    - `test_results` gains nullable `visitorId` + `fingerprintEventId` and an
+      index on `visitorId` — the index is the point, it turns "one device, many
+      identities" into a query.
+    - Zod schema takes both as `.nullish()` with a max length; route persists
+      them alongside the existing fields.
+    - `npx tsc --noEmit`, `npx eslint`, 91 vitest tests, `npx next build` — all
+      green.
+
+Follow-ups deferred:
+    - Server-side verification intentionally NOT built — this is tracking, not
+      an auth gate, so an unverified visitor id is sufficient. Storing the event
+      id keeps the Events API route open if that ever changes.
+    - `/api/send-enquiry` and the chat widget are the other two anonymous lead
+      surfaces and are still unattributed.
+
+### 2026-07-27 — Reversed: Cloudflare R2 + Images is the right storage target, not Supabase
+
+- Type: docs
+- Scope: decision record only — no code changed
+
+Reasoning / RCA / research:
+    - Yesterday's entry kept storage on Supabase, arguing R2 had no equivalent
+      to Supabase's image transforms and that losing them would serve full-res
+      PNGs into every grid. My Lord pushed back on the cost side and was right;
+      pulling the live pricing pages showed the objection was wrong on its facts.
+    - **Cloudflare Images transformations are on the FREE plan** — 5,000 unique
+      transformations/month, explicitly for images stored *outside* Images
+      (i.e. in R2). Uniqueness is per original+params per calendar month, so
+      repeat views are free. Synerix thumbnails one 600px variant per creative;
+      even 5 clients × 800 images/month lands at 4,000, under the free ceiling.
+      I had assumed transforms required the paid plan.
+    - The cost gap is not marginal. R2: 10 GB-month free, then $0.015/GB-month,
+      **egress free at any volume**, 1M Class A + 10M Class B ops/month free.
+      Supabase: 1 GB storage and 5 GB egress on free, and the next step is Pro
+      at $25/mo. My Lord's framing was exactly right — Supabase bundles storage
+      into a plan, so growth forces a subscription, while R2 prices storage
+      independently and stays near zero at this scale.
+    - The real cost of moving is NOT transforms or pricing: it is **private
+      access**. Every read today is a short-lived signed URL. R2 + Images
+      transformations want a Cloudflare-proxied origin, so preserving privacy
+      means a Worker that authorizes then serves from the R2 binding. That is a
+      day of work, not a config flip.
+    - Sequencing: do it AFTER the Mumbai database move lands. Tangling a storage
+      backend swap into a project migration means a failure could be either.
+
+Follow-ups deferred:
+    - Not started. `src/lib/storage.ts` is a single module (~10 call sites),
+      which is what keeps this contained when it happens.
+    - Cheap win available regardless of provider: `runs/<id>/iterations/` is
+      44 MB of QA-reject scratch nothing reads. A cleanup job reclaims it
+      without migrating anything.
+
+### 2026-07-26 — Mumbai project move: complete the RLS lockdown, add a cross-project storage copier, runbook
+
+- Type: build
+- Scope: prisma/migrations/20260726180000_enable_rls_remaining/, scripts/copy-storage.ts, scripts/PROD-MIGRATION.md, vercel.json (pending bom1 flip)
+
+Reasoning / RCA / research:
+    - A new `Synerix Prod` project was created in ap-south-1 to end the
+      Tokyo-database compromise recorded in `vercel.json`. Audited the old
+      project before moving anything: no Supabase Auth users (login is
+      NextAuth+Prisma, `auth.users` empty), no custom extensions, no edge
+      functions, no pg_cron. The move is far smaller than "migrate everything".
+    - **RLS held only by accident.** `20260606110146_enable_rls` covers the 16
+      tables that existed then; the 9 added since are RLS-enabled on Tokyo but
+      by nothing in the migration history. A freshly provisioned project would
+      therefore expose `accounts`/`sessions`/`verification_tokens` — OAuth
+      refresh tokens and session material — through the PostgREST Data API under
+      the anon key. Found only because provisioning a second project is what
+      separates "configured" from "reproducible".
+    - Rejected applying the schema through the Supabase MCP: it records into
+      `supabase_migrations.schema_migrations`, leaving Prisma's
+      `_prisma_migrations` empty, and the next `migrate deploy` then dies with
+      `P3005 database schema is not empty`. Hand-inserting Prisma rows means
+      hand-computing migration checksums. `prisma migrate deploy` is one command
+      and cannot get this wrong.
+    - All 8 workspaces are dev/test/demo — no customer data, and `E2E Tests`
+      holds 9980 test credits. Recommending a clean start rather than carrying
+      440 MB of test renders into a 1 GB free tier on day one.
+    - Model presets are the exception worth copying: `prisma/seed-models.ts`
+      regenerates them through the image API, which costs money *and* returns
+      different faces. Same reasoning does not apply to festivals, which
+      `prisma/seed.ts` reproduces exactly from a repo fixture.
+
+Implementation summary:
+    - `20260726180000_enable_rls_remaining` enables RLS (still zero policies —
+      deny-all for anon/authenticated, no-op for Prisma as table owner) on
+      accounts, sessions, verification_tokens, workspace_invites, ai_models,
+      api_cost_log, tests, test_results.
+    - `scripts/copy-storage.ts`: prefix-scoped, resumable, dry-run-by-default
+      object copier. Exists only because Supabase has no server-side copy across
+      projects; the database half is plain `pg_dump | psql`. Recursive listing
+      because `list()` is one directory deep and pages at 1000.
+    - `scripts/PROD-MIGRATION.md`: ordered runbook, since every step needs
+      credentials and runs on My Lord's machine.
+    - Documented that `runs/*/plates/` is NOT scratch — the editor re-composites
+      from `masterPlateKey` on every edit, so dropping plates silently kills
+      editing on those creatives. Only `runs/*/iterations/` is disposable.
+    - `npx tsc --noEmit` clean.
+
+Follow-ups deferred:
+    - `vercel.json` still pins `hnd1`; flip to `bom1` once the database is
+      actually serving from Mumbai, not before — a Mumbai function against a
+      Tokyo database is the worst of both.
+    - Storage provider stays Supabase. Cloudflare R2's zero egress is the right
+      end state for an image-heavy product, but `getSignedThumbUrls` depends on
+      Supabase image transforms, which R2 has no equivalent for; losing them
+      would serve full-res PNGs into every grid and undo the latency work.
+      Revisit when storage cost, not principle, forces it.
+
+### 2026-07-26 — Latency round 2: per-request payloads, parallel uploads, lazy editor; dead Runware pricing removed
+
+- Type: fix
+- Scope: src/lib/auth.ts, src/app/(app)/{products,studio}/page.tsx, src/app/actions/products.ts, src/app/(app)/studio/[runId]/studio-canvas.tsx, src/lib/pipeline/cost.ts, src/lib/image/runware.ts, vercel.json
+
+Reasoning / RCA / research:
+    - My Lord caught a real mistake: I had "corrected" the price of `google:4@2` (Nano Banana Pro via Runware) when nothing routes there. Verified: WORKSPACE_IMAGE_MODELS maps nb-pro to provider "gemini" (direct Gemini API) and gpt-image-2 to the direct OpenAI API; only seedream_v4 / seedream_v5_lite / qwen_image / wan_2_7 carry provider "seedream" and reach Runware. `bfl:5@1` was not even in the Runware catalogue. Fixing the price of a dead path is worse than leaving it — it implies the path is live. Deleted the two price rows, the `nano_banana_pro` catalogue entry and its dimension/negative-prompt rows. Runware also charges MORE than the direct API for that model, so the route has no reason to exist.
+    - He also pushed back that I had diagnosed slowness more than fixed it. Fair. Round 1 was infrastructure (region, index, token cache, refresh coalescing, library payload). This round is the per-request work:
+      * requireAuth runs on EVERY page render and EVERY server action and was doing `include: { memberships: { include: { workspace: true } } }` — full rows for six fields. Narrowed to an explicit select.
+      * /products and /studio pulled `dissectionFull` (a whole vision-analysis blob) and `productIntel` for every product, on a page that re-polls while any photo is analysing. Narrowed to the five fields the grid renders, and slowed the poll from 8s to 15s (dissection takes tens of seconds; the extra polls only re-ran auth + brand + products + N signed URLs).
+      * createProduct and addProductImages uploaded to Tokyo and inserted rows strictly one file at a time — five photos meant ten serial cross-region round trips with the user watching a spinner. Now parallel uploads plus one createMany, and the two Trigger enqueues fire together.
+      * The 865-line editor was statically imported into the studio route, where it only renders after a creative is selected. Now a dynamic import behind a skeleton.
+    - Checked before assuming: the app group ALREADY has a loading.tsx skeleton, so navigation is not blocking on a blank screen. Did not add redundant per-route ones.
+    - Region research (for a 100%-India customer base): Vercel Hobby allows exactly ONE function region and it IS selectable, so hnd1 works on the free plan. Supabase CANNOT change an existing project's region — moving to ap-south-1 (Mumbai) means a new project plus a dump/restore and a storage copy, which the free plan's two-project allowance makes possible. Trigger.dev cloud offers US East, US West and EU only — no Asia region — but its tasks are minutes long and off the interactive path, so it is not worth optimising. vercel.json now documents the rule: stay in hnd1 while the database is in Tokyo, switch to bom1 the day it moves to Mumbai.
+
+Implementation summary:
+    - Explicit selects on the auth query and both product list pages; parallel uploads + createMany; lazy editor; dead Runware pricing/catalogue rows deleted; vercel.json annotated with the region decision and its trigger condition.
+    - Verified: tsc/lint clean, 91 tests pass, `next build` green.
+
+### 2026-07-26 — Access control: page-level guards, invite expiry, VIEWER enforcement
+
+- Type: fix (security)
+- Scope: src/app/(admin)/**/page.tsx (6), src/lib/auth.ts, src/app/actions/{auth,admin,brand,calendar,editor,enhance,generate,layouts,models,products,review,workspace}.ts, src/app/(app)/models/page.tsx, src/app/(app)/layout.tsx, src/app/(admin)/layout.tsx
+
+Reasoning / RCA / research:
+    - Owner reported users seeing a workspace they were not added to. Audit of every page, layout, action and route handler found the customer-facing (app) surface genuinely clean — every page calls requireAuth itself and every query filters on the resolved workspaceId — and located the exposure elsewhere.
+    - The admin console had authorization in exactly ONE place: the (admin) group layout. A Next.js layout is not an authorization boundary — it is not re-rendered on RSC segment requests — so the five admin pages (all workspaces, owner emails, credit balances, API spend, leads) were one prefetch away from anyone signed in. Guard now sits at the top of every page body.
+    - ensureMembership accepted invites with `expiresAt: null` as "legacy, never expires". Every invite created by workspace.ts sets an expiry, so a null is a stale row — meaning any address ever typed into an invite box could still claim membership years later, with no revoke path. Prod check: 3 invites, all ACCEPTED with expiry set, so nothing was actively exploitable; the rule is now future-expiry-only.
+    - The VIEWER role existed in the schema and was enforced NOWHERE: ctx.role was read only for member management, so a read-only member could generate creatives (spending the workspace's credits), delete products and edit the brand. Added requireWriteAccess and swapped it into all 30 mutating actions; the 3 read-only actions keep requireAuth.
+    - signOutAction deleted the workspace cookie but left the god-view flag alive for 30 days, so a super-admin's next sign-in on a shared machine landed silently inside a customer workspace. Both cookies now share sessionCookieOptions() with Secure in production.
+    - /models rendered the AI-model surface for account types that /brand and /products hide it from — the gate lived in the nav, not the route.
+
+Implementation summary:
+    - requireSuperAdmin() at the top of all six admin pages; requireWriteAccess() across the mutating action surface; invite acceptance requires a future expiry; ADMIN_ACTING_COOKIE cleared on sign-out; shared cookie options with Secure; /models gated on showsModelSurface with notFound().
+    - Verified: tsc/lint clean, 91 tests pass, `next build` green. An adversarial verification pass re-read each fix in the working tree and confirmed all four page-level findings resolved.
+
+Follow-ups deferred:
+    - generateBrandModel still calls a premium image model with no credit debit (platform spend, not customer spend).
+    - refreshBrandIntel and redissectProduct run paid AI with no cooldown.
+    - assertApproved is dead code: the download gate is client-side only.
+
+### 2026-07-26 — Cost accounting: prices, silent zeros and credit-to-render mismatches
+
+- Type: fix
+- Scope: src/lib/pipeline/cost.ts, src/trigger/generate-model.ts, src/app/actions/generate.ts, src/trigger/generation-run.ts
+
+Reasoning / RCA / research:
+    - The numbers were wrong in both directions. Runware's Nano Banana Pro was priced at $0.060 against a real ~$0.1424 (understating every Runware-routed hero render by 2.4x), and two models reachable from the workspace picker (Qwen-Image, Wan 2.7) had no entry at all so they silently fell back to a $0.04 default.
+    - addLLM priced an unknown model id at exactly $0 with no warning. Every model slot is env-overridable, so one MODEL_CONCEPTS change could zero out the most expensive stage in the pipeline and the cost report would look better for it. The fallback is now the frontier rate — a mispriced slot should overstate and get noticed.
+    - generate-model rendered a premium image with no CostTracker at all.
+    - Credit math did not track renders: a multi-aspect run debits once but renders one NATIVE plate per aspect, and a "compare" run debits 2x while a workspace image-model pin collapses the worker to a single render. The first is a margin hole, the second charges for a variant the pipeline will not produce. Both now priced from what actually renders, and the refund paths derive a per-item price from the debit instead of assuming a flat per-concept pack.
+
+Implementation summary:
+    - Corrected IMAGE_PRICING, added the missing Runware entries and a 4K rate for Nano Banana Pro; non-zero LLM fallback plus warnings on any price miss; cost tracking on generate-model; aspect multiplier and pin-aware compare pricing in generate.ts; proportional refunds in generation-run.
+    - Verified: tsc/lint/tests/build green.
+
+Follow-ups deferred:
+    - brand-intel reads only Anthropic's `input_tokens`, so prompt-cache creation/read tokens and per-search web_search charges are invisible.
+    - brand-ingest (one DNA extraction + up to 40 Haiku vision calls per brand) and the marketing chatbot are untracked.
+
+### 2026-07-26 — Performance: region, index, refresh storm and payload size
+
+- Type: fix
+- Scope: vercel.json (new), prisma/schema.prisma + migration, src/lib/realtime-token.ts (new), src/app/(app)/studio/[runId]/{page,studio-canvas}.tsx, src/app/(app)/library/{page,library-client}.tsx, src/lib/credits.ts
+
+Reasoning / RCA / research:
+    - The app is not slow because of one bad query; it is slow because almost every page pays 6-11 SEQUENTIAL round trips to a database on the other side of the planet. DATABASE_URL and Supabase Storage both resolve to aws-1-ap-northeast-1 (Tokyo) while functions ran in the Vercel project default region. Pinned functions to hnd1: with N sequential queries per render, co-locating with the database beats co-locating with the user (N x ~0ms versus N x ~100ms).
+    - Creative.generationRunId had no index — Prisma does not create one for a relation scalar on PostgreSQL — and it is the filter behind the studio page, the library and every refund path.
+    - The studio minted a Trigger.dev public token over the network on EVERY progress refresh, so a cross-region API call sat in front of each RSC response (~15 per run). Now cached per run for 25 minutes.
+    - router.refresh() fired once per landed concept with no coalescing, refetching the whole route segment tree (layout auth + balance + brand + signed URLs) each time. Coalesced to at most one refresh per 900ms.
+    - The library masonry rendered up to 60 images with no intrinsic dimensions, so every arriving image reflowed the page. Each thumbnail now carries its real aspect ratio. The same query used `include` (SELECT *), dragging concept/qa/critic JSON and the run's pipeline blob across the wire for a page that shows a picture and a caption.
+
+Implementation summary:
+    - vercel.json regions hnd1; index migration for creatives(generationRunId); realtime-token cache; debounced studio refresh; aspect-ratio placeholders and a narrowed `select` on the library; getBalance wrapped in React cache (it was queried twice per dashboard render).
+    - Verified: tsc/lint/tests green, `next build` green.
+
+Follow-ups deferred:
+    - Free editor edits still composite multi-MB images inline in a server action instead of enqueuing.
+    - requireAuth costs three serial round trips and fetches full Workspace rows on every request.
+    - No code splitting anywhere: the 865-line editor ships on the studio route before it renders.
+
+### 2026-07-26 — SEO/AEO groundwork and a chatbot that reports its own failures
+
+- Type: feature + fix
+- Scope: src/lib/site.ts, src/lib/structured-data.ts, src/components/structured-data.tsx, src/app/{robots,sitemap}.ts, src/app/llms.txt/route.ts, src/app/(marketing)/{layout,page,opengraph-image}.tsx, synerix-studio/page.tsx, consulting/page.tsx, src/app/globals.css, src/app/api/chat/route.ts, src/components/marketing/chat-widget.tsx
+
+Reasoning / RCA / research:
+    - The marketing site was well written and effectively invisible: no robots.txt, no sitemap, no canonical on any route, zero structured data and no OG image anywhere in the repo. Every shared link rendered as a blank grey card — and WhatsApp is the primary outreach channel for this business.
+    - AEO/GEO specifically: answer engines had nothing to ground on, so pricing and capability claims were theirs to infer. /llms.txt now publishes the same verified fact block that grounds the on-site assistant, plus a FAQ, and the Studio page carries a real FAQ section with FAQPage schema so the answers are extractable.
+    - The hero heading animated from opacity 0, and Chrome does not accept a fully transparent element as an LCP candidate — the page was penalising its own LCP by the animation duration for no visual difference. Starts at 0.01 now, with a reduced-motion opt-out.
+    - The chatbot was NOT partially streaming: it was streaming and then silently swallowing every failure. toTextStreamResponse() is built on textStream, which forwards only text-delta parts and DROPS error parts, so a model error, a safety block or an exhausted budget closed the body with HTTP 200 and partial text — no error, no retry, no server trace. Compounding it: the model was a floating "-latest" alias resolving to a thinking model whose reasoning tokens are billed against maxOutputTokens: 500, so the budget was spent before any visible text; a blank assistant turn then failed the server's min(1) validation and bricked the conversation permanently; and slice(-12) on an odd-length transcript always started on an assistant turn, which Gemini rejects.
+
+Implementation summary:
+    - SITE_URL resolver that never emits production canonicals from a preview deploy; robots (AI answer-engine crawlers allowed on marketing, product/admin disallowed), sitemap, canonicals, Organization/WebSite/SoftwareApplication/FAQPage/BreadcrumbList JSON-LD, generated OG image, llms.txt, noindex on the app and admin layouts.
+    - Chat route reads fullStream and surfaces errors as text, pins the model, disables thinking, raises the budget, trims the history to start on a user turn and sets anti-buffering headers. Widget keeps partial text on failure, renders the light markdown the model emits, announces streamed text via aria-live, keeps keyboard focus, and offers a stop control.
+    - Verified: tsc/lint/91 tests/`next build` green; robots.txt, sitemap.xml, llms.txt and the OG image all prerender as static.
+
+Follow-ups deferred:
+    - No conversation logging and no lead capture on the assistant — it produces nothing reviewable.
+    - The in-memory rate limiter is per-instance on Vercel, so the effective chat limit is 10/min x warm instances.
+
+### 2026-07-25 — Render guards: the no-baked-text ban was dead code on every path
+
+- Type: fix
+- Scope: src/lib/pipeline/image-prompt.ts, src/lib/pipeline/model-qa.ts, tests
+
+Reasoning / RCA / research:
+    - Found during a full art-direction audit of real production output. Two shipped PLAIN on-model frames were unusable: one rendered a complete fake shopping-app screenshot (carrier status bar reading "Verizom", clock, battery, hamburger/search/heart/cart icons and a home indicator), the other baked a gibberish serif headline across the frame ("Simtidiavi ihust Indian / Mith Ilar Tunan").
+    - Root cause: `buildOnModelPrompt` appended its "no on-image text" ban inside `if (!hasFullPrompt)`. Every concept path now sets `imagePrompt` — the enhancer rewrites it, and the new catalog shot list always writes one — so `hasFullPrompt` is always true and the ban was appended on ZERO renders. `buildScenePassPrompt` never had the ban at all. The system's loudest invariant (text is never baked, it is always canvas-composited with real fonts) was documented everywhere and enforced nowhere.
+    - The app-UI failure is not random: product reference photos in this workspace are phone screenshots (their names are literally "WhatsApp Image 2026 06 23 at 11.27.42 PM"), so the model had every reason to reproduce phone chrome. The ban now names that failure explicitly rather than relying on "no text" to cover it.
+    - Same audit found display artefacts being copied off the reference onto the model — a rhinestone tiara off a mannequin head form, a size "32" label and collar brand tag on a model's chest. The reference is a product photograph; only the clothing in it is the subject, and nothing said so.
+    - PLAIN runs were also being told to keep a headline band calmer and darker (`SAFE_ZONES`) for an overlay that `plainMode` never composites — surrendering up to a third of a catalog frame and dulling the garment in it.
+    - model-qa could not have caught any of this: its verdict schema had four booleans (modelVisible, identityMatch, garmentFaithful, singleFigure) and no notion of baked text, frame containment, wearer gender or wearer age. It passed a toddler wearing adult menswear and passed womenswear on a male model reference.
+
+Implementation summary:
+    - `WORDLESS` constant, appended unconditionally by both the on-model and in-scene builders: bans all rendered text AND app/phone interface chrome, with the product's own printed packaging as the sole exception.
+    - `REFERENCE_IS_A_PRODUCT_PHOTO` on the on-model path plus an equivalent clause on the in-scene reference line: hanger, mannequin, stand, head form, hang tags, size stickers and neighbouring garments must not appear.
+    - `PLAIN_ECOMMERCE` now carries a styling lock (matching bottoms drawn from the garment, simple closed neutral footwear, no accessories) so frames of one product cut together as one shoot — sneakers-with-festive-kurta and barefoot frames were appearing inside a single pack.
+    - SAFE_ZONES is now branded-only.
+    - model-qa gained `garmentSuitsWearer`, `noBakedText` and `fullyInFrame`, gender/age judged first and strictly in `identityMatch`, and a precise failure label per class so the corrective re-render is told what actually went wrong. Same single vision call — no added cost.
+    - Verified: tsc/lint clean, 74 vitest pass including four new guard tests asserting the ban, the PLAIN safe-zone removal, the product-photo clause and the styling lock.
+
+Follow-ups deferred:
+    - Wearer gender is still only caught after the render is paid for. The real gate is capturing garment gender at dissection and matching it to AiModel.traits before spending.
+    - The in-scene path has the same identity blindness: pack-QA is explicitly told to ignore people, so a toddler or three cloned men pass.
+
 ### 2026-07-25 — Lite pipeline for PLAIN on-model (6× cheaper per catalog image) + OOM/stall recovery
 
 - Type: feature + fix
