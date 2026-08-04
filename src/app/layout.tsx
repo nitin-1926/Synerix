@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { IBM_Plex_Mono, Lora, Plus_Jakarta_Sans } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
-import { DEFAULT_THEME_CLASS } from "@/lib/themes";
 import "./globals.css";
 
 const plusJakarta = Plus_Jakarta_Sans({
@@ -34,7 +33,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html
       lang="en"
-      className={`${DEFAULT_THEME_CLASS} ${plusJakarta.variable} ${lora.variable} ${ibmPlexMono.variable}`}
+      className={`theme-synerix ${plusJakarta.variable} ${lora.variable} ${ibmPlexMono.variable}`}
       suppressHydrationWarning
     >
       <body className="antialiased">

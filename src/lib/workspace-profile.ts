@@ -4,22 +4,7 @@
  * apparel-adjacent businesses). All answers optional.
  */
 
-export const PROFILE_INDUSTRIES = [
-  { id: "food_fmcg", label: "Food & packaged goods" },
-  { id: "apparel", label: "Apparel & fashion" },
-  { id: "jewellery", label: "Jewellery & accessories" },
-  { id: "home_decor", label: "Home & decor" },
-  { id: "beauty", label: "Beauty & personal care" },
-  { id: "services", label: "Services" },
-  { id: "other", label: "Other" },
-] as const;
 
-export const PROFILE_USE_CASES = [
-  { id: "occasion_posts", label: "Festival & occasion posts" },
-  { id: "product_ads", label: "Product ads" },
-  { id: "on_model", label: "On-model fashion shots" },
-  { id: "everything", label: "A bit of everything" },
-] as const;
 
 export const PROFILE_CHANNELS = [
   { id: "whatsapp_direct", label: "WhatsApp / direct orders" },
