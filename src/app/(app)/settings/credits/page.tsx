@@ -13,6 +13,7 @@ const REASON_LABEL: Record<CreditReason, string> = {
   GENERATION: "Generation",
   REGEN_INSTRUCTION: "Regenerate",
   ENHANCE_PROMPT: "Prompt enhance",
+  BRAND_INTEL: "Brand research",
   REFUND: "Refund",
 };
 
@@ -22,6 +23,7 @@ const REASON_VARIANT: Record<CreditReason, "default" | "secondary" | "outline"> 
   GENERATION: "default",
   REGEN_INSTRUCTION: "default",
   ENHANCE_PROMPT: "default",
+  BRAND_INTEL: "default",
   REFUND: "outline",
 };
 

@@ -40,7 +40,7 @@ export const LIMITS = {
   maxCrawlUrls: Number(process.env.MAX_CRAWL_URLS ?? 12),
   maxConceptsPerRun: Number(process.env.MAX_CONCEPTS_PER_RUN ?? 4),
   maxConcurrentConcepts: Number(process.env.MAX_CONCURRENT_CONCEPTS ?? 4),
-  dissectionPromptMaxChars: 400,
+  dissectionPromptMaxChars: 700,
 };
 
 // Credits debited per action (2 credits = one generated creative).
@@ -50,6 +50,11 @@ export const CREDIT_COSTS = {
   signupGrant: Number(process.env.SIGNUP_CREDIT_GRANT ?? 0),
   // Prompt enhancement (Sonnet rewrite of a rough brief into an art-directed prompt)
   enhancePrompt: Number(process.env.CREDITS_ENHANCE_PROMPT ?? 0.25),
+  // Brand Creative Intelligence refresh — a web-grounded research pass costing
+  // ~$0.10-0.15 in Anthropic tokens + web_search calls. Priced at 2 credits to
+  // match perConcept, whose underlying image cost sits in the same range, so a
+  // credit stays worth roughly the same thing whatever it is spent on.
+  brandIntel: Number(process.env.CREDITS_BRAND_INTEL ?? 2),
 };
 
 export function resolveLanguageModel(modelId: string): LanguageModel {
