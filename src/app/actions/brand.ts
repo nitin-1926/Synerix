@@ -14,6 +14,7 @@ import { isWorkspaceTypeId } from "@/lib/workspace-type";
 import { CREDIT_COSTS } from "@/lib/ai/models";
 import { debitCredits, grantCredits, InsufficientCreditsError } from "@/lib/credits";
 import type { brandIngest } from "@/trigger/brand-ingest";
+import type { brandResearch } from "@/trigger/brand-research";
 
 const urlSchema = z.string().trim().transform((v) => (/^https?:\/\//i.test(v) ? v : `https://${v}`)).pipe(z.string().url());
 
@@ -70,9 +71,9 @@ export async function createBrandFromUrl(formData: FormData) {
     console.error("[brand] failed to enqueue brand-ingest", e);
     await prisma.brand.update({
       where: { id: brand.id },
-      data: { ingestStatus: "FAILED", ingestError: "Ingest could not be queued — please try again" },
+      data: { ingestStatus: "FAILED", ingestError: "Ingest could not be queued. Please try again" },
     });
-    return { error: "Brand analysis service is unavailable right now — please try again shortly." };
+    return { error: "Brand analysis service is unavailable right now. Please try again shortly." };
   }
   await prisma.brand.update({ where: { id: brand.id }, data: { ingestRunId: handle.id } });
   revalidatePath("/onboarding");
@@ -214,83 +215,81 @@ export async function setPrimaryLogo(assetId: string) {
 }
 
 /** A refresh inside this window is refused rather than charged again. */
-export const BRAND_INTEL_COOLDOWN_MS = 60 * 60 * 1000;
+const BRAND_INTEL_COOLDOWN_MS = 60 * 60 * 1000;
 
 /**
  * Re-run the Brand Creative Intelligence research (web-grounded category
  * evidence consumed by every generation run's brief stage). Real spend of
- * ~$0.10–0.15 per call, so it costs CREDIT_COSTS.brandIntel and is refunded
- * automatically if the research fails. The result is cached on the brand until
- * refreshed again.
+ * ~$0.10–0.15 per call, so it costs CREDIT_COSTS.brandIntel.
+ *
+ * The research itself runs in the brand-research Trigger task, never here: it
+ * can take 90s+ (web search + fallback + synthesis) and this action lives under
+ * the (app) segment's 60s maxDuration, so running it inline let Vercel kill the
+ * function after the debit and before the refund. The task refunds on failure.
  */
 export async function refreshBrandIntel(brandId: string) {
   const auth = await requireWriteAccess();
   const brand = await prisma.brand.findFirst({
     where: { id: brandId, workspaceId: auth.workspaceId },
-    include: { products: { select: { name: true }, take: 6 } },
+    select: { id: true, name: true, creativeIntelRequestedAt: true },
   });
   if (!brand) return { error: "Brand not found" };
 
-  // Cooldown BEFORE the debit. The research is slow, so a double-click or an
-  // impatient re-submit would otherwise bill twice for an identical answer —
-  // and the evidence pack does not change hour to hour.
-  if (brand.creativeIntelAt && Date.now() - brand.creativeIntelAt.getTime() < BRAND_INTEL_COOLDOWN_MS) {
-    const mins = Math.ceil(
-      (BRAND_INTEL_COOLDOWN_MS - (Date.now() - brand.creativeIntelAt.getTime())) / 60000,
-    );
-    return { error: `Already refreshed recently — try again in ${mins} min` };
+  // Claim the slot atomically BEFORE the debit. A read-then-check cannot stop
+  // two tabs (or a reload mid-research) from both passing and both paying; a
+  // conditional write lets exactly one request through per cooldown window,
+  // and also refuses a refresh right after a successful one.
+  const cutoff = new Date(Date.now() - BRAND_INTEL_COOLDOWN_MS);
+  const claimed = await prisma.brand.updateMany({
+    where: {
+      id: brand.id,
+      AND: [
+        { OR: [{ creativeIntelRequestedAt: null }, { creativeIntelRequestedAt: { lt: cutoff } }] },
+        { OR: [{ creativeIntelAt: null }, { creativeIntelAt: { lt: cutoff } }] },
+      ],
+    },
+    data: { creativeIntelRequestedAt: new Date() },
+  });
+  if (claimed.count === 0) {
+    return { error: "Brand research was refreshed recently or is still running. Try again in an hour." };
   }
+  const release = () =>
+    prisma.brand.update({
+      where: { id: brand.id },
+      data: { creativeIntelRequestedAt: brand.creativeIntelRequestedAt },
+    });
 
   try {
     await debitCredits({
       workspaceId: auth.workspaceId,
       amount: CREDIT_COSTS.brandIntel,
       reason: "BRAND_INTEL",
-      note: `Brand intelligence refresh — ${brand.name}`,
+      note: `Brand research refresh: ${brand.name}`,
     });
   } catch (e) {
+    await release();
     if (e instanceof InsufficientCreditsError) {
       return { error: `Not enough credits (need ${CREDIT_COSTS.brandIntel})` };
     }
     throw e;
   }
 
-  const refund = (note: string) =>
-    grantCredits({
+  try {
+    await tasks.trigger<typeof brandResearch>("brand-research", {
+      brandId: brand.id,
+      force: true,
+      charge: { workspaceId: auth.workspaceId, amount: CREDIT_COSTS.brandIntel },
+    });
+  } catch (e) {
+    console.error(`[brand-intel] enqueue failed brand=${brand.id}: ${(e as Error).message}`);
+    await grantCredits({
       workspaceId: auth.workspaceId,
       amount: CREDIT_COSTS.brandIntel,
       reason: "REFUND",
-      note,
-    }).catch(() => {});
-
-  const { researchBrandIntel } = await import("@/lib/pipeline/brand-intel");
-  const dna = brand.dna as {
-    identity?: { category?: string; city?: string };
-    audience?: { target_customer?: string };
-    positioning?: { price_band?: string };
-  } | null;
-
-  try {
-    const intel = await researchBrandIntel({
-      brandName: brand.name,
-      category: dna?.identity?.category,
-      city: dna?.identity?.city,
-      oneLiner: brand.oneLiner,
-      productNames: brand.products.map((p) => p.name),
-      audience: dna?.audience?.target_customer,
-      priceBand: dna?.positioning?.price_band,
+      note: `Brand research refresh could not start: ${brand.name}`,
     });
-    await prisma.brand.update({
-      where: { id: brand.id },
-      data: {
-        creativeIntel: intel as unknown as import("@/generated/prisma/client").Prisma.InputJsonValue,
-        creativeIntelAt: new Date(),
-      },
-    });
-    revalidatePath("/brand");
-    return { ok: true, searchUsed: intel.searchUsed };
-  } catch (e) {
-    await refund("Brand intelligence refresh failed");
-    return { error: `Research failed: ${(e as Error).message?.slice(0, 200)}` };
+    await release();
+    return { error: "Could not start the research. Your credits were refunded." };
   }
+  return { ok: true };
 }
