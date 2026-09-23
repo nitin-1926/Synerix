@@ -201,6 +201,10 @@ model Brand {
   // search, consumed by every generation run's brief stage. Refresh manually.
   creativeIntel   Json?
   creativeIntelAt DateTime?
+  // When a PAID manual refresh last claimed the research slot. Claimed
+  // atomically before the debit, so two tabs or a reload mid-research cannot
+  // both pay; cleared when the research fails (and is refunded).
+  creativeIntelRequestedAt DateTime?
 
   ingestStatus IngestStatus @default(PENDING)
   ingestRunId  String?
@@ -450,10 +454,11 @@ model GenerationRun {
   id              String         @id @default(uuid())
   workspaceId     String
   workspace       Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  // Who triggered this run. Nullable because runs predating the column have no
-  // recoverable creator — those backfill to the workspace owner. Feeds the R2
-  // storage prefix, so it is set before any render is written.
-  createdByUserId String?
+  // Who triggered this run (runs predating the column were backfilled to the
+  // workspace owner). Feeds the R2 storage prefix, so it is set before any
+  // render is written; NOT NULL so a missing creator fails loudly instead of
+  // writing under a made-up user segment.
+  createdByUserId String
   brandId         String
   brand           Brand          @relation(fields: [brandId], references: [id], onDelete: Cascade)
   calendarEntryId String?
@@ -493,6 +498,12 @@ model GenerationRun {
   pipeline Json             @default("{}")
 
   creditsDebited Decimal   @default(0) @db.Decimal(12, 2)
+  // Price of ONE delivered creative, frozen at debit time. Every refund path
+  // (worker finalize, catchError, stall-healer) prices undelivered work from
+  // this instead of re-deriving the debit formula (compare x2, per-aspect flag,
+  // env-tunable perConcept), which three call sites had each got differently.
+  // Null on runs created before it existed; see src/lib/run-pricing.ts.
+  creditsPerCreative Decimal? @db.Decimal(12, 2)
   triggerRunId   String?
   error          String?
   startedAt      DateTime  @default(now())
@@ -559,8 +570,9 @@ model Creative {
   // re-key look scarier than it is; the real cost is that plate keys also live
   // untyped inside Creative.concept JSON.
   //
-  // Nullable only for rows predating the R2 migration.
-  storagePrefix    String?  @unique
+  // NOT NULL (every pre-R2 row was backfilled): a fallback layout for a missing
+  // prefix would only ever write renders somewhere nothing reads.
+  storagePrefix    String   @unique
 
   currentVersionId String?
   createdAt        DateTime @default(now())
@@ -687,8 +699,8 @@ enum ApiCostKind {
 
 // ---------- Synerix website (consulting) ----------
 // Ported from the pre-merge Pinata site. Table names
-// (@@map) and cuid IDs are preserved so legacy rows copy across 1:1 via
-// scripts/migrate-legacy-pinata.ts.
+// (@@map) and cuid IDs are preserved so legacy rows copied across 1:1 (the
+// one-off migrate-legacy-pinata script is spent; see git history, c7b7796).
 
 model Test {
   id          String   @id @default(cuid())
