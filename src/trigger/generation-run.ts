@@ -2,8 +2,9 @@ import { task, tasks, logger, metadata } from "@trigger.dev/sdk";
 import { prisma } from "@/lib/db";
 import { LIMITS } from "@/lib/ai/models";
 import { generateScene, variantsForPref, resolveWorkspaceImageModel, BAKEOFF_VARIANTS, type BakeoffVariant, type SceneAspect } from "@/lib/image/provider";
-import { creativeStoragePrefix, downloadFromStorage, renderPrefix, storageKeys, uploadBuffer } from "@/lib/storage";
+import { creativeStoragePrefix, downloadFromStorage, storageKeys, uploadBuffer } from "@/lib/storage";
 import { reconcileRunRefund } from "@/lib/credits";
+import { undeliveredRefund } from "@/lib/run-pricing";
 import { assembleOccasionBrief } from "@/lib/pipeline/brief";
 import { generateConcepts } from "@/lib/pipeline/concepts";
 import { buildCatalogConcepts } from "@/lib/pipeline/catalog-concepts";
@@ -245,7 +246,7 @@ export const generationRun = task({
         concepts = buildCatalogConcepts({ count: conceptTarget, poseDriven: multiPose, palette: brandPalette });
         logger.info("lite path: deterministic catalog briefs", { concepts: concepts.length, poseDriven: multiPose });
         await updatePipeline(runId, (p) => {
-          (p as PipelineState & { lite?: string }).lite = "plain-on-model";
+          p.lite = "plain-on-model";
         });
       } else {
         concepts = await generateConcepts(
@@ -263,13 +264,13 @@ export const generationRun = task({
         try {
           const { concepts: validated, report } = await validateAndRepairConcepts({ concepts, occasionBrief, tracker });
           concepts = validated;
-          await updatePipeline(runId, (p) => { (p as PipelineState & { briefQa?: typeof report }).briefQa = report; });
+          await updatePipeline(runId, (p) => { p.briefQa = report; });
           if (report.flagged) logger.warn("brief QA flagged concepts", { flagged: report.flagged, repaired: report.repaired, issues: report.issues });
         } catch (e) {
           logger.warn("brief QA unavailable — rendering authored concepts", { error: (e as Error).message });
           // Marker write must never outrank the run it describes (fail-open²).
           await updatePipeline(runId, (p) => {
-            ((p as PipelineState & { degraded?: string[] }).degraded ??= []).push("brief-qa-skipped");
+            (p.degraded ??= []).push("brief-qa-skipped");
           }).catch(() => {});
         }
         try {
@@ -277,7 +278,7 @@ export const generationRun = task({
         } catch (e) {
           logger.warn("prompt enhancer unavailable — rendering authored prompts", { error: (e as Error).message });
           await updatePipeline(runId, (p) => {
-            ((p as PipelineState & { degraded?: string[] }).degraded ??= []).push("enhancer-skipped");
+            (p.degraded ??= []).push("enhancer-skipped");
           }).catch(() => {});
         }
       }
@@ -317,8 +318,7 @@ export const generationRun = task({
             logger.error("concept failed", { idx, variant: variant?.key, error: msg });
             await updatePipeline(runId, (p) => {
               p.conceptStatus![cid] = "failed";
-              (p as PipelineState & { errors?: Record<string, string> }).errors ??= {};
-              (p as PipelineState & { errors?: Record<string, string> }).errors![cid] = msg.slice(0, 300);
+              (p.errors ??= {})[cid] = msg.slice(0, 300);
             });
           }
           metadata.set("done", succeeded + failed);
@@ -342,29 +342,25 @@ export const generationRun = task({
         data: { status: "FAILED", finishedAt: new Date(), error: "All concepts failed" },
       });
       if (flipped.count > 0 && Number(run.creditsDebited) > 0) {
-        await reconcileRunRefund({ workspaceId: run.workspaceId, generationRunId: runId, owedRefund: Number(run.creditsDebited), note: "Run failed — full refund" });
+        await reconcileRunRefund({ workspaceId: run.workspaceId, generationRunId: runId, owedRefund: Number(run.creditsDebited), note: "Run failed: full refund" });
       }
       metadata.set("status", "FAILED");
       return { succeeded, failed };
     }
 
-    // Partial refund — only charge for delivered creatives. Bake-off runs
-    // debit nothing, so there is nothing to refund. The per-item price is
-    // derived from what was actually debited rather than assuming one credit
-    // pack per concept: a multi-aspect or compare run is charged per rendered
-    // item, so a flat perConcept refund would short-change the customer.
-    if (failed > 0 && Number(run.creditsDebited) > 0) {
-      const perItem = Number(run.creditsDebited) / Math.max(1, succeeded + failed);
-      const refund = Math.round(failed * perItem * 100) / 100;
+    // Partial refund — only charge for delivered creatives, priced at the unit
+    // frozen at debit time (see run-pricing.ts). Bake-off runs debit nothing.
+    if (failed > 0) {
+      const refund = undeliveredRefund(run, succeeded);
       if (refund > 0) {
-        await reconcileRunRefund({ workspaceId: run.workspaceId, generationRunId: runId, owedRefund: refund, note: `${failed} concept(s) failed — partial refund` });
+        await reconcileRunRefund({ workspaceId: run.workspaceId, generationRunId: runId, owedRefund: refund, note: `${failed} concept(s) failed: partial refund` });
       }
     }
 
     const cost = tracker.summary();
     const perCreativeUSD = succeeded > 0 ? Math.round((cost.totalUSD / succeeded) * 1e4) / 1e4 : null;
     await updatePipeline(runId, (p) => {
-      (p as PipelineState & { cost?: unknown }).cost = { ...cost, perCreativeUSD, creatives: succeeded };
+      p.cost = { ...cost, perCreativeUSD, creatives: succeeded };
     });
     // Per-call cost observability (one row per API call), never blocks the run.
     await persistCost({ summary: cost, source: "generation", workspaceId: run.workspaceId, runId });
@@ -389,10 +385,6 @@ export const generationRun = task({
     // of the old unconditional FULL refund (which double-refunded a partial run
     // and gave free credits for already-delivered creatives).
     const delivered = await prisma.creative.count({ where: { generationRunId: run.id, status: "READY" } });
-    // Same per-item price as the partial-refund path above: derive it from the
-    // debit, never from a fixed per-concept assumption.
-    const expectedItems = Math.max(1, run.conceptCount * Math.max(1, run.requestedAspects.length));
-    const perItemCredits = Number(run.creditsDebited) / expectedItems;
     await prisma.generationRun.update({
       where: { id: payload.runId },
       data: {
@@ -405,8 +397,8 @@ export const generationRun = task({
       await reconcileRunRefund({
         workspaceId: run.workspaceId,
         generationRunId: run.id,
-        owedRefund: Math.max(0, Number(run.creditsDebited) - delivered * perItemCredits),
-        note: "Run errored — refund undelivered creatives",
+        owedRefund: undeliveredRefund(run, delivered),
+        note: "Run errored: refund for undelivered creatives",
       });
     }
   },
@@ -453,7 +445,6 @@ interface PlateResult {
   /** Final master plate — always the wordless scene; text is overlaid by canvas. */
   plate: Buffer;
   /** Alias of plate, kept so text/language edits re-set type on a clean plate. */
-  scenePlate: Buffer;
   typographyMode: TypographyMode;
   /** Cost-model id of the image model that rendered the scene (provenance). */
   costModel: string;
@@ -472,7 +463,7 @@ interface PlateResult {
 async function generatePlate(ctx: ConceptCtx, concept: CreativeConcept, aspect: SceneAspect): Promise<PlateResult> {
   // Variant pin: bake-off forces the provider (no fallback — a failed variant
   // is a data point); a user model pick prefers it but keeps the chain (soft).
-  const model = { provider: ctx.forced?.provider, tier: ctx.forced?.tier, softPrefer: ctx.forced?.soft, runwareModel: ctx.forced?.runwareModel };
+  const model = forcedModel(ctx);
   if (ctx.onModel) {
     // ON_MODEL: fuse the AI model (image 1) + the real garment (image 2).
     // Missing references are a hard error — silently falling through to a
@@ -502,7 +493,7 @@ async function generatePlate(ctx: ConceptCtx, concept: CreativeConcept, aspect: 
     // equivalent of a mangled label).
     const { gen, fidelityQa } = await ensureOnModelFidelity(ctx, { gen: first, prompt, aspect, refs, model });
     const plate = gen.buffer;
-    return { plate, scenePlate: plate, typographyMode: "overlay", costModel: gen.costModel, fidelityQa };
+    return { plate, typographyMode: "overlay", costModel: gen.costModel, fidelityQa };
   } else {
     // IN_SCENE: the image model stages the real product (all reference angles).
     // This is also the EXACT_PRODUCT path now: the premium models reproduce
@@ -518,7 +509,7 @@ async function generatePlate(ctx: ConceptCtx, concept: CreativeConcept, aspect: 
       aspect,
       dissectionPrompt: ctx.run.product?.dissectionPrompt,
       hasProduct,
-      productTruth: ctx.intel ? { mustShow: ctx.intel.sceneDo ?? [], mustNotShow: ctx.intel.sceneDont ?? [] } : null,
+      productTruth: productTruthOf(ctx),
     });
     let gen = await generateScene({ prompt, aspect, references: refs, ...model });
     ctx.tracker.addImage(gen.costModel, "in-scene");
@@ -529,10 +520,10 @@ async function generatePlate(ctx: ConceptCtx, concept: CreativeConcept, aspect: 
     // vision judgement; corrective re-renders only happen on mismatch.
     let fidelityQa: PlateResult["fidelityQa"];
     if (refs) {
-      ({ gen, fidelityQa } = await ensurePackFidelity(ctx, { gen, prompt, aspect, refs, model, stage: "in-scene" }));
+      ({ gen, fidelityQa } = await ensurePackFidelity(ctx, { gen, prompt, aspect, refs, model, stage: "in-scene", productTruth: productTruthOf(ctx) }));
     }
     const plate = gen.buffer;
-    return { plate, scenePlate: plate, typographyMode: "overlay", costModel: gen.costModel, fidelityQa };
+    return { plate, typographyMode: "overlay", costModel: gen.costModel, fidelityQa };
   }
 }
 
@@ -541,44 +532,85 @@ async function generatePlate(ctx: ConceptCtx, concept: CreativeConcept, aspect: 
  * env-tunable). Keeps the last attempt either way; the verdict rides along
  * for human review. */
 const PACK_QA_MAX_RETRIES = Number(process.env.PACK_QA_MAX_RETRIES ?? 2);
+/** The forced render variant (bake-off / compare / workspace pick) as
+ * generateScene options; all undefined = the default fallback cascade. */
+const forcedModel = (ctx: ConceptCtx) => ({
+  provider: ctx.forced?.provider,
+  tier: ctx.forced?.tier,
+  softPrefer: ctx.forced?.soft,
+  runwareModel: ctx.forced?.runwareModel,
+});
+/** Product scene rules (from dissection intel) the scene prompt states and
+ * pack QA judges — built in one place so the two can never disagree. */
+const productTruthOf = (ctx: ConceptCtx) =>
+  ctx.intel ? { mustShow: ctx.intel.sceneDo ?? [], mustNotShow: ctx.intel.sceneDont ?? [] } : null;
+
 /** Lite (PLAIN on-model) budget. A corrective re-render costs a full image;
  * on a bulk catalog drop the second one rarely changes the verdict, so this
  * path trades the long tail for predictable unit cost. */
 const LITE_QA_MAX_RETRIES = Number(process.env.LITE_QA_MAX_RETRIES ?? 1);
-async function ensurePackFidelity(
+type RenderModel = ReturnType<typeof forcedModel>;
+type Rendered = Awaited<ReturnType<typeof generateScene>>;
+type FidelityResult = { gen: Rendered; fidelityQa: NonNullable<PlateResult["fidelityQa"]> };
+
+/** The shared judge → corrective re-render loop behind both fidelity checks.
+ * Keeps the last attempt either way; the verdict rides along for review. */
+async function rerenderUntilFaithful(
   ctx: ConceptCtx,
   opts: {
-    gen: Awaited<ReturnType<typeof generateScene>>;
+    gen: Rendered;
     prompt: string;
     aspect: SceneAspect;
     refs: Array<{ buffer: Buffer; mime: string }>;
-    model: { provider?: BakeoffVariant["provider"]; tier?: BakeoffVariant["tier"]; softPrefer?: boolean; runwareModel?: string };
+    model: RenderModel;
     stage: string;
+    label: string;
+    judge: (render: Buffer) => Promise<{ pass: boolean; issues: string }>;
+    correction: (issues: string) => string;
   },
-): Promise<{ gen: Awaited<ReturnType<typeof generateScene>>; fidelityQa: NonNullable<PlateResult["fidelityQa"]> }> {
+): Promise<FidelityResult> {
   let gen = opts.gen;
-  const productTruth = ctx.intel
-    ? { mustShow: ctx.intel.sceneDo ?? [], mustNotShow: ctx.intel.sceneDont ?? [] }
-    : null;
-  let verdict = await checkPackFidelity({ render: gen.buffer, reference: ctx.refBuffer!, productTruth, tracker: ctx.tracker });
+  let verdict = await opts.judge(gen.buffer);
   let retried = false;
   for (let attempt = 1; attempt <= ctx.qaRetries && !verdict.pass; attempt++) {
-    logger.warn("pack fidelity failed, re-rendering", { attempt, of: ctx.qaRetries, issues: verdict.issues });
-    const strictPrompt = `${opts.prompt}\n\nCRITICAL CORRECTION: a previous render altered the product's packaging (${verdict.issues}). Reproduce the reference pack EXACTLY — every word of label text spelled identically, same colours, same logo, same layout. Do not restyle or reinterpret the packaging in any way.`;
+    logger.warn(`${opts.label} fidelity failed, re-rendering`, { attempt, of: ctx.qaRetries, issues: verdict.issues });
     gen = await generateScene({
-      prompt: strictPrompt,
+      prompt: `${opts.prompt}\n\n${opts.correction(verdict.issues)}`,
       aspect: opts.aspect,
       references: opts.refs,
-      provider: opts.model.provider,
-      tier: opts.model.tier,
-      softPrefer: opts.model.softPrefer,
-      runwareModel: opts.model.runwareModel,
+      ...opts.model,
     });
     ctx.tracker.addImage(gen.costModel, opts.stage);
-    verdict = await checkPackFidelity({ render: gen.buffer, reference: ctx.refBuffer!, productTruth, tracker: ctx.tracker });
+    verdict = await opts.judge(gen.buffer);
     retried = true;
   }
   return { gen, fidelityQa: { ...verdict, retried } };
+}
+
+async function ensurePackFidelity(
+  ctx: ConceptCtx,
+  opts: {
+    gen: Rendered;
+    prompt: string;
+    aspect: SceneAspect;
+    refs: Array<{ buffer: Buffer; mime: string }>;
+    model: RenderModel;
+    stage: string;
+    /** Scene rules to judge against — ONLY ones the render's prompt stated.
+     * Direct mode renders the user's literal prompt, so it passes null: judging
+     * it on sceneDo/sceneDont it never saw failed renders that re-rendered with
+     * the same prompt and failed identically, paying for every retry. */
+    productTruth: ReturnType<typeof productTruthOf>;
+  },
+): Promise<FidelityResult> {
+  return rerenderUntilFaithful(ctx, {
+    ...opts,
+    label: "pack",
+    judge: (render) =>
+      checkPackFidelity({ render, reference: ctx.refBuffer!, productTruth: opts.productTruth, tracker: ctx.tracker }),
+    correction: (issues) =>
+      `CRITICAL CORRECTION: a previous render altered the product's packaging (${issues}). Reproduce the reference pack EXACTLY — every word of label text spelled identically, same colours, same logo, same layout. Do not restyle or reinterpret the packaging in any way.`,
+  });
 }
 
 /** Verify on-model identity + garment fidelity against the two references;
@@ -588,36 +620,23 @@ async function ensurePackFidelity(
 async function ensureOnModelFidelity(
   ctx: ConceptCtx,
   opts: {
-    gen: Awaited<ReturnType<typeof generateScene>>;
+    gen: Rendered;
     prompt: string;
     aspect: SceneAspect;
     refs: Array<{ buffer: Buffer; mime: string }>;
-    model: { provider?: BakeoffVariant["provider"]; tier?: BakeoffVariant["tier"]; softPrefer?: boolean; runwareModel?: string };
+    model: RenderModel;
   },
-): Promise<{ gen: Awaited<ReturnType<typeof generateScene>>; fidelityQa: NonNullable<PlateResult["fidelityQa"]> }> {
+): Promise<FidelityResult> {
   const [modelRef, garmentRef] = opts.refs;
-  const check = (render: Buffer) =>
-    checkOnModelFidelity({ render, modelRef: modelRef.buffer, garmentRef: garmentRef.buffer, tracker: ctx.tracker });
-  let gen = opts.gen;
-  let verdict = await check(gen.buffer);
-  let retried = false;
-  for (let attempt = 1; attempt <= ctx.qaRetries && !verdict.pass; attempt++) {
-    logger.warn("on-model fidelity failed, re-rendering", { attempt, of: ctx.qaRetries, issues: verdict.issues });
-    const strictPrompt = `${opts.prompt}\n\nCRITICAL CORRECTION: a previous render drifted from the references (${verdict.issues}). The model MUST be the exact person from IMAGE 1 (same face, gender, age, skin tone, build, hair) and the garment MUST be the exact clothing from IMAGE 2 (same colour, print, cut, neckline, sleeves, length) — one single figure in one single photograph.`;
-    gen = await generateScene({
-      prompt: strictPrompt,
-      aspect: opts.aspect,
-      references: opts.refs,
-      provider: opts.model.provider,
-      tier: opts.model.tier,
-      softPrefer: opts.model.softPrefer,
-      runwareModel: opts.model.runwareModel,
-    });
-    ctx.tracker.addImage(gen.costModel, "on-model");
-    verdict = await check(gen.buffer);
-    retried = true;
-  }
-  return { gen, fidelityQa: { ...verdict, retried } };
+  return rerenderUntilFaithful(ctx, {
+    ...opts,
+    stage: "on-model",
+    label: "on-model",
+    judge: (render) =>
+      checkOnModelFidelity({ render, modelRef: modelRef.buffer, garmentRef: garmentRef.buffer, tracker: ctx.tracker }),
+    correction: (issues) =>
+      `CRITICAL CORRECTION: a previous render drifted from the references (${issues}). The model MUST be the exact person from IMAGE 1 (same face, gender, age, skin tone, build, hair) and the garment MUST be the exact clothing from IMAGE 2 (same colour, print, cut, neckline, sleeves, length) — one single figure in one single photograph.`,
+  });
 }
 
 const aspectTag = (a: string) => a.replace(":", "x");
@@ -642,15 +661,9 @@ async function processConcept(ctx: ConceptCtx, concept: CreativeConcept, idx: nu
   const imageModel =
     perAspect.find((r) => r.aspect === ctx.masterAspect)?.costModel ?? perAspect[0]?.costModel ?? null;
 
-  // id and createdAt are set explicitly so the row and its frozen storage
-  // prefix agree — the prefix embeds both the epoch seconds and the short id.
-  const createdAt = new Date();
-  const creativeId = crypto.randomUUID();
   const creative = await prisma.creative.create({
     data: {
-      id: creativeId,
-      createdAt,
-      storagePrefix: newCreativePrefix(ctx, createdAt, creativeId),
+      ...newCreativeIdentity(ctx),
       generationRunId: ctx.runId,
       brandId: ctx.run.brandId,
       conceptIndex: idx,
@@ -719,15 +732,16 @@ async function processDirect(ctx: ConceptCtx): Promise<void> {
       });
       let gen = await generateScene({
         prompt, aspect, references: refs,
-        provider: ctx.forced?.provider, tier: ctx.forced?.tier, softPrefer: ctx.forced?.soft, runwareModel: ctx.forced?.runwareModel,
+        ...forcedModel(ctx),
       });
       ctx.tracker.addImage(gen.costModel, "direct");
       let fidelityQa: PlateResult["fidelityQa"];
       if (refs) {
         ({ gen, fidelityQa } = await ensurePackFidelity(ctx, {
           gen, prompt, aspect, refs,
-          model: { provider: ctx.forced?.provider, tier: ctx.forced?.tier, softPrefer: ctx.forced?.soft, runwareModel: ctx.forced?.runwareModel },
+          model: forcedModel(ctx),
           stage: "direct",
+          productTruth: null,
         }));
       }
       const key = storageKeys.masterPlate(ctx.runId, `0${ctx.variantTag}-${aspectTag(aspect)}`);
@@ -748,13 +762,9 @@ async function processDirect(ctx: ConceptCtx): Promise<void> {
     aspectPlateKeys,
     scenePlateKey: masterKey,
   };
-  const createdAt = new Date();
-  const creativeId = crypto.randomUUID();
   const creative = await prisma.creative.create({
     data: {
-      id: creativeId,
-      createdAt,
-      storagePrefix: newCreativePrefix(ctx, createdAt, creativeId),
+      ...newCreativeIdentity(ctx),
       generationRunId: ctx.runId,
       brandId: ctx.run.brandId,
       conceptIndex: 0,
@@ -778,27 +788,29 @@ async function processDirect(ctx: ConceptCtx): Promise<void> {
 /** How many layout variants to evaluate per aspect (compositing is AI-free). */
 const COMPOSE_VARIANTS = Math.max(1, Number(process.env.COMPOSE_VARIANTS ?? 3));
 
+/**
+ * id, createdAt and frozen R2 prefix for a creative being created now. Set
+ * together, explicitly, because the prefix embeds both the epoch seconds and
+ * the short id — the row and its prefix must agree.
+ */
+function newCreativeIdentity(ctx: ConceptCtx) {
+  const id = crypto.randomUUID();
+  const createdAt = new Date();
+  const storagePrefix = creativeStoragePrefix({
+    workspaceSlug: ctx.run.workspace.slug,
+    userId: ctx.run.createdByUserId,
+    createdAt,
+    creativeId: id,
+  });
+  return { id, createdAt, storagePrefix };
+}
+
 /** Composite overlay (text + logo) for each aspect onto ITS OWN native plate.
  * For each aspect we evaluate several designed templates as variants, score them
  * deterministically, and keep the best — only the winner is rendered/stored. */
-/**
- * Frozen R2 prefix for a creative being created now under this run.
- * `createdByUserId` is null only for rows predating the column that the
- * backfill somehow missed; "system" keeps such objects addressable rather than
- * crashing a render.
- */
-function newCreativePrefix(ctx: ConceptCtx, createdAt: Date, creativeId: string): string {
-  return creativeStoragePrefix({
-    workspaceSlug: ctx.run.workspace.slug,
-    userId: ctx.run.createdByUserId ?? "system",
-    createdAt,
-    creativeId,
-  });
-}
-
 async function composeAllAspects(
   ctx: ConceptCtx,
-  creative: { id: string; storagePrefix: string | null },
+  creative: { id: string; storagePrefix: string },
   platesByAspect: Map<string, Buffer>,
   aspectPlateKeys: Record<string, string>,
   layout: {
@@ -856,7 +868,7 @@ async function composeAllAspects(
           scrims: [], textLayers: [], language: ctx.language,
         };
         const composed = await renderOverlay(spec, { plate }); // no logo, no overlays
-        const key = storageKeys.composedRender({ prefix: renderPrefix(creative), aspect, version: 0 });
+        const key = storageKeys.composedRender({ prefix: creative.storagePrefix, aspect, version: 0 });
         await uploadBuffer(key, composed, "image/png");
         await prisma.creativeRender.create({
           data: { creativeId: creative.id, aspectRatio: aspect, overlaySpec: spec as unknown as Prisma.InputJsonValue, composedImageKey: key, status: "COMPOSED" },
@@ -911,7 +923,7 @@ async function composeAllAspects(
       // Build candidate variants, score each (deterministic), keep the best.
       const templates = hasHeadline
         ? selectTemplates(
-            { aspect, productPlacement: null, signals, busyness: analysis?.busyness, safeBand: analysis?.safeBand, zoneHint, preferPairing: kit.preferPairing },
+            { aspect, signals, busyness: analysis?.busyness, safeBand: analysis?.safeBand, zoneHint, preferPairing: kit.preferPairing },
             COMPOSE_VARIANTS,
           )
         : [{ id: "clean-bottom", archetype: "headline_bottom" as const, typePairingId: "clean-sans", deviceStyle: "minimal" as DeviceStyle }];
@@ -975,7 +987,7 @@ async function composeAllAspects(
         }
       }
 
-      const key = storageKeys.composedRender({ prefix: renderPrefix(creative), aspect, version: 0 });
+      const key = storageKeys.composedRender({ prefix: creative.storagePrefix, aspect, version: 0 });
       await uploadBuffer(key, composed, "image/png");
       await prisma.creativeRender.create({
         data: { creativeId: creative.id, aspectRatio: aspect, overlaySpec: chosen.spec as unknown as Prisma.InputJsonValue, composedImageKey: key, status: "COMPOSED" },
