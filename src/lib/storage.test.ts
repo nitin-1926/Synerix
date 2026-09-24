@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { sanitizeSegment, creativeStoragePrefix, storageKeys, renderPrefix } from "./storage";
+import { sanitizeSegment, creativeStoragePrefix, storageKeys, getSignedUrl, getSignedUrls } from "./storage";
 
 /**
  * The creative storage prefix is the tenant boundary in the object store AND is
@@ -98,19 +98,20 @@ describe("storageKeys.composedRender", () => {
   });
 });
 
-describe("storageKeys.masterPlate", () => {
+describe("storageKeys.editorAspectPlate", () => {
   /**
    * A bake-off run emits one creative per (concept, variant), so several
    * creatives share conceptIndex 0 within one run. Keying an editor-generated
    * plate by (runId, conceptIndex, aspect) alone let the second creative
    * overwrite the first's plate, and the next text edit silently re-composited
-   * one creative onto the other model's scene.
+   * one creative onto the other model's scene. paid-edits.ts calls this helper,
+   * so dropping the creative id from it fails here.
    */
-  it("separates two bake-off creatives that share a conceptIndex", () => {
-    const runId = "run-1";
-    const a = storageKeys.masterPlate(runId, `0-${"48a68a32".slice(0, 8)}-16x9`);
-    const b = storageKeys.masterPlate(runId, `0-${"6c110256".slice(0, 8)}-16x9`);
+  it("separates two bake-off creatives that share a run and conceptIndex", () => {
+    const a = storageKeys.editorAspectPlate({ generationRunId: "run-1", conceptIndex: 0, id: "48a68a32-aaaa" }, "16:9");
+    const b = storageKeys.editorAspectPlate({ generationRunId: "run-1", conceptIndex: 0, id: "6c110256-bbbb" }, "16:9");
     expect(a).not.toBe(b);
+    expect(a).toBe("runs/run-1/plates/0-48a68a32-16x9.png");
   });
 
   it("keeps plates under runs/{runId}/plates/ so no lifecycle rule targets them by accident", () => {
@@ -118,12 +119,27 @@ describe("storageKeys.masterPlate", () => {
   });
 });
 
-describe("renderPrefix", () => {
-  it("uses the frozen prefix when present", () => {
-    expect(renderPrefix({ id: "c1", storagePrefix: "ws/user/1-abcd" })).toBe("ws/user/1-abcd");
+describe("presigned urls", () => {
+  process.env.R2_ACCOUNT_ID ??= "test-account";
+  process.env.R2_ACCESS_KEY_ID ??= "test-key";
+  process.env.R2_SECRET_ACCESS_KEY ??= "test-secret";
+
+  /**
+   * URL stability is what keeps the browser image cache hitting: the same key
+   * must sign to the same URL across calls and across different key sets
+   * (the old array-keyed cache re-signed everything when one key was added).
+   */
+  it("signs the same key to the same url regardless of the surrounding set", async () => {
+    const one = await getSignedUrl("ws/u/1-abcd/4x5-v0.png");
+    const set = await getSignedUrls(["ws/u/1-abcd/4x5-v0.png", "ws/u/2-efgh/4x5-v0.png"]);
+    expect(set["ws/u/1-abcd/4x5-v0.png"]).toBe(one);
   });
 
-  it("falls back to the pre-R2 layout so unbackfilled rows still resolve", () => {
-    expect(renderPrefix({ id: "c1", storagePrefix: null })).toBe("creatives/c1/renders");
+  it("is valid for at least the requested lifetime", async () => {
+    const url = new URL(await getSignedUrl("k.png", 3600));
+    const signedAt = url.searchParams.get("X-Amz-Date")!; // yyyymmddThhmmssZ
+    const iso = `${signedAt.slice(0, 4)}-${signedAt.slice(4, 6)}-${signedAt.slice(6, 8)}T${signedAt.slice(9, 11)}:${signedAt.slice(11, 13)}:${signedAt.slice(13, 15)}Z`;
+    const expiresAt = Date.parse(iso) + Number(url.searchParams.get("X-Amz-Expires")) * 1000;
+    expect(expiresAt).toBeGreaterThanOrEqual(Date.now() + 3600 * 1000 - 1000);
   });
 });

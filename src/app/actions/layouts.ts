@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireWriteAccess } from "@/lib/auth";
-import { downloadFromStorage, renderPrefix, storageKeys, uploadBuffer } from "@/lib/storage";
+import { downloadFromStorage, storageKeys, uploadBuffer } from "@/lib/storage";
 import { renderOverlay } from "@/lib/composition/render";
 import { buildOverlaySpec } from "@/lib/composition/archetypes";
 import { analyzePlate } from "@/lib/composition/analyze";
@@ -118,7 +118,7 @@ export async function listLayoutVariants(creativeId: string): Promise<{
   const logo = inputs.logoAssetRef ? await downloadFromStorage(inputs.logoAssetRef).catch(() => undefined) : undefined;
 
   const chosen = currentTemplate?.theme?.deviceStyle;
-  const candidates = selectTemplates({ aspect, productPlacement: null, signals, busyness: analysis?.busyness, safeBand: analysis?.safeBand, preferPairing: kit.preferPairing }, 4);
+  const candidates = selectTemplates({ aspect, signals, busyness: analysis?.busyness, safeBand: analysis?.safeBand, preferPairing: kit.preferPairing }, 4);
   // Always include the current archetype/pairing too if not present.
   const seen = new Set(candidates.map((c) => c.id));
   for (const t of TEMPLATES) {
@@ -167,7 +167,7 @@ export async function applyLayout(creativeId: string, templateId: string): Promi
       const spec = await specForTemplate(t, render.aspectRatio, plate, inputs, language);
       const composed = await renderOverlay(spec, { plate, logo });
       const key = storageKeys.composedRender({
-        prefix: renderPrefix(creative),
+        prefix: creative.storagePrefix,
         aspect: render.aspectRatio,
         version: nextIndex,
       });

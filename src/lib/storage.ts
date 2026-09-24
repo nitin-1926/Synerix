@@ -1,13 +1,5 @@
-import {
-  S3Client,
-  PutObjectCommand,
-  GetObjectCommand,
-  HeadBucketCommand,
-  CreateBucketCommand,
-  DeleteObjectsCommand,
-} from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectsCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl as presign } from "@aws-sdk/s3-request-presigner";
-import { unstable_cache } from "next/cache";
 import sharp from "sharp";
 
 /**
@@ -43,14 +35,16 @@ function r2(): S3Client {
   return client;
 }
 
-// Signing is local and free, so this cache is no longer about avoiding API
-// calls — it is about URL STABILITY. A freshly signed URL on every render is a
-// new URL, which misses the browser's image cache and re-downloads a multi-MB
-// PNG the user already has. Holding the URL steady for the window keeps those
-// hits. unstable_cache serves stale entries while revalidating, so the
-// signature must outlive the cache window plus browsing time.
-const SIGNED_URL_REVALIDATE_SECONDS = 3300;
-const SIGNED_URL_VALIDITY_MARGIN = SIGNED_URL_REVALIDATE_SECONDS * 2 + 3600;
+// Signing is local and free, so the only thing to engineer is URL STABILITY: a
+// freshly signed URL on every render is a new URL, which misses the browser's
+// image cache and re-downloads a multi-MB PNG the user already has. So the
+// signature is pinned to a fixed time window (signingDate floored to the
+// window) — the same key signs to the same URL for the whole window, on every
+// page, every function instance and whatever other keys are in the request.
+// (An unstable_cache keyed by the key ARRAY did not: adding one creative to a
+// set re-signed, and re-downloaded, every image in it.) Expiry is stretched by
+// one window so a URL is always valid for at least the requested lifetime.
+const SIGNING_WINDOW_SECONDS = 3300;
 
 /**
  * One thumbnail width for every image, not one per requested width.
@@ -64,18 +58,25 @@ const SIGNED_URL_VALIDITY_MARGIN = SIGNED_URL_REVALIDATE_SECONDS * 2 + 3600;
 const THUMB_WIDTH = 600;
 const thumbKey = (key: string) => `${key}.thumb.webp`;
 
+/** Master plates are re-composite inputs, never shown in a grid — no thumb. */
+const isPlateKey = (key: string) => /^runs\/[^/]+\/plates\//.test(key);
+
 export async function uploadBuffer(
   key: string,
   buf: Buffer | Uint8Array,
   contentType: string,
 ): Promise<string> {
   const body = Buffer.isBuffer(buf) ? buf : Buffer.from(buf);
-  await r2().send(
+  const putOriginal = r2().send(
     new PutObjectCommand({ Bucket: BUCKET, Key: key, Body: body, ContentType: contentType }),
   );
+  if (!contentType.startsWith("image/") || isPlateKey(key)) {
+    await putOriginal;
+    return key;
+  }
 
   // Thumbnail generation must never fail an upload: the original is what the
-  // pipeline depends on.
+  // pipeline depends on. It runs alongside the original PUT, not after it.
   //
   // On sharp failure we still WRITE the thumb key, using the original bytes.
   // That looks wasteful but it upholds an invariant the read path depends on:
@@ -86,7 +87,7 @@ export async function uploadBuffer(
   // library grid the thumb is the ONLY url, so there is nothing to fall back to.
   // Storing the original keeps the picture correct at the cost of bytes on a
   // path that should essentially never run.
-  if (contentType.startsWith("image/")) {
+  const putThumb = (async () => {
     let thumb = body;
     let thumbType = contentType;
     try {
@@ -101,15 +102,10 @@ export async function uploadBuffer(
       );
     }
     await r2().send(
-      new PutObjectCommand({
-        Bucket: BUCKET,
-        Key: thumbKey(key),
-        Body: thumb,
-        ContentType: thumbType,
-      }),
+      new PutObjectCommand({ Bucket: BUCKET, Key: thumbKey(key), Body: thumb, ContentType: thumbType }),
     );
-  }
-
+  })();
+  await Promise.all([putOriginal, putThumb]);
   return key;
 }
 
@@ -139,48 +135,26 @@ export async function deleteObjects(keys: string[]): Promise<void> {
 }
 
 export async function getSignedUrl(key: string, expiresInSeconds = 3600): Promise<string> {
+  const windowStart = Math.floor(Date.now() / 1000 / SIGNING_WINDOW_SECONDS) * SIGNING_WINDOW_SECONDS;
   return presign(r2(), new GetObjectCommand({ Bucket: BUCKET, Key: key }), {
-    expiresIn: expiresInSeconds,
+    signingDate: new Date(windowStart * 1000),
+    expiresIn: expiresInSeconds + SIGNING_WINDOW_SECONDS,
   });
 }
-
-const signUrlsCached = unstable_cache(
-  async (keys: string[], expiresInSeconds: number): Promise<Record<string, string>> => {
-    const ttl = expiresInSeconds + SIGNED_URL_VALIDITY_MARGIN;
-    const signed = await Promise.all(
-      keys.map(async (key) => [key, await getSignedUrl(key, ttl)] as const),
-    );
-    return Object.fromEntries(signed);
-  },
-  ["r2-signed-urls"],
-  { revalidate: SIGNED_URL_REVALIDATE_SECONDS },
-);
 
 export async function getSignedUrls(
   keys: string[],
   expiresInSeconds = 3600,
 ): Promise<Record<string, string>> {
-  if (!keys.length) return {};
-  return signUrlsCached(keys, expiresInSeconds);
+  const signed = await Promise.all(keys.map(async (k) => [k, await getSignedUrl(k, expiresInSeconds)] as const));
+  return Object.fromEntries(signed);
 }
-
-const signThumbUrlsCached = unstable_cache(
-  async (keys: string[], expiresInSeconds: number): Promise<Record<string, string>> => {
-    const ttl = expiresInSeconds + SIGNED_URL_VALIDITY_MARGIN;
-    const signed = await Promise.all(
-      keys.map(async (key) => [key, await getSignedUrl(thumbKey(key), ttl)] as const),
-    );
-    return Object.fromEntries(signed);
-  },
-  ["r2-signed-thumb-urls"],
-  { revalidate: SIGNED_URL_REVALIDATE_SECONDS },
-);
 
 /**
  * Signed THUMBNAIL urls, keyed by the ORIGINAL key so callers are unchanged.
- * `width` is advisory — see THUMB_WIDTH. A key whose thumbnail was never
- * generated returns a URL that 404s; every caller already falls back to the
- * full-size url or a placeholder.
+ * `width` is advisory — see THUMB_WIDTH. Always returns a URL per key and a
+ * caller cannot tell whether the thumbnail object exists, which is why
+ * uploadBuffer always writes one (see its comment).
  */
 export async function getSignedThumbUrls(
   keys: string[],
@@ -190,33 +164,16 @@ export async function getSignedThumbUrls(
   _width = THUMB_WIDTH,
   expiresInSeconds = 3600,
 ): Promise<Record<string, string>> {
-  if (!keys.length) return {};
-  return signThumbUrlsCached(keys, expiresInSeconds);
+  const signed = await Promise.all(
+    keys.map(async (k) => [k, await getSignedUrl(thumbKey(k), expiresInSeconds)] as const),
+  );
+  return Object.fromEntries(signed);
 }
 
 export async function downloadFromStorage(key: string): Promise<Buffer> {
   const res = await r2().send(new GetObjectCommand({ Bucket: BUCKET, Key: key }));
   if (!res.Body) throw new Error(`storage download failed (${key}): empty body`);
   return Buffer.from(await res.Body.transformToByteArray());
-}
-
-/** Ensure the private bucket exists (idempotent; call from setup script). */
-export async function ensureMediaBucket(): Promise<void> {
-  try {
-    await r2().send(new HeadBucketCommand({ Bucket: BUCKET }));
-    return;
-  } catch {
-    // Falls through to create — HeadBucket throws on both "missing" and
-    // "no permission to head", and CreateBucket surfaces the real reason.
-  }
-  try {
-    await r2().send(new CreateBucketCommand({ Bucket: BUCKET }));
-  } catch (e) {
-    const msg = (e as Error).message;
-    if (!/BucketAlreadyOwnedByYou|already exists/i.test(msg)) {
-      throw new Error(`createBucket failed: ${msg}`);
-    }
-  }
 }
 
 /** Filesystem-safe segment for a path component. */
@@ -250,19 +207,10 @@ export const creativeStoragePrefix = (p: {
     p.createdAt.getTime() / 1000,
   )}-${p.creativeId.slice(0, 8)}`;
 
-/**
- * Prefix to write a creative's renders under. Falls back to the pre-R2 layout
- * for any row the backfill missed, which keeps old and new creatives readable
- * through one code path instead of branching at every call site.
- */
-export const renderPrefix = (c: { id: string; storagePrefix: string | null }) =>
-  c.storagePrefix ?? `creatives/${c.id}/renders`;
-
 // Storage key conventions
 export const storageKeys = {
   brandAsset: (brandId: string, assetId: string, ext: string) =>
     `brands/${brandId}/assets/${assetId}.${ext}`,
-  brandScreenshot: (brandId: string, name: string) => `brands/${brandId}/screenshots/${name}.png`,
   productImage: (productId: string, imageId: string, ext: string) =>
     `products/${productId}/${imageId}.${ext}`,
   productCutout: (productId: string, imageId: string) =>
@@ -275,6 +223,14 @@ export const storageKeys = {
   // `runs/{id}/iterations/` had no caller and was removed. The 24 leftover
   // objects it produced were never migrated off Supabase.
   masterPlate: (runId: string, conceptId: string) => `runs/${runId}/plates/${conceptId}.png`,
+  /**
+   * Plate written by an editor aspect re-render. Keyed by the creative, not
+   * just (run, conceptIndex): a bake-off run has several creatives sharing
+   * conceptIndex 0, and a shared key let one overwrite the other's plate — the
+   * next text edit then re-composited onto the wrong model's scene, silently.
+   */
+  editorAspectPlate: (c: { generationRunId: string; conceptIndex: number; id: string }, aspect: string) =>
+    `runs/${c.generationRunId}/plates/${c.conceptIndex}-${c.id.slice(0, 8)}-${aspect.replace(":", "x")}.png`,
   /**
    * Finished creative renders live under the creative's frozen prefix.
    *
