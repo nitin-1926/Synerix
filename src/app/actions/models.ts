@@ -6,7 +6,8 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireWriteAccess } from "@/lib/auth";
 import { ensureBrand } from "@/lib/ensure-brand";
-import { deleteObjects, getSignedThumbUrls } from "@/lib/storage";
+import { getSignedThumbUrls } from "@/lib/storage";
+import { deleteUnreferencedObjects } from "@/lib/object-gc";
 import type { generateModel } from "@/trigger/generate-model";
 
 /** List the AI-model library available to this workspace: shared GLOBAL presets
@@ -68,11 +69,8 @@ export async function deleteAiModel(modelId: string) {
     where: { id: modelId, scope: "BRAND", brand: { workspaceId: auth.workspaceId } },
   });
   if (!model) return { error: "Model not found" };
-  const key = model.storageKey;
   await prisma.aiModel.delete({ where: { id: model.id } });
-  await deleteObjects(key ? [key] : []).catch((e) =>
-    console.warn(`[models] object cleanup failed for ${model.id}: ${(e as Error).message}`),
-  );
+  await deleteUnreferencedObjects([model.storageKey], `model ${model.id}`);
   revalidatePath("/models");
   return { ok: true };
 }
