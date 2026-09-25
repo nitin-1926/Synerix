@@ -21,13 +21,6 @@ export interface RenderAssets {
   logo?: Buffer;
 }
 
-function hexToRgb(hex: string): { r: number; g: number; b: number } {
-  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
-  if (!m) return { r: 0, g: 0, b: 0 };
-  const n = parseInt(m[1], 16);
-  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
-}
-
 /** Optional sharp pre-pass: duotone tint or darken, applied to the plate. */
 async function applyPlateTreatment(plate: Buffer, t: OverlaySpec["plateTreatment"]): Promise<Buffer> {
   if (!t || t.kind === "none") return plate;
@@ -35,8 +28,7 @@ async function applyPlateTreatment(plate: Buffer, t: OverlaySpec["plateTreatment
     return sharp(plate).modulate({ brightness: Math.max(0.2, 1 - (t.amount ?? 0.25)) }).toBuffer();
   }
   // duotone: greyscale then tint toward the highlight colour (clean editorial look).
-  const tint = hexToRgb(t.to ?? "#2a3550");
-  return sharp(plate).greyscale().tint(tint).toBuffer();
+  return sharp(plate).greyscale().tint(t.to ?? "#2a3550").toBuffer();
 }
 
 export async function renderOverlay(spec: OverlaySpec, assets: RenderAssets): Promise<Buffer> {

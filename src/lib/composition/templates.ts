@@ -17,10 +17,6 @@ export interface Template {
   deviceStyle: DeviceStyle;
   plateTreatment?: OverlaySpec["plateTreatment"];
   suit: {
-    /** Restrict to these aspects (omit = any). */
-    aspects?: string[];
-    /** Restrict to these product placements (omit = any). */
-    productPlacement?: Array<"product_hero" | "lifestyle">;
     /** Mood keywords matched against occasion/typography signals. */
     moods?: string[];
     /** Skip when the plate busyness exceeds this (e.g. framed looks need calm). */
@@ -47,7 +43,7 @@ export const TEMPLATES: Template[] = [
   { id: "modern-block", label: "Modern grotesque, block", archetype: "headline_bottom", typePairingId: "modern-grotesque", deviceStyle: "block", suit: { moods: ["modern", "bold-minimal"] } },
 
   // ---- Tall / fashion / minimal ----
-  { id: "fashion-top", label: "Tall minimal, top", archetype: "big_type_top", typePairingId: "tall-minimal", deviceStyle: "minimal", suit: { productPlacement: ["lifestyle"], moods: ["fashion", "minimal", "apparel", "chic"] } },
+  { id: "fashion-top", label: "Tall minimal, top", archetype: "big_type_top", typePairingId: "tall-minimal", deviceStyle: "minimal", suit: { moods: ["fashion", "minimal", "apparel", "chic"] } },
   { id: "fashion-framed", label: "Tall minimal, framed", archetype: "framed_card", typePairingId: "tall-minimal", deviceStyle: "frame", suit: { moods: ["fashion", "minimal", "chic"], maxBusyness: 0.5 } },
   { id: "fashion-bottom", label: "Tall minimal, bottom", archetype: "headline_bottom", typePairingId: "tall-minimal", deviceStyle: "side", suit: { moods: ["fashion", "lifestyle", "clean"] } },
 
@@ -58,7 +54,6 @@ export const TEMPLATES: Template[] = [
 
 export interface TemplateConstraints {
   aspect: string;
-  productPlacement?: "product_hero" | "lifestyle" | null;
   /** Occasion + typography signals, lowercased, for mood matching. */
   signals?: string;
   busyness?: number;
@@ -75,8 +70,6 @@ const BAND_ARCHETYPE: Record<string, string> = { top: "big_type_top", bottom: "h
 /** Score a template against the constraints (higher = better fit). */
 function scoreTemplate(t: Template, c: TemplateConstraints): number {
   let score = 1;
-  if (t.suit.aspects && !t.suit.aspects.includes(c.aspect)) return -1;
-  if (t.suit.productPlacement && c.productPlacement && !t.suit.productPlacement.includes(c.productPlacement)) return -1;
   if (typeof t.suit.maxBusyness === "number" && typeof c.busyness === "number" && c.busyness > t.suit.maxBusyness) return -1;
   if (t.suit.moods && c.signals) {
     const hits = t.suit.moods.filter((m) => c.signals!.includes(m)).length;

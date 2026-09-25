@@ -59,5 +59,3 @@ export const DISPLAY = {
   bebas: '"Bebas Neue", Inter, "Noto Sans Devanagari", "Noto Sans Gurmukhi"',
   inter: LATIN_STACK,
 } as const;
-
-export type DisplayFamily = keyof typeof DISPLAY;
