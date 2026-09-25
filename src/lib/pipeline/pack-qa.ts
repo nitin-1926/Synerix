@@ -1,7 +1,6 @@
-import { generateObject } from "ai";
 import { z } from "zod";
-import { MODELS, resolveLanguageModel } from "@/lib/ai/models";
 import type { CostTracker } from "./cost";
+import { runVisionQa, type QaVerdict } from "./vision-qa";
 
 /**
  * Pack-fidelity QA for EXACT_PRODUCT renders that still go through the image
@@ -24,7 +23,7 @@ const verdictSchema = z.object({
     .describe("Is this ONE photograph of one moment? Split screens, side-by-side panels, triptychs, grids, collages, before/after halves or a blank bar down one edge = false."),
   humansPlausible: z
     .boolean()
-    .describe("If any person appears: are they anatomically plausible adults for an ad (correct hands and faces), each a DIFFERENT individual (no duplicated or cloned identical people), and never a child wearing adult clothing? No people in frame = true."),
+    .describe("If any people appear: are they anatomically plausible (correct hands and faces), each a DIFFERENT individual (no duplicated or cloned identical people), and is no child wearing adult-sized clothing? People of any age are fine — children in a family scene pass. No people in frame = true."),
   productTruthful: z
     .boolean()
     .describe("Does the product appear the way it genuinely is when used — correct preparation, doneness, form and scale? Judge against the PRODUCT TRUTH notes when they are supplied; anything listed as MUST NOT SHOW appearing in the frame = false. No notes supplied = true."),
@@ -34,10 +33,7 @@ const verdictSchema = z.object({
   issues: z.string().describe("Short description of any mismatch found, or 'none'"),
 });
 
-export interface PackQaResult {
-  pass: boolean;
-  issues: string;
-}
+export type PackQaResult = QaVerdict;
 
 export async function checkPackFidelity(opts: {
   render: Buffer;
@@ -50,55 +46,48 @@ export async function checkPackFidelity(opts: {
   const truth = opts.productTruth
     ? `\n\nPRODUCT TRUTH for this SKU — judge productTruthful against these:\nSHOULD look like / include: ${opts.productTruth.mustShow.join("; ")}\nMUST NOT appear: ${opts.productTruth.mustNotShow.join("; ")}`
     : "";
-  try {
-    const { object, usage } = await generateObject({
-      model: resolveLanguageModel(MODELS.textQa),
-      schema: verdictSchema,
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "text", text: "REFERENCE — the real product photo:" },
-            { type: "image", image: opts.reference },
-            { type: "text", text: "GENERATED — an AI-rendered ad scene that should contain this exact product:" },
-            { type: "image", image: opts.render },
-            {
-              type: "text",
-              text: `Judge this generated ad frame against the reference product photo.
+  return runVisionQa({
+    stage: "pack-qa",
+    subject: "render",
+    schema: verdictSchema,
+    tracker: opts.tracker,
+    content: [
+      { type: "text", text: "REFERENCE — the real product photo:" },
+      { type: "image", image: opts.reference },
+      { type: "text", text: "GENERATED — an AI-rendered ad scene that should contain this exact product:" },
+      { type: "image", image: opts.render },
+      {
+        type: "text",
+        text: `Judge this generated ad frame against the reference product photo.
 PACK: compare label text word by word, plus colours, logo and pack design. Be strict — a single altered or misspelled word means labelTextCorrect=false. Ignore the pack's angle and perspective. If the pack is rendered too small or distant for its label text to be legible at all, judge only colours, shape, logo and overall design; illegible-at-this-scale text is NOT a text failure.
-SCENE: the product MUST be present — an ad frame without the product is a failure, not a pass. Also judge the frame as a whole: one single photograph (no panels, collages or blank bars), plausible non-duplicated adult humans if any appear, and no invented text or interface anywhere.${truth}`,
-            },
-          ],
-        },
-      ],
-    });
-    opts.tracker?.addLLM(MODELS.textQa, usage, "pack-qa");
-    // packVisible used to make a product-less frame PASS ("!packVisible || ...").
-    // That was written for the retired product_hero composite route, where the
-    // pack was pasted in afterwards. Every concept now stages the real product,
-    // so a missing product is exactly the failure this check exists to catch.
-    const pass =
-      object.packVisible &&
-      object.labelTextCorrect &&
-      object.designFaithful &&
-      object.singleCoherentScene &&
-      object.humansPlausible &&
-      object.productTruthful &&
-      object.noStrayText;
-    const issues = !object.packVisible
-      ? "the product is not in the frame"
-      : !object.singleCoherentScene
-        ? "the render is a split/collage rather than one photograph"
-        : !object.humansPlausible
-          ? "implausible or duplicated people in the frame"
-          : !object.productTruthful
-            ? `the product is shown wrongly: ${object.issues || "see product truth notes"}`
-            : !object.noStrayText
-              ? "the render contains invented text or interface chrome"
-              : object.issues || "pack differs from reference";
-    return { pass, issues: pass ? "none" : issues };
-  } catch (e) {
-    console.warn(`[pack-qa] check errored, accepting render: ${(e as Error).message?.slice(0, 160)}`);
-    return { pass: true, issues: "qa-skipped" };
-  }
+SCENE: the product MUST be present — an ad frame without the product is a failure, not a pass. Also judge the frame as a whole: one single photograph (no panels, collages or blank bars), anatomically plausible people if any appear (correct hands and faces, no cloned or duplicated individuals, no child in adult-sized clothing; people of any age, including children in a family scene, are fine), and no invented text or interface anywhere.${truth}`,
+      },
+    ],
+    judge: (object) => {
+      // packVisible used to make a product-less frame PASS ("!packVisible || ...").
+      // That was written for the retired product_hero composite route, where the
+      // pack was pasted in afterwards. Every concept now stages the real product,
+      // so a missing product is exactly the failure this check exists to catch.
+      const pass =
+        object.packVisible &&
+        object.labelTextCorrect &&
+        object.designFaithful &&
+        object.singleCoherentScene &&
+        object.humansPlausible &&
+        object.productTruthful &&
+        object.noStrayText;
+      const issues = !object.packVisible
+        ? "the product is not in the frame"
+        : !object.singleCoherentScene
+          ? "the render is a split/collage rather than one photograph"
+          : !object.humansPlausible
+            ? "implausible or duplicated people in the frame"
+            : !object.productTruthful
+              ? `the product is shown wrongly: ${object.issues || "see product truth notes"}`
+              : !object.noStrayText
+                ? "the render contains invented text or interface chrome"
+                : object.issues || "pack differs from reference";
+      return { pass, issues: pass ? "none" : issues };
+    },
+  });
 }

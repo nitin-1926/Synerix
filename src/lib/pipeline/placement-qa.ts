@@ -1,7 +1,6 @@
-import { generateObject } from "ai";
 import { z } from "zod";
-import { MODELS, resolveLanguageModel } from "@/lib/ai/models";
 import type { CostTracker } from "./cost";
+import { runVisionQa, type QaVerdict } from "./vision-qa";
 
 /**
  * Overlay-placement QA: a cheap vision check on the FINAL composited creative
@@ -34,42 +33,31 @@ const verdictSchema = z.object({
   issues: z.string().describe("Short description of any problems found, or 'none'"),
 });
 
-export interface PlacementQaResult {
-  pass: boolean;
-  issues: string;
-}
+export type PlacementQaResult = QaVerdict;
 
 export async function checkOverlayPlacement(opts: {
   image: Buffer;
   tracker?: CostTracker;
 }): Promise<PlacementQaResult> {
-  try {
-    const { object, usage } = await generateObject({
-      model: resolveLanguageModel(MODELS.textQa),
-      schema: verdictSchema,
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "image", image: opts.image },
-            {
-              type: "text",
-              text: `This is a finished ad creative: an AI-generated scene with text layers and a logo composited on top. Judge ONLY the PLACEMENT and LEGIBILITY of the overlaid elements — not spelling, style or the scene itself.
+  return runVisionQa({
+    stage: "placement-qa",
+    subject: "composition",
+    schema: verdictSchema,
+    tracker: opts.tracker,
+    content: [
+      { type: "image", image: opts.image },
+      {
+        type: "text",
+        text: `This is a finished ad creative: an AI-generated scene with text layers and a logo composited on top. Judge ONLY the PLACEMENT and LEGIBILITY of the overlaid elements — not spelling, style or the scene itself.
 Inspect EACH overlaid element separately (eyebrow kicker, headline, body copy, CTA button, logo) and give each its own verdict; use null for elements the creative doesn't have.
 For each element: overlapsKeyContent=true if it covers or touches a face, a person, hands, food, the product or its label, or blocks the scene's focal subject. lowContrast=true if it is hard to read or see against what's behind it (similar colour, low contrast, busy texture).
 Be strict — an element that merely brushes a person's arm or sits on similar-coloured clothing fails. Ignore text genuinely printed on the real product's packaging.`,
-            },
-          ],
-        },
-      ],
-    });
-    opts.tracker?.addLLM(MODELS.textQa, usage, "placement-qa");
-    const elements = [object.eyebrow, object.headline, object.body, object.cta, object.logo];
-    const pass = elements.every((e) => !e || (!e.overlapsKeyContent && !e.lowContrast));
-    return { pass, issues: pass ? "none" : object.issues || "placement check failed" };
-  } catch (e) {
-    // QA infrastructure failure must not kill the render — accept the composition.
-    console.warn(`[placement-qa] check errored, accepting composition: ${(e as Error).message?.slice(0, 160)}`);
-    return { pass: true, issues: "qa-skipped" };
-  }
+      },
+    ],
+    judge: (object) => {
+      const elements = [object.eyebrow, object.headline, object.body, object.cta, object.logo];
+      const pass = elements.every((e) => !e || (!e.overlapsKeyContent && !e.lowContrast));
+      return { pass, issues: pass ? "none" : object.issues || "placement check failed" };
+    },
+  });
 }

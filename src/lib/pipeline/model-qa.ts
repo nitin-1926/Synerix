@@ -1,7 +1,6 @@
-import { generateObject } from "ai";
 import { z } from "zod";
-import { MODELS, resolveLanguageModel } from "@/lib/ai/models";
 import type { CostTracker } from "./cost";
+import { runVisionQa, type QaVerdict } from "./vision-qa";
 
 /**
  * On-model fidelity QA: the ON_MODEL fusion's two classic failures are (1) the
@@ -46,10 +45,7 @@ const verdictSchema = z.object({
   issues: z.string().describe("Short description of any mismatch found, or 'none'"),
 });
 
-export interface ModelQaResult {
-  pass: boolean;
-  issues: string;
-}
+export type ModelQaResult = QaVerdict;
 
 export async function checkOnModelFidelity(opts: {
   render: Buffer;
@@ -57,54 +53,47 @@ export async function checkOnModelFidelity(opts: {
   garmentRef: Buffer;
   tracker?: CostTracker;
 }): Promise<ModelQaResult> {
-  try {
-    const { object, usage } = await generateObject({
-      model: resolveLanguageModel(MODELS.textQa),
-      schema: verdictSchema,
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "text", text: "MODEL reference — the human model whose identity must be preserved:" },
-            { type: "image", image: opts.modelRef },
-            { type: "text", text: "GARMENT reference — the real product photo of the clothing:" },
-            { type: "image", image: opts.garmentRef },
-            { type: "text", text: "GENERATED — an AI-rendered photoshoot frame that should show this exact model wearing this exact garment:" },
-            { type: "image", image: opts.render },
-            {
-              type: "text",
-              text: "Judge the generated image against both references. Identity: the same person as the MODEL reference — check gender and age band FIRST and strictly, then face, skin tone and build. Suitability: is this garment cut for this wearer (womenswear on a man, or adult clothing on a child, is a failure)? Garment: same clothing as the GARMENT reference — colour, print, cut, neckline, sleeve length, where the HEM falls on the body, and no invented embellishment? Cleanliness: no baked text, gibberish lettering, watermark, tag or app/phone interface anywhere in the frame. Framing: head (crown included) and feet both fully inside the frame, hem uncut. Composition: exactly one figure, one single photograph. Ignore background, lighting style and pose differences — those are allowed to vary. The garment reference may be shown on a hanger or a mannequin; judge the garment itself, not how it is displayed.",
-            },
-          ],
-        },
-      ],
-    });
-    opts.tracker?.addLLM(MODELS.textQa, usage, "model-qa");
-    // Unlike pack-QA (a lifestyle scene may legitimately not show the pack),
-    // a missing model here is the WORST failure — the human is the promise of
-    // this mode — so it hard-fails and triggers the corrective re-render.
-    const pass =
-      object.modelVisible &&
-      object.identityMatch &&
-      object.garmentSuitsWearer &&
-      object.garmentFaithful &&
-      object.singleFigure &&
-      object.noBakedText &&
-      object.fullyInFrame;
-    // Name the failure precisely — the corrective re-render prompt is only as
-    // useful as the reason it is given, and these four have distinct remedies.
-    const issues = !object.modelVisible
-      ? "no model visible in render"
-      : !object.noBakedText
-        ? "the render contains baked text or app/phone UI"
-        : !object.fullyInFrame
-          ? "the model's head, feet or the garment hem is cut off by the frame edge"
-          : !object.garmentSuitsWearer
-            ? "the garment is worn by the wrong gender or age of model"
-            : object.issues || "render differs from references";
-    return { pass, issues: pass ? "none" : issues };
-  } catch (e) {
-    console.warn(`[model-qa] check errored, accepting render: ${(e as Error).message?.slice(0, 160)}`);
-    return { pass: true, issues: "qa-skipped" };
-  }
+  return runVisionQa({
+    stage: "model-qa",
+    subject: "render",
+    schema: verdictSchema,
+    tracker: opts.tracker,
+    content: [
+      { type: "text", text: "MODEL reference — the human model whose identity must be preserved:" },
+      { type: "image", image: opts.modelRef },
+      { type: "text", text: "GARMENT reference — the real product photo of the clothing:" },
+      { type: "image", image: opts.garmentRef },
+      { type: "text", text: "GENERATED — an AI-rendered photoshoot frame that should show this exact model wearing this exact garment:" },
+      { type: "image", image: opts.render },
+      {
+        type: "text",
+        text: "Judge the generated image against both references. Identity: the same person as the MODEL reference — check gender and age band FIRST and strictly, then face, skin tone and build. Suitability: is this garment cut for this wearer (womenswear on a man, or adult clothing on a child, is a failure)? Garment: same clothing as the GARMENT reference — colour, print, cut, neckline, sleeve length, where the HEM falls on the body, and no invented embellishment? Cleanliness: no baked text, gibberish lettering, watermark, tag or app/phone interface anywhere in the frame. Framing: head (crown included) and feet both fully inside the frame, hem uncut. Composition: exactly one figure, one single photograph. Ignore background, lighting style and pose differences — those are allowed to vary. The garment reference may be shown on a hanger or a mannequin; judge the garment itself, not how it is displayed.",
+      },
+    ],
+    judge: (object) => {
+      // Unlike pack-QA (a lifestyle scene may legitimately not show the pack),
+      // a missing model here is the WORST failure — the human is the promise of
+      // this mode — so it hard-fails and triggers the corrective re-render.
+      const pass =
+        object.modelVisible &&
+        object.identityMatch &&
+        object.garmentSuitsWearer &&
+        object.garmentFaithful &&
+        object.singleFigure &&
+        object.noBakedText &&
+        object.fullyInFrame;
+      // Name the failure precisely — the corrective re-render prompt is only as
+      // useful as the reason it is given, and these four have distinct remedies.
+      const issues = !object.modelVisible
+        ? "no model visible in render"
+        : !object.noBakedText
+          ? "the render contains baked text or app/phone UI"
+          : !object.fullyInFrame
+            ? "the model's head, feet or the garment hem is cut off by the frame edge"
+            : !object.garmentSuitsWearer
+              ? "the garment is worn by the wrong gender or age of model"
+              : object.issues || "render differs from references";
+      return { pass, issues: pass ? "none" : issues };
+    },
+  });
 }
