@@ -92,7 +92,8 @@ export function trimToSentence(text: string, max: number): string {
   if (text.length <= max) return text;
   const cut = text.slice(0, max);
   const stop = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("; "), cut.lastIndexOf(", "));
-  if (stop > max * 0.5) return cut.slice(0, stop + 1).trim();
+  // Cut at a clause boundary; a "," or ";" left dangling reads as truncated.
+  if (stop > max * 0.5) return cut.slice(0, stop + 1).trim().replace(/[,;]$/, ".");
   const space = cut.lastIndexOf(" ");
   return (space > 0 ? cut.slice(0, space) : cut).trim();
 }
