@@ -18,6 +18,7 @@ export function ChatWidget() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const sentAtRef = useRef(0);
 
   // ESC closes the panel.
   useEffect(() => {
@@ -65,6 +66,7 @@ export function ChatWidget() {
 
       const controller = new AbortController();
       abortRef.current = controller;
+      sentAtRef.current = Date.now();
 
       try {
         const res = await fetch("/api/chat", {
@@ -105,7 +107,13 @@ export function ChatWidget() {
           });
         }
       } catch {
-        if (!controller.signal.aborted) {
+        if (controller.signal.aborted) {
+          // Stopped before the first chunk: drop the empty placeholder bubble.
+          setMessages((prev) => {
+            const last = prev[prev.length - 1];
+            return last?.role === "assistant" && !last.content.trim() ? prev.slice(0, -1) : prev;
+          });
+        } else {
           // Keep whatever already streamed — dropping it forces the visitor to
           // retype the question, which on mobile is where streams drop most.
           setMessages((prev) => {
@@ -137,7 +145,7 @@ export function ChatWidget() {
           type="button"
           aria-label="Open the Synerix chat assistant"
           onClick={() => setOpen(true)}
-          className="fixed bottom-5 right-5 z-50 flex size-14 items-center justify-center rounded-full bg-mk-cyan text-mk-ink shadow-lg shadow-mk-ink/30 transition-colors hover:bg-mk-cyan-bright focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-mk-cyan"
+          className="fixed bottom-5 right-5 z-50 flex size-14 items-center justify-center rounded-full bg-mk-cyan text-mk-ink shadow-lg shadow-mk-ink/30 transition hover:bg-mk-cyan-bright active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-mk-cyan"
         >
           <MessageCircle className="size-6" aria-hidden />
         </button>
@@ -160,7 +168,7 @@ export function ChatWidget() {
               type="button"
               aria-label="Close chat"
               onClick={() => setOpen(false)}
-              className="flex size-8 items-center justify-center rounded-full text-mk-mist transition-colors hover:bg-mk-navy hover:text-white"
+              className="flex size-10 items-center justify-center rounded-full text-mk-mist transition-colors hover:bg-mk-navy hover:text-white"
             >
               <X className="size-4" aria-hidden />
             </button>
@@ -202,13 +210,18 @@ export function ChatWidget() {
                 onKeyDown={onKeyDown}
                 placeholder="Ask about Synerix..."
                 aria-label="Message the Synerix assistant"
-                className="max-h-28 min-h-10 flex-1 resize-none rounded-2xl border border-mk-line-dark bg-mk-navy px-3.5 py-2.5 text-sm text-white placeholder:text-mk-mist/50 focus:outline-none focus:ring-1 focus:ring-mk-cyan disabled:opacity-60"
+                className="max-h-28 min-h-10 flex-1 resize-none rounded-2xl border border-mk-line-dark bg-mk-navy px-3.5 py-2.5 text-sm text-white placeholder:text-mk-mist/80 focus:outline-none focus:ring-1 focus:ring-mk-cyan disabled:opacity-60"
               />
               {streaming ? (
                 <button
                   type="button"
                   aria-label="Stop the assistant"
-                  onClick={() => abortRef.current?.abort()}
+                  // Stop renders in Send's exact spot, so the second click of a
+                  // double-click on Send lands here and would abort the question
+                  // it just asked. Ignore clicks right after sending.
+                  onClick={() => {
+                    if (Date.now() - sentAtRef.current > 500) abortRef.current?.abort();
+                  }}
                   className="flex size-10 shrink-0 items-center justify-center rounded-full bg-mk-navy text-mk-mist transition-colors hover:text-white"
                 >
                   <span className="block size-3 rounded-[2px] bg-current" aria-hidden />
@@ -275,9 +288,9 @@ function TypingDots() {
   return (
     <div className="flex justify-start">
       <div className="flex items-center gap-1 rounded-2xl rounded-bl-sm bg-mk-navy px-3.5 py-3">
-        <span className="size-1.5 animate-bounce rounded-full bg-mk-cyan [animation-delay:0ms]" />
-        <span className="size-1.5 animate-bounce rounded-full bg-mk-cyan [animation-delay:150ms]" />
-        <span className="size-1.5 animate-bounce rounded-full bg-mk-cyan [animation-delay:300ms]" />
+        <span className="size-1.5 animate-bounce rounded-full motion-reduce:animate-none bg-mk-cyan [animation-delay:0ms]" />
+        <span className="size-1.5 animate-bounce rounded-full motion-reduce:animate-none bg-mk-cyan [animation-delay:150ms]" />
+        <span className="size-1.5 animate-bounce rounded-full motion-reduce:animate-none bg-mk-cyan [animation-delay:300ms]" />
       </div>
     </div>
   );

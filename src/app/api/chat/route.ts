@@ -69,16 +69,15 @@ export async function POST(req: Request): Promise<Response> {
   // A conversation must start with a user turn and alternate; a client-side
   // window that begins on an assistant turn is rejected by Gemini and used to
   // fail the whole request silently.
-  const messages = parsed.data.messages.slice(
-    parsed.data.messages.findIndex((m) => m.role === "user"),
-  );
-  if (messages.length === 0) return jsonError("Conversation must start with a question", 400);
+  const firstUser = parsed.data.messages.findIndex((m) => m.role === "user");
+  if (firstUser < 0) return jsonError("Conversation must start with a question", 400);
+  const messages = parsed.data.messages.slice(firstUser);
 
   const result = streamText({
     // Pinned, not a floating "-latest" alias: the alias moved onto a thinking
     // model whose reasoning tokens are billed against maxOutputTokens, so the
     // budget was being spent before any visible text was produced.
-    model: google(process.env.CHAT_MODEL ?? "gemini-2.5-flash"),
+    model: google("gemini-2.5-flash"),
     system: SYSTEM_PROMPT,
     messages,
     temperature: 0.4,
@@ -93,6 +92,8 @@ export async function POST(req: Request): Promise<Response> {
   // or an exhausted budget closed the body with HTTP 200 and partial text, and
   // the widget rendered half a sentence with no error and no server trace.
   // Reading fullStream lets a failure reach both the log and the user.
+  const NO_ANSWER =
+    "Sorry, I could not answer that just now. Please try again, or email consulting.synerix@gmail.com.";
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
@@ -111,7 +112,7 @@ export async function POST(req: Request): Promise<Response> {
               encoder.encode(
                 wroteText
                   ? "\n\n(Sorry, that answer was cut short. Please ask again.)"
-                  : "Sorry, I could not answer that just now. Please try again, or email consulting.synerix@gmail.com.",
+                  : NO_ANSWER,
               ),
             );
             break;
@@ -119,9 +120,7 @@ export async function POST(req: Request): Promise<Response> {
         }
         if (!wroteText) {
           controller.enqueue(
-            encoder.encode(
-              "Sorry, I could not answer that just now. Please try again, or email consulting.synerix@gmail.com.",
-            ),
+            encoder.encode(NO_ANSWER),
           );
         }
       } catch (e) {
