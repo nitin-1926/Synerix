@@ -42,8 +42,6 @@ export const IMAGE_PRICING: Record<string, number> = {
   "alibaba:wan@2.7-image": num(process.env.PRICE_WAN_27, 0.03), // Wan 2.7
 };
 
-/** Nano Banana Pro is billed by output resolution: 1K/2K vs 4K. */
-const NANO_BANANA_PRO_4K = num(process.env.PRICE_NANO_BANANA_PRO_4K, 0.24);
 const IMAGE_PRICE_DEFAULT = num(process.env.PRICE_IMAGE_DEFAULT, 0.04);
 
 /** Fallback for an unpriced LLM id — deliberately NOT zero. A missing price
@@ -54,18 +52,10 @@ const LLM_PRICE_FALLBACK: ModelPrice = {
   out: num(process.env.PRICE_LLM_FALLBACK_OUT, 25),
 };
 
-/** Normalize AI SDK usage across versions (inputTokens vs promptTokens). */
+/** Token usage as the AI SDK reports it (fields may be undefined). */
 export interface RawUsage {
   inputTokens?: number;
   outputTokens?: number;
-  promptTokens?: number;
-  completionTokens?: number;
-}
-function normalizeUsage(u: RawUsage | undefined): { input: number; output: number } {
-  return {
-    input: u?.inputTokens ?? u?.promptTokens ?? 0,
-    output: u?.outputTokens ?? u?.completionTokens ?? 0,
-  };
 }
 
 export interface LLMCostEntry {
@@ -95,7 +85,8 @@ export class CostTracker {
   private images: ImageCostEntry[] = [];
 
   addLLM(model: string, usage: RawUsage | undefined, stage: string) {
-    const { input, output } = normalizeUsage(usage);
+    const input = usage?.inputTokens ?? 0;
+    const output = usage?.outputTokens ?? 0;
     // A miss used to price the call at exactly $0 and say nothing — and every
     // model slot is env-overridable, so one MODEL_CONCEPTS change could zero
     // out the most expensive stage in the pipeline without a single warning.
@@ -108,16 +99,12 @@ export class CostTracker {
     this.llm.push({ stage, model, inputTokens: input, outputTokens: output, usd });
   }
 
-  addImage(modelId: string, stage: string, opts?: { fourK?: boolean }) {
+  addImage(modelId: string, stage: string) {
     const base = IMAGE_PRICING[modelId];
     if (base === undefined) {
       console.warn(`[cost] no image price for "${modelId}" (stage ${stage}) — billing at the default rate`);
     }
-    const usd =
-      opts?.fourK && modelId === "gemini-3-pro-image"
-        ? NANO_BANANA_PRO_4K
-        : (base ?? IMAGE_PRICE_DEFAULT);
-    this.images.push({ stage, model: modelId, usd });
+    this.images.push({ stage, model: modelId, usd: base ?? IMAGE_PRICE_DEFAULT });
   }
 
   summary(): CostSummary {

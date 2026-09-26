@@ -82,6 +82,14 @@ function researchBrief(b: ResearchInput): string {
 const WEB_SEARCH_TIMEOUT_MS = Number(process.env.BRAND_INTEL_SEARCH_TIMEOUT_MS ?? 90_000);
 const FALLBACK_NOTES_TIMEOUT_MS = 30_000;
 
+/** Joined text blocks of a Messages API response. */
+function textOf(msg: Anthropic.Message): string {
+  return msg.content
+    .filter((b): b is Extract<typeof b, { type: "text" }> => b.type === "text")
+    .map((b) => b.text)
+    .join("\n");
+}
+
 /**
  * Step 1 — web-grounded research notes via the Anthropic web_search server
  * tool (official SDK; the AI SDK route stays for structured calls). Falls
@@ -104,8 +112,7 @@ Research and write CONCISE evidence notes (markdown, <600 words) covering:
 4. Clichés to avoid.
 Be specific: name brands, quote customer-style language. If the brand is too small/local to find directly, research the CATEGORY in its region instead.`;
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), WEB_SEARCH_TIMEOUT_MS);
+  const signal = AbortSignal.timeout(WEB_SEARCH_TIMEOUT_MS);
   try {
     const stream = client.messages.stream(
       {
@@ -118,7 +125,7 @@ Be specific: name brands, quote customer-style language. If the brand is too sma
         tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 3 }],
         messages: [{ role: "user", content: prompt }],
       },
-      { signal: controller.signal },
+      { signal },
     );
     const final = await stream.finalMessage();
     tracker?.addLLM(
@@ -126,25 +133,19 @@ Be specific: name brands, quote customer-style language. If the brand is too sma
       { inputTokens: final.usage.input_tokens, outputTokens: final.usage.output_tokens },
       "brand-intel-research",
     );
-    const text = final.content
-      .filter((b): b is Extract<typeof b, { type: "text" }> => b.type === "text")
-      .map((b) => b.text)
-      .join("\n");
+    const text = textOf(final);
     const searchUsed = final.content.some((b) => b.type === "server_tool_use");
     if (text.trim()) return { notes: text, searchUsed };
     throw new Error("empty research notes");
   } catch (e) {
-    const reason = controller.signal.aborted
+    const reason = signal.aborted
       ? `timed out after ${WEB_SEARCH_TIMEOUT_MS}ms`
       : (e as Error).message?.slice(0, 200);
     console.warn(`[brand-intel] web search research failed, falling back to world knowledge: ${reason}`);
-  } finally {
-    clearTimeout(timer);
   }
 
   // Fallback: world-knowledge notes (no web grounding, single fast call).
-  const client2 = new Anthropic();
-  const res = await client2.messages.create(
+  const res = await client.messages.create(
     {
       model: MODELS.research,
       max_tokens: 3000,
@@ -162,11 +163,7 @@ Be specific: name brands, quote customer-style language. If the brand is too sma
     { inputTokens: res.usage.input_tokens, outputTokens: res.usage.output_tokens },
     "brand-intel-research",
   );
-  const text = res.content
-    .filter((b): b is Extract<typeof b, { type: "text" }> => b.type === "text")
-    .map((b) => b.text)
-    .join("\n");
-  return { notes: text, searchUsed: false };
+  return { notes: textOf(res), searchUsed: false };
 }
 
 /**

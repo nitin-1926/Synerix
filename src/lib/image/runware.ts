@@ -4,12 +4,12 @@ import { withRetry } from "./retry";
 /**
  * Runware client — multi-model image generation abstraction.
  * Ported from labs-moodboard src/lib/flow/runware.ts; the reference-image
- * shape (`inputs.referenceImages`) is spike-verified (scripts/spikes/FINDINGS.md).
+ * shape (`inputs.referenceImages`) is spike-verified (scripts/spikes/, removed in
+ * c7b7796 — see git history).
  */
 
 const RUNWARE_ENDPOINT = "https://api.runware.ai/v1";
 
-export type QualityTier = "1k" | "2k";
 export type Aspect = "1:1" | "4:5" | "9:16" | "16:9";
 
 export const IMAGE_MODELS: Record<string, string> = {
@@ -24,55 +24,40 @@ export const IMAGE_MODELS: Record<string, string> = {
   wan_2_7: process.env.RUNWARE_MODEL_WAN ?? "alibaba:wan@2.7-image",
 };
 
-const NO_NEGATIVE_PROMPT = new Set([
-  "bytedance:5@0",
-  "bytedance:seedream@5.0-lite",
-  "runware:108@1",
-  "alibaba:wan@2.7-image",
-]);
+type Dims = Record<Aspect, { width: number; height: number }>;
 
-const DIM_TABLE: Record<string, Record<QualityTier, Record<Aspect, { width: number; height: number }>>> = {
+const DIM_TABLE: Record<string, Dims> = {
   "bytedance:5@0": {
-    "1k": {
-      "1:1": { width: 1024, height: 1024 },
-      "4:5": { width: 1024, height: 1280 },
-      "9:16": { width: 1024, height: 1792 },
-      "16:9": { width: 1792, height: 1024 },
-    },
-    "2k": {
-      "1:1": { width: 2048, height: 2048 },
-      "4:5": { width: 1664, height: 2496 },
-      "9:16": { width: 1440, height: 2560 },
-      "16:9": { width: 2560, height: 1440 },
-    },
+    "1:1": { width: 1024, height: 1024 },
+    "4:5": { width: 1024, height: 1280 },
+    "9:16": { width: 1024, height: 1792 },
+    "16:9": { width: 1792, height: 1024 },
   },
   "bytedance:seedream@5.0-lite": {
-    "1k": {
-      "1:1": { width: 2048, height: 2048 },
-      "4:5": { width: 1728, height: 2304 },
-      "9:16": { width: 1600, height: 2848 },
-      "16:9": { width: 2848, height: 1600 },
-    },
-    "2k": {
-      "1:1": { width: 2048, height: 2048 },
-      "4:5": { width: 1728, height: 2304 },
-      "9:16": { width: 1600, height: 2848 },
-      "16:9": { width: 2848, height: 1600 },
-    },
+    "1:1": { width: 2048, height: 2048 },
+    "4:5": { width: 1728, height: 2304 },
+    "9:16": { width: 1600, height: 2848 },
+    "16:9": { width: 2848, height: 1600 },
   },
 };
 
-function modelDimensions(modelId: string, quality: QualityTier, aspect: Aspect) {
-  return DIM_TABLE[modelId]?.[quality]?.[aspect] ?? DIM_TABLE["bytedance:5@0"]["2k"][aspect];
+/** Any model without its own row (Qwen-Image, Wan 2.7, env-overridden ids). */
+const FALLBACK_DIMS: Dims = {
+  "1:1": { width: 2048, height: 2048 },
+  "4:5": { width: 1664, height: 2496 },
+  "9:16": { width: 1440, height: 2560 },
+  "16:9": { width: 2560, height: 1440 },
+};
+
+function modelDimensions(modelId: string, aspect: Aspect) {
+  return DIM_TABLE[modelId]?.[aspect] ?? FALLBACK_DIMS[aspect];
 }
 
 export interface GenerateImageParams {
   prompt: string;
-  negativePrompt?: string;
   /** Key in IMAGE_MODELS or a raw Runware model id. */
   modelKey: string;
   aspect: Aspect;
-  quality?: QualityTier;
   /** Data URIs or https URLs, 128-2048px. */
   referenceImages?: string[];
 }
@@ -100,14 +85,41 @@ export function fitRunwarePrompt(prompt: string, max = RUNWARE_PROMPT_MAX): stri
   return `${prompt.slice(0, head)}\n...\n${prompt.slice(-tail)}`;
 }
 
-export async function generateImage(p: GenerateImageParams): Promise<GenerateImageResult> {
+/** POST one Runware task (with transient retry) and return its result item. */
+async function runwareTask(
+  task: Record<string, unknown> & { taskUUID: string },
+  label: string,
+): Promise<{ imageURL: string; cost?: number }> {
   const apiKey = process.env.RUNWARE_API_KEY;
   if (!apiKey) throw new Error("RUNWARE_API_KEY missing");
+  return withRetry(
+    async () => {
+      const r = await fetch(RUNWARE_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify([task]),
+      });
+      const text = await r.text();
+      if (!r.ok) throw new Error(`runware ${r.status}: ${text.slice(0, 500)}`);
+      const body = JSON.parse(text) as {
+        data?: Array<{ taskUUID: string; imageURL?: string; cost?: number }>;
+        errors?: Array<{ message: string }>;
+      };
+      if (body.errors?.length) throw new Error(`runware error: ${body.errors.map((e) => e.message).join("; ")}`);
+      const item = body.data?.find((d) => d.taskUUID === task.taskUUID) ?? body.data?.[0];
+      if (!item?.imageURL) throw new Error(`${label} response missing imageURL`);
+      return { imageURL: item.imageURL, cost: item.cost };
+    },
+    { label, attempts: 4, baseDelayMs: 1500 },
+  );
+}
+
+export async function generateImage(p: GenerateImageParams): Promise<GenerateImageResult> {
   const modelId = IMAGE_MODELS[p.modelKey] ?? p.modelKey;
   const taskUUID = crypto.randomUUID();
-  const { width, height } = modelDimensions(modelId, p.quality ?? "1k", p.aspect);
+  const { width, height } = modelDimensions(modelId, p.aspect);
 
-  const task: Record<string, unknown> = {
+  const task: Record<string, unknown> & { taskUUID: string } = {
     taskType: "imageInference",
     taskUUID,
     positivePrompt: fitRunwarePrompt(p.prompt),
@@ -118,39 +130,12 @@ export async function generateImage(p: GenerateImageParams): Promise<GenerateIma
     outputType: "URL",
     outputFormat: "PNG",
   };
-  if (p.negativePrompt) {
-    if (NO_NEGATIVE_PROMPT.has(modelId)) {
-      task.positivePrompt = fitRunwarePrompt(`${p.prompt}\n\nAvoid: ${p.negativePrompt}`);
-    } else {
-      task.negativePrompt = p.negativePrompt;
-    }
-  }
   if (p.referenceImages?.length) {
     task.inputs = { referenceImages: p.referenceImages };
   }
 
-  const imageUrl = await withRetry(
-    async () => {
-      const r = await fetch(RUNWARE_ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify([task]),
-      });
-      const text = await r.text();
-      if (!r.ok) throw new Error(`runware ${r.status}: ${text.slice(0, 500)}`);
-      const body = JSON.parse(text) as {
-        data?: Array<{ taskUUID: string; imageURL?: string }>;
-        errors?: Array<{ message: string }>;
-      };
-      if (body.errors?.length) throw new Error(`runware error: ${body.errors.map((e) => e.message).join("; ")}`);
-      const item = body.data?.find((d) => d.taskUUID === taskUUID) ?? body.data?.[0];
-      if (!item?.imageURL) throw new Error("runware response missing imageURL");
-      return item.imageURL;
-    },
-    { label: `runware:${modelId}`, attempts: 4, baseDelayMs: 1500 },
-  );
-
-  return { imageUrl, modelId, taskUUID };
+  const { imageURL } = await runwareTask(task, `runware:${modelId}`);
+  return { imageUrl: imageURL, modelId, taskUUID };
 }
 
 const BG_REMOVAL_MODEL = process.env.RUNWARE_MODEL_BG_REMOVAL ?? "runware:109@1"; // RemBG 1.4
@@ -165,42 +150,19 @@ export interface RemoveBackgroundResult {
 /** Remove the background from an image (transparent PNG result). Input is a
  * data URI or https URL. Callers flatten/compose the alpha as they need. */
 export async function removeBackground(image: string): Promise<RemoveBackgroundResult> {
-  const apiKey = process.env.RUNWARE_API_KEY;
-  if (!apiKey) throw new Error("RUNWARE_API_KEY missing");
-  const taskUUID = crypto.randomUUID();
-
-  const task = {
-    taskType: "removeBackground",
-    taskUUID,
-    model: BG_REMOVAL_MODEL,
-    outputType: "URL",
-    outputFormat: "PNG",
-    includeCost: true,
-    inputs: { image },
-  };
-
-  const result = await withRetry(
-    async () => {
-      const r = await fetch(RUNWARE_ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify([task]),
-      });
-      const text = await r.text();
-      if (!r.ok) throw new Error(`runware ${r.status}: ${text.slice(0, 500)}`);
-      const body = JSON.parse(text) as {
-        data?: Array<{ taskUUID: string; imageURL?: string; cost?: number }>;
-        errors?: Array<{ message: string }>;
-      };
-      if (body.errors?.length) throw new Error(`runware error: ${body.errors.map((e) => e.message).join("; ")}`);
-      const item = body.data?.find((d) => d.taskUUID === taskUUID) ?? body.data?.[0];
-      if (!item?.imageURL) throw new Error("runware removeBackground response missing imageURL");
-      return { imageUrl: item.imageURL, cost: item.cost ?? 0 };
+  const { imageURL, cost } = await runwareTask(
+    {
+      taskType: "removeBackground",
+      taskUUID: crypto.randomUUID(),
+      model: BG_REMOVAL_MODEL,
+      outputType: "URL",
+      outputFormat: "PNG",
+      includeCost: true,
+      inputs: { image },
     },
-    { label: `runware:bg-removal`, attempts: 4, baseDelayMs: 1500 },
+    "runware:bg-removal",
   );
-
-  return { ...result, modelId: BG_REMOVAL_MODEL };
+  return { imageUrl: imageURL, cost: cost ?? 0, modelId: BG_REMOVAL_MODEL };
 }
 
 export async function downloadImage(url: string): Promise<Buffer> {
