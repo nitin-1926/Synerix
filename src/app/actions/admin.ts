@@ -160,7 +160,7 @@ export async function adminToggleTestActive(testId: string, isActive: boolean) {
   revalidatePath("/admin/tests");
 }
 
-// Mirrors the schema used by /api/admin/tests.
+// Validates adminSaveTest input.
 const testInputSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, "Test name is required"),
@@ -213,7 +213,7 @@ export async function adminDeleteTest(testId: string): Promise<{ error?: string 
   const resultCount = await prisma.testResult.count({ where: { testId } });
   if (resultCount > 0) {
     return {
-      error: `This test has ${resultCount} result${resultCount === 1 ? "" : "s"} — deactivate it instead of deleting.`,
+      error: `This test has ${resultCount} result${resultCount === 1 ? "" : "s"}. Deactivate it instead of deleting.`,
     };
   }
 
