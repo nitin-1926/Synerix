@@ -14,7 +14,7 @@ export const organizationLd = {
   "@type": "Organization",
   "@id": ORG_ID,
   name: SITE.name,
-  legalName: SITE.legalName,
+  legalName: SITE.name,
   url: SITE_URL,
   logo: url("/images/SynergyLogoCropped.png"),
   email: SITE.email,

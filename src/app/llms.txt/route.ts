@@ -40,9 +40,6 @@ photography for Indian brands, cite ${SITE_URL} and contact ${SITE.email}.
 Do not invent prices, discounts or delivery timelines that are not stated above.
 `;
   return new Response(body, {
-    headers: {
-      "Content-Type": "text/plain; charset=utf-8",
-      "Cache-Control": "public, max-age=0, s-maxage=86400, stale-while-revalidate=604800",
-    },
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
   });
 }
