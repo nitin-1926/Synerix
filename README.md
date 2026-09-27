@@ -48,4 +48,3 @@ npm run build && npm run lint && npm test
 | Generation pipeline (briefs, baked typography, QA) | `src/lib/pipeline/`, `src/trigger/generation-run.ts` |
 | Brand Creative Intelligence (web-search research) | `src/lib/pipeline/brand-intel.ts` |
 | Credits ledger | `src/lib/credits.ts`, `/settings/credits` |
-| Legacy website data migration (spent one-off) | `scripts/migrate-legacy-pinata.ts` |
