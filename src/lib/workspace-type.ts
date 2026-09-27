@@ -12,17 +12,17 @@ export const WORKSPACE_TYPES: readonly { id: WorkspaceTypeId; label: string; hin
   {
     id: "FMCG_PRODUCT",
     label: "Products & campaigns",
-    hint: "FMCG, packaged goods or any product SKU — festival, theme and custom-brief ad creatives",
+    hint: "FMCG, packaged goods or any product SKU: festival, theme and custom-brief ad creatives",
   },
   {
     id: "APPAREL_ON_MODEL",
     label: "E-commerce apparel",
-    hint: "Clothing on AI models — clean premium catalog shots for product pages & listings",
+    hint: "Clothing on AI models: clean premium catalog shots for product pages & listings",
   },
   {
     id: "FASHION_EDITORIAL",
     label: "Premium fashion",
-    hint: "Designer-grade apparel — styled fashion-campaign photoshoot look",
+    hint: "Designer-grade apparel: a styled fashion-campaign photoshoot look",
   },
 ] as const;
 

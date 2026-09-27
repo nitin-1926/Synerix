@@ -26,13 +26,13 @@ export async function GET() {
   ) {
     const healed = await prisma.brand.updateMany({
       where: { id: brand.id, ingestStatus: { in: [...NON_TERMINAL] } },
-      data: { ingestStatus: "FAILED", ingestError: "Analysis timed out — please try again" },
+      data: { ingestStatus: "FAILED", ingestError: "Analysis timed out. Please try again" },
     });
     if (healed.count > 0) {
       return NextResponse.json({
         ...brand,
         ingestStatus: "FAILED",
-        ingestError: "Analysis timed out — please try again",
+        ingestError: "Analysis timed out. Please try again",
       });
     }
   }

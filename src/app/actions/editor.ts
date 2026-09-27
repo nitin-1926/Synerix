@@ -51,7 +51,7 @@ async function startCreativeEdit(
       workspaceId: payload.workspaceId,
       amount: CREDIT_COSTS.regenInstruction,
       reason: "REFUND",
-      note: "Edit could not be queued — refunded",
+      note: "Edit could not be queued. Refunded",
     });
     return { error: `Could not start the edit: ${(e as Error).message?.slice(0, 160)}` };
   }

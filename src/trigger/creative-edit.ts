@@ -73,7 +73,7 @@ export const creativeEdit = task({
       workspaceId: payload.workspaceId,
       amount: CREDIT_COSTS.regenInstruction,
       reason: "REFUND",
-      note: "Creative edit crashed — refunded",
+      note: "Creative edit crashed: refunded",
     });
   },
 });
