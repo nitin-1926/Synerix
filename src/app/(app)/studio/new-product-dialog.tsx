@@ -58,7 +58,7 @@ export function NewProductDialog({
         setError(res.error ?? "Something went wrong");
         return;
       }
-      toast("Product added — analyzing photos in the background");
+      toast("Product added. Analyzing photos in the background");
       onCreated({ ...res.product, imageUrl: preview });
       setPreview(null);
       setOpen(false);
@@ -80,7 +80,7 @@ export function NewProductDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Add product</DialogTitle>
-          <DialogDescription>Name it, pick a category, add one clear photo — you can add more photos later.</DialogDescription>
+          <DialogDescription>Name it, pick a category, add one clear photo. You can add more photos later.</DialogDescription>
         </DialogHeader>
         <form action={submit} className="space-y-4">
           <div className="space-y-2">

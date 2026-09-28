@@ -11,7 +11,7 @@ import type { PipelineState } from "@/lib/pipeline/schemas";
 
 const TERMINAL = ["COMPLETE", "PARTIAL", "FAILED"];
 
-export const metadata = { title: "Studio — Synerix" };
+export const metadata = { title: "Studio | Synerix" };
 
 export default async function RunPage({
   params,
