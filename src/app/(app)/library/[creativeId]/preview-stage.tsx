@@ -24,6 +24,11 @@ const ASPECT_LABEL: Record<string, string> = {
   "16:9": "Wide",
 };
 
+/** "1 credit" / "2 credits" / "0.25 credits": the one credit unit label across the editor. */
+export function creditsLabel(amount: string): string {
+  return `${amount} ${amount === "1" ? "credit" : "credits"}`;
+}
+
 /** Clamp a draft so the whole logo box stays inside the canvas. */
 export function clampLogoDraft(d: LogoDraft, ratio: number, canvas: { width: number; height: number }): LogoDraft {
   const fw = Math.min(0.5, Math.max(0.05, d.fw));
@@ -131,7 +136,9 @@ export function PreviewStage(props: {
       : undefined;
 
   return (
-    <div className="min-w-0">
+    // Sticky on desktop: the edit rail beside it is several screens tall, and
+    // every edit there changes this preview — it must stay in view.
+    <div className="min-w-0 lg:sticky lg:top-8 lg:self-start">
       {/* Aspect tabs + download */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex items-center gap-1 rounded-full border border-border bg-muted/50 p-1">
@@ -140,8 +147,9 @@ export function PreviewStage(props: {
               key={r.aspectRatio}
               type="button"
               onClick={() => props.onAspectChange(r.aspectRatio)}
+              aria-pressed={r.aspectRatio === props.aspect}
               className={cn(
-                "rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                "cursor-pointer rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
                 r.aspectRatio === props.aspect
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground",
@@ -160,12 +168,18 @@ export function PreviewStage(props: {
             disabled={props.addAspectPending || props.busy}
             onClick={() => props.onAddAspect(a)}
             className="rounded-full border-dashed text-muted-foreground"
-            title={`Render a native ${a} — ${props.aspectCostLabel} credits`}
+            title={`Render a native ${a}: ${creditsLabel(props.aspectCostLabel)}`}
           >
             {props.addAspectPending ? <Loader2 className="animate-spin" data-icon="inline-start" /> : <Plus data-icon="inline-start" />}
-            {a} <span className="text-[10px] font-semibold uppercase tracking-wide opacity-70">{props.aspectCostLabel} cr</span>
+            {a}
           </Button>
         ))}
+        {/* Cost stated once for the group instead of a shouty "2 CR" on every chip. */}
+        {props.missingAspects.length > 0 && (
+          <span className="text-xs tabular-nums text-muted-foreground">
+            {creditsLabel(props.aspectCostLabel)} per format
+          </span>
+        )}
         <span className="flex-1" />
         {active?.url && props.approved ? (
           <Button
@@ -194,8 +208,9 @@ export function PreviewStage(props: {
             key={p.id}
             type="button"
             onClick={() => setPlatform(p.id)}
+            aria-pressed={platform === p.id}
             className={cn(
-              "rounded-full px-3 py-1 text-xs font-medium transition-colors",
+              "cursor-pointer rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
               platform === p.id ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
             )}
           >
@@ -208,21 +223,12 @@ export function PreviewStage(props: {
       <div
         ref={containerRef}
         className={cn(
-          "relative mt-3 flex h-[52vh] items-center justify-center overflow-hidden rounded-2xl border border-border lg:h-[68vh]",
-          platform === "story" || platform === "whatsapp" ? "bg-neutral-900" : "bg-background",
+          "relative mt-3 flex h-[52vh] items-center justify-center overflow-hidden rounded-2xl lg:h-[68vh]",
+          // Neutral gallery surface. Composed renders are flat, opaque PNGs, so a
+          // transparency checkerboard communicated nothing and read as an editor bug.
+          platform === "story" || platform === "whatsapp" ? "bg-neutral-900" : "bg-muted/60",
         )}
       >
-        {/* Subtle checkerboard backdrop (theme tokens only). */}
-        {platform === "none" && (
-          <div
-            aria-hidden
-            className="absolute inset-0 opacity-50"
-            style={{
-              backgroundImage: "repeating-conic-gradient(var(--muted) 0% 25%, transparent 0% 50%)",
-              backgroundSize: "28px 28px",
-            }}
-          />
-        )}
         {active?.url && !stage && (
           <Loader2 className="relative size-5 animate-spin text-muted-foreground" />
         )}
@@ -235,7 +241,7 @@ export function PreviewStage(props: {
               src={active.url}
               alt={`Creative preview ${props.aspect}`}
               className={cn(
-                "absolute inset-0 h-full w-full rounded-lg object-contain shadow-lg transition-opacity",
+                "absolute inset-0 h-full w-full rounded-lg object-contain shadow-lg ring-1 ring-black/5 transition-opacity motion-reduce:transition-none",
                 props.busy && "opacity-50",
               )}
               draggable={false}
@@ -244,7 +250,7 @@ export function PreviewStage(props: {
               <div
                 tabIndex={0}
                 role="application"
-                aria-label="Logo position — drag to move, arrow keys to nudge"
+                aria-label="Logo position: drag to move, arrow keys to nudge"
                 onPointerDown={(e) => beginDrag(e, "move")}
                 onPointerMove={onDragMove}
                 onPointerUp={endDrag}
@@ -316,7 +322,7 @@ function PlatformMockup({ platform, url, brandName }: { platform: Platform; url:
         <div className="px-3 pb-3 pt-1.5 text-sm">
           <p className="font-semibold">2,438 likes</p>
           <p className="mt-0.5 line-clamp-2 text-foreground/90">
-            <span className="font-semibold">{handle}</span> Festive offer is live. Tap the link in bio to order. ✨
+            <span className="font-semibold">{handle}</span> Festive offer is live. Tap the link in bio to order.
           </p>
         </div>
       </div>

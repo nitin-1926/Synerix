@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { getSignedThumbUrls } from "@/lib/storage";
 import { LibraryClient } from "./library-client";
 
-export const metadata = { title: "Creatives — Synerix Studio" };
+export const metadata = { title: "Creatives | Synerix Studio" };
 
 const CREATIVES_PAGE_SIZE = 60;
 const RUNS_PAGE_SIZE = 20;
@@ -119,7 +119,8 @@ export default async function LibraryPage({
       <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Creatives</p>
       <h1 className="mt-1 text-3xl font-semibold tracking-tight md:text-4xl">Your creatives</h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        {creativeTotal} ready to download or edit
+        <span className="tabular-nums">{creativeTotal.toLocaleString("en-IN")}</span>{" "}
+        {creativeTotal === 1 ? "creative" : "creatives"} to edit, approve and download
       </p>
 
       <LibraryClient
