@@ -37,7 +37,7 @@ export function ModelsClient() {
       } else {
         formRef.current?.reset();
         setOpen(false);
-        toast.success("Model generation started — it'll appear when ready.");
+        toast.success("Model generation started. It'll appear when ready.");
         router.refresh();
       }
     });
@@ -52,7 +52,7 @@ export function ModelsClient() {
   }
 
   return (
-    <Card>
+    <Card className="w-full">
       <CardContent>
         <form ref={formRef} action={submit} className="space-y-4">
           <div className="flex items-center justify-between">
@@ -69,14 +69,14 @@ export function ModelsClient() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="name">Model name *</Label>
-            <Input id="name" name="name" placeholder="Studio — South Asian, 20s" maxLength={80} required />
+            <Input id="name" name="name" placeholder="Studio: South Asian, 20s" maxLength={80} required />
           </div>
           <div className="space-y-2">
             <Label htmlFor="description">Description *</Label>
             <Textarea
               id="description"
               name="description"
-              placeholder="Describe the model — e.g. age range, build, hair, skin tone, expression and the look you want for your apparel shoots."
+              placeholder="Describe the model, e.g. age range, build, hair, skin tone, expression and the look you want for your apparel shoots."
               minLength={4}
               maxLength={400}
               rows={4}
@@ -121,7 +121,7 @@ export function DeleteModelButton({ modelId, name }: { modelId: string; name: st
             size="icon-sm"
             disabled={pending}
             aria-label="Delete model"
-            className="-mr-1 -mt-1 shrink-0 text-muted-foreground hover:text-destructive"
+            className="-mr-1.5 -mt-1.5 size-9 shrink-0 text-muted-foreground hover:text-destructive sm:size-7"
           >
             <Trash2 />
           </Button>

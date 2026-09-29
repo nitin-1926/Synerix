@@ -39,9 +39,10 @@ export function ApparelDefaultControl({ value }: { value: Mode }) {
           key={o.id}
           type="button"
           disabled={pending}
+          aria-pressed={mode === o.id}
           onClick={() => choose(o.id)}
           className={cn(
-            "rounded-2xl border p-4 text-left transition-all disabled:opacity-70",
+            "cursor-pointer rounded-2xl border p-4 text-left outline-none transition-all duration-200 focus-visible:ring-3 focus-visible:ring-ring/50 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70 motion-reduce:transform-none",
             mode === o.id ? "border-primary bg-primary/5 ring-2 ring-primary/25" : "border-border bg-card hover:border-foreground/20",
           )}
         >

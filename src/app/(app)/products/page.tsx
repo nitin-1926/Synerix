@@ -5,21 +5,15 @@ import { ensureBrand } from "@/lib/ensure-brand";
 import { getSignedThumbUrls } from "@/lib/storage";
 import { getWorkspaceProfile } from "@/lib/workspace-profile-server";
 import { showsModelSurface } from "@/lib/workspace-profile";
+import { Package } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { BrandKitTabs } from "@/components/brand-kit-tabs";
 import { ProductForm } from "./product-form";
 import { BulkUpload } from "./bulk-upload";
+import { dissectionBadge } from "./dissection-status";
 
-export const metadata = { title: "Products — Synerix Studio" };
-
-const DISSECTION_LABEL: Record<string, { label: string; tone: "ok" | "busy" | "bad" }> = {
-  READY: { label: "Ready for creatives", tone: "ok" },
-  RUNNING: { label: "Analyzing photo…", tone: "busy" },
-  PENDING: { label: "Queued for analysis", tone: "busy" },
-  FAILED: { label: "Analysis failed", tone: "bad" },
-};
+export const metadata = { title: "Products | Synerix Studio" };
 
 export default async function ProductsPage({
   searchParams,
@@ -59,7 +53,7 @@ export default async function ProductsPage({
       <AutoRefresh active={analyzing} intervalMs={15_000} />
       {onboarding && (
         <div className="mb-6 rounded-xl bg-primary/10 px-4 py-3 text-sm text-foreground ring-1 ring-primary/20">
-          <span className="font-semibold text-primary">Step 2 of 2:</span> add your first product — a
+          <span className="font-semibold text-primary">Step 2 of 2:</span> add your first product: a
           couple of clear phone photos work great. Then you&apos;re ready to create.
         </div>
       )}
@@ -80,50 +74,65 @@ export default async function ProductsPage({
         <BrandKitTabs showModels={showsModelSurface(profile)} />
       </div>
 
-      <div className="mt-6 flex flex-wrap items-center gap-3">
-        <ProductForm />
-        <BulkUpload />
-      </div>
-
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {products.map((p) => {
-          const img = p.images[0];
-          const status = DISSECTION_LABEL[p.dissectionStatus] ?? DISSECTION_LABEL.PENDING;
-          return (
-            <Link key={p.id} href={`/products/${p.id}`} className="group block">
-              <Card className="h-full gap-0 py-0 transition-all group-hover:-translate-y-0.5 group-hover:shadow-md">
-                {/* relative + absolute img: aspect-ratio alone is only a
-                    PREFERRED size — a tall photo forces the box to grow and
-                    stretches the whole grid row (the whitespace bug). */}
-                <div className="relative aspect-square overflow-hidden bg-secondary">
-                  {img && urls[img.storageKey] && (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img
-                      src={urls[img.storageKey]}
-                      alt={p.name}
-                      className="absolute inset-0 size-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-                    />
-                  )}
-                </div>
-                <CardContent className="space-y-2 py-4">
-                  <p className="truncate font-medium text-foreground">{p.name}</p>
-                  <Badge
-                    variant={status.tone === "ok" ? "secondary" : status.tone === "bad" ? "destructive" : "outline"}
-                    className={status.tone === "busy" ? "animate-pulse" : ""}
-                  >
-                    {status.label}
-                  </Badge>
-                </CardContent>
-              </Card>
-            </Link>
-          );
-        })}
-        {products.length === 0 && (
-          <p className="col-span-full py-8 text-center text-sm text-muted-foreground">
-            No products yet — add your first one above.
+      {products.length === 0 ? (
+        <div className="mt-8 flex flex-col items-center rounded-2xl border-2 border-dashed border-border px-6 py-14 text-center">
+          <span className="flex size-12 items-center justify-center rounded-full bg-secondary text-muted-foreground">
+            <Package className="size-5" />
+          </span>
+          <h2 className="mt-4 text-base font-semibold text-foreground">No products yet</h2>
+          <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+            Add a product with a couple of clear phone photos, or bulk upload several at once.
           </p>
-        )}
-      </div>
+          <div className="mt-6 flex w-full flex-wrap justify-center gap-3 text-left">
+            <ProductForm />
+            <BulkUpload />
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            <ProductForm />
+            <BulkUpload />
+          </div>
+
+          <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4">
+            {products.map((p) => {
+              const img = p.images[0];
+              const status = dissectionBadge(p.dissectionStatus);
+              return (
+                <Link
+                  key={p.id}
+                  href={`/products/${p.id}`}
+                  className="group block rounded-2xl outline-none transition-transform duration-200 focus-visible:ring-3 focus-visible:ring-ring/50 active:scale-[0.98] motion-reduce:transition-none"
+                >
+                  {/* relative + absolute img: aspect-ratio alone is only a
+                      PREFERRED size — a tall photo forces the box to grow and
+                      stretches the whole grid row (the whitespace bug). */}
+                  <div className="relative aspect-square overflow-hidden rounded-2xl bg-secondary ring-1 ring-foreground/10 transition-shadow duration-200 group-hover:shadow-md">
+                    {img && urls[img.storageKey] && (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={urls[img.storageKey]}
+                        alt={p.name}
+                        loading="lazy"
+                        className="absolute inset-0 size-full object-cover transition-transform duration-300 group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+                      />
+                    )}
+                  </div>
+                  <div className="space-y-1.5 px-0.5 pt-2.5">
+                    <p title={p.name} className="truncate text-sm font-medium text-foreground">
+                      {p.name}
+                    </p>
+                    <Badge variant={status.variant} className={status.className}>
+                      {status.label}
+                    </Badge>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </>
+      )}
     </div>
   );
 }

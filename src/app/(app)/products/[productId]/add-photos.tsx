@@ -61,7 +61,7 @@ export function AddPhotos({ productId, imageCount }: { productId: string; imageC
         onClick={() => fileRef.current?.click()}
         disabled={pending || full}
         title={full ? `Maximum ${MAX_IMAGES} photos per product` : undefined}
-        className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-border text-xs text-muted-foreground transition-colors hover:border-primary hover:text-primary disabled:cursor-default disabled:opacity-60 disabled:hover:border-border disabled:hover:text-muted-foreground"
+        className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-border text-xs text-muted-foreground outline-none transition-colors hover:border-primary hover:text-primary focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-border disabled:hover:text-muted-foreground"
       >
         {pending ? <Loader2 className="size-5 animate-spin" /> : <ImagePlus className="size-5" />}
         {pending ? "Uploading…" : full ? `Max ${MAX_IMAGES} photos` : "Add photos"}
