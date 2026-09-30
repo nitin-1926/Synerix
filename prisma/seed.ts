@@ -1,9 +1,7 @@
-import { config } from "dotenv";
-// Next.js precedence: .env.local overrides .env (dotenv: first set wins).
-config({ path: ".env.local" });
-config({ path: ".env" });
+import { existsSync, readFileSync } from "node:fs";
+// Next.js precedence: .env.local overrides .env (loadEnvFile: first set wins).
+for (const file of [".env.local", ".env"]) if (existsSync(file)) process.loadEnvFile(file);
 
-import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient, type FestivalCategory } from "../src/generated/prisma/client";
