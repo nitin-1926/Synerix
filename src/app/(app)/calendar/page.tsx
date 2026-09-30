@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { CustomEventForm } from "./custom-event-form";
 import { FestivalList, type FestivalListItem } from "./festival-list";
 
-export const metadata = { title: "Calendar — Synerix Studio" };
+export const metadata = { title: "Calendar | Synerix Studio" };
 
 export default async function CalendarPage() {
   const auth = await requireAuth();
@@ -50,7 +50,7 @@ export default async function CalendarPage() {
             Festivals &amp; occasions
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Every occasion for your market — tap Create on any to start.
+            Every occasion for your market. Tap Create on any to start.
           </p>
         </div>
         <CustomEventForm />

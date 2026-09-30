@@ -35,7 +35,7 @@ export function CustomEventForm() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button size="sm" />}>
+      <DialogTrigger render={<Button className="h-10 sm:h-8" />}>
         <Plus data-icon="inline-start" /> Add occasion
       </DialogTrigger>
       <DialogContent>
