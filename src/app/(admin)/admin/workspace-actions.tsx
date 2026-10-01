@@ -16,18 +16,23 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { fmtCredits } from "./admin-ui";
 
 export function EnterWorkspaceButton({ workspaceId }: { workspaceId: string }) {
   const [pending, startTransition] = useTransition();
   return (
+    // data-enter + ::after overlay make the whole parent card (position:
+    // relative) the click target; see the workspace cards in page.tsx.
     <Button
       size="sm"
-      className="flex-1"
+      variant="ghost"
+      data-enter=""
+      className="text-primary after:absolute after:inset-0 hover:text-primary"
       disabled={pending}
       onClick={() => startTransition(() => enterCustomerWorkspace(workspaceId))}
     >
       {pending ? "Entering…" : "Enter as customer"}
-      <ArrowRight className="ml-1.5 size-4" />
+      <ArrowRight className="ml-0.5 size-4 transition-transform duration-150 group-hover/card:translate-x-0.5 motion-reduce:transition-none" />
     </Button>
   );
 }
@@ -52,7 +57,7 @@ export function RenameWorkspaceDialog(props: { workspaceId: string; workspaceNam
 
   return (
     <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (o) setName(props.workspaceName); }}>
-      <DialogTrigger render={<Button size="icon-sm" variant="ghost" />} aria-label={`Rename ${props.workspaceName}`}>
+      <DialogTrigger render={<Button size="icon-sm" variant="ghost" className="relative z-10" />} aria-label={`Rename ${props.workspaceName}`}>
         <Pencil className="size-4" />
       </DialogTrigger>
       <DialogContent>
@@ -103,7 +108,7 @@ export function GrantCreditsDialog(props: {
       try {
         await adminGrantCredits(props.workspaceId, value, note.trim());
         toast.success(
-          value > 0 ? `Granted ${value} credits` : `Adjusted ${value} credits`,
+          `${value > 0 ? "Granted" : "Adjusted"} ${value} credit${Math.abs(value) === 1 ? "" : "s"}`,
         );
         setOpen(false);
         setAmount("");
@@ -116,7 +121,7 @@ export function GrantCreditsDialog(props: {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button size="sm" variant="outline" />}>
+      <DialogTrigger render={<Button size="sm" variant="outline" className="relative z-10" />}>
         <Coins className="mr-1.5 size-4" />
         Credits
       </DialogTrigger>
@@ -124,7 +129,8 @@ export function GrantCreditsDialog(props: {
         <DialogHeader>
           <DialogTitle>Adjust credits</DialogTitle>
           <DialogDescription>
-            {props.workspaceName} — current balance {props.balance}
+            {props.workspaceName}: current balance{" "}
+            <span className="tabular-nums">{fmtCredits(props.balance)}</span>
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4">

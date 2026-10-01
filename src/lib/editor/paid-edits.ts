@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { CREDIT_COSTS } from "@/lib/ai/models";
 import { grantCredits } from "@/lib/credits";
-import { downloadFromStorage, renderPrefix, storageKeys, uploadBuffer } from "@/lib/storage";
+import { downloadFromStorage, storageKeys, uploadBuffer } from "@/lib/storage";
 import { renderOverlay } from "@/lib/composition/render";
 import { buildOverlaySpec } from "@/lib/composition/archetypes";
 import { analyzePlate } from "@/lib/composition/analyze";
@@ -103,7 +103,7 @@ export async function recompositeAll(
       opts.mutateSpec?.(spec);
       const composed = await renderOverlay(spec, { plate: await plateFor(render.aspectRatio), logo });
       const key = storageKeys.composedRender({
-        prefix: renderPrefix(creative),
+        prefix: creative.storagePrefix,
         aspect: render.aspectRatio,
         version: nextIndex,
       });
@@ -212,20 +212,9 @@ export async function applyRenderAspect(
     }
 
     // Persist the native plate as THIS aspect's own plate key so later text /
-    // language edits re-composite from it (not from a cropped master).
-    //
-    // The creative id is in the key because (runId, conceptIndex, aspect) is
-    // NOT unique on a bake-off run: that queue emits one creative per
-    // (concept, variant), so several creatives share conceptIndex 0. Without
-    // this, adding 16:9 to the nb-pro creative and then to the gpt-image-2 one
-    // wrote the same key — the second overwrote the first, and the next text
-    // edit silently re-composited one creative onto the other model's scene
-    // with no error anywhere. Generation avoids this with ctx.variantTag; this
-    // path had no equivalent.
-    const plateKey = storageKeys.masterPlate(
-      creative.generationRunId,
-      `${creative.conceptIndex}-${creative.id.slice(0, 8)}-${aspect.replace(":", "x")}`,
-    );
+    // language edits re-composite from it (not from a cropped master). Keyed
+    // per creative — see storageKeys.editorAspectPlate for the bake-off bug.
+    const plateKey = storageKeys.editorAspectPlate(creative, aspect);
     await uploadBuffer(plateKey, plate, "image/png");
 
     const showContact = Boolean(refSpec?.textLayers.some((l) => l.role === "contact"));
@@ -261,7 +250,7 @@ export async function applyRenderAspect(
     const logo = logoAsset ? await downloadFromStorage(logoAsset.storageKey) : undefined;
     const composed = await renderOverlay(spec, { plate, logo });
     const key = storageKeys.composedRender({
-      prefix: renderPrefix(creative),
+      prefix: creative.storagePrefix,
       aspect,
       version: creative.versions[0]?.index ?? 0,
     });
@@ -287,7 +276,7 @@ export async function applyRenderAspect(
     await persistCost({ summary: tracker.summary(), source: "editor", workspaceId, runId: creative.generationRunId });
     return { ok: true };
   } catch (e) {
-    await refund("New format render failed — refunded");
+    await refund("New format render failed: refunded");
     return { error: `Render failed: ${(e as Error).message?.slice(0, 200)}` };
   }
 }
@@ -336,7 +325,7 @@ export async function applyBakedTextSwap(
           workspaceId,
           amount: CREDIT_COSTS.regenInstruction,
           reason: "REFUND",
-          note: "Baked text edit failed QA — refunded",
+          note: "Baked text edit failed QA: refunded",
         });
         return { error: `The new text didn't render cleanly (${typed.issues}). Try again.` };
       }
@@ -373,7 +362,7 @@ export async function applyBakedTextSwap(
           workspaceId,
           amount: CREDIT_COSTS.regenInstruction,
           reason: "REFUND",
-          note: "Baked text edit failed QA — refunded",
+          note: "Baked text edit failed QA: refunded",
         });
         return { error: `The new text didn't render cleanly (${qa.issues}). Try again.` };
       }
@@ -414,7 +403,7 @@ export async function applyBakedTextSwap(
       workspaceId,
       amount: CREDIT_COSTS.regenInstruction,
       reason: "REFUND",
-      note: "Baked text edit errored — refunded",
+      note: "Baked text edit errored: refunded",
     });
     return { error: `Edit failed: ${(e as Error).message?.slice(0, 200)}` };
   } finally {
@@ -473,7 +462,7 @@ export async function applyRegenInstruction(
           workspaceId,
           amount: CREDIT_COSTS.regenInstruction,
           reason: "REFUND",
-          note: "Regenerate failed typography QA — refunded",
+          note: "Regenerate failed typography QA: refunded",
         });
         return { error: `The regenerated scene's text didn't render cleanly (${typed.issues}). Try again.` };
       }
@@ -517,7 +506,7 @@ export async function applyRegenInstruction(
       workspaceId,
       amount: CREDIT_COSTS.regenInstruction,
       reason: "REFUND",
-      note: "Regenerate errored — refunded",
+      note: "Regenerate errored: refunded",
     });
     return { error: `Regenerate failed: ${(e as Error).message?.slice(0, 200)}` };
   } finally {

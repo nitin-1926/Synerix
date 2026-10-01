@@ -32,9 +32,6 @@ function scoreUrl(rawUrl: string): number {
 export interface CrawledPage {
   url: string;
   markdown?: string;
-  rawHtml?: string;
-  screenshotUrl?: string;
-  metadata?: Record<string, unknown>;
 }
 
 export interface CrawlOutput {
@@ -65,14 +62,10 @@ export async function crawlBrandSite(inputUrl: string): Promise<CrawlOutput> {
     console.warn("[crawl] map failed, scraping input URL only:", (e as Error).message);
   }
 
-  // 2. Batch scrape with markdown + raw HTML + full-page screenshot.
+  // 2. Batch scrape with markdown (DNA extraction) + raw HTML (<img> harvest).
   const job = await fc.batchScrape(topUrls, {
     options: {
-      formats: [
-        "markdown",
-        "rawHtml",
-        { type: "screenshot", fullPage: true, viewport: { width: 1440, height: 900 } },
-      ],
+      formats: ["markdown", "rawHtml"],
       onlyMainContent: false,
       timeout: 60_000,
     },
@@ -86,9 +79,6 @@ export async function crawlBrandSite(inputUrl: string): Promise<CrawlOutput> {
     pages.push({
       url,
       markdown: d.markdown ?? undefined,
-      rawHtml: d.rawHtml ?? undefined,
-      screenshotUrl: d.screenshot ?? undefined,
-      metadata: meta,
     });
     // Harvest <img> sources + og:image (floki 1b).
     if (meta?.ogImage) imageUrls.add(String(meta.ogImage));

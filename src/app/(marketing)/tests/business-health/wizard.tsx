@@ -35,6 +35,7 @@ const INFO_STEPS: {
   question: string;
   placeholder: string;
   inputType: "text" | "tel" | "email" | "textarea";
+  autoComplete: string;
 }[] = [
   {
     key: "name",
@@ -42,6 +43,7 @@ const INFO_STEPS: {
     question: "What's your name?",
     placeholder: "Your full name",
     inputType: "text",
+    autoComplete: "name",
   },
   {
     key: "phoneNumber",
@@ -49,6 +51,7 @@ const INFO_STEPS: {
     question: "What's your phone number?",
     placeholder: "+91 98765 43210",
     inputType: "tel",
+    autoComplete: "tel",
   },
   {
     key: "email",
@@ -56,6 +59,7 @@ const INFO_STEPS: {
     question: "What's your email address?",
     placeholder: "you@yourbusiness.com",
     inputType: "email",
+    autoComplete: "email",
   },
   {
     key: "businessName",
@@ -63,6 +67,7 @@ const INFO_STEPS: {
     question: "What's your business name?",
     placeholder: "Your business name",
     inputType: "text",
+    autoComplete: "organization",
   },
   {
     key: "businessDescription",
@@ -70,6 +75,7 @@ const INFO_STEPS: {
     question: "What does your business do?",
     placeholder: "Products or services you offer, who you sell to…",
     inputType: "textarea",
+    autoComplete: "off",
   },
 ];
 
@@ -332,14 +338,14 @@ export function BusinessHealthWizard({
         <div className="mt-9 flex flex-col gap-3 sm:flex-row">
           <Link
             href="/consulting"
-            className="group inline-flex items-center justify-center gap-2 rounded-full bg-mk-ink px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-mk-navy"
+            className="group inline-flex items-center justify-center gap-2 rounded-full bg-mk-ink px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-mk-navy active:scale-[0.98]"
           >
             Talk to us about consulting
             <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
           </Link>
           <Link
             href="/"
-            className="inline-flex items-center justify-center rounded-full border border-mk-line px-6 py-3.5 text-sm font-medium text-mk-slate transition hover:border-mk-cyan-deep hover:text-mk-ink"
+            className="inline-flex items-center justify-center rounded-full border border-mk-line px-6 py-3.5 text-sm font-medium text-mk-slate transition hover:border-mk-cyan-deep hover:text-mk-ink active:scale-[0.98]"
           >
             Back to home
           </Link>
@@ -377,7 +383,7 @@ export function BusinessHealthWizard({
         </p>
         <Link
           href="/"
-          className="mt-9 inline-flex items-center justify-center gap-2 rounded-full bg-mk-cyan px-6 py-3.5 text-sm font-semibold text-mk-ink transition hover:bg-mk-cyan-bright"
+          className="mt-9 inline-flex items-center justify-center gap-2 rounded-full bg-mk-cyan px-6 py-3.5 text-sm font-semibold text-mk-ink transition hover:bg-mk-cyan-bright active:scale-[0.98]"
         >
           Back to home
           <ArrowRight className="size-4" />
@@ -422,7 +428,7 @@ export function BusinessHealthWizard({
             type="button"
             onClick={handleSubmit}
             disabled={isSubmitting}
-            className="inline-flex items-center gap-2 rounded-full bg-mk-ink px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-mk-navy disabled:cursor-not-allowed disabled:opacity-40"
+            className="inline-flex items-center gap-2 rounded-full bg-mk-ink px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-mk-navy disabled:cursor-not-allowed disabled:opacity-40 active:scale-[0.98]"
           >
             {isSubmitting ? "Sending your report…" : "Send my report"}
             {!isSubmitting && <ArrowRight className="size-4" />}
@@ -448,10 +454,17 @@ export function BusinessHealthWizard({
           </span>
         )}
       </div>
-      <div className="mt-3 h-1 overflow-hidden rounded-full bg-mk-paper-dim">
+      <div
+        role="progressbar"
+        aria-label="Health Check progress"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(progress)}
+        className="mt-3 h-1 overflow-hidden rounded-full bg-mk-paper-dim"
+      >
         <div
-          className="h-full rounded-full bg-mk-cyan-deep transition-[width] duration-500 ease-out"
-          style={{ width: `${progress}%` }}
+          className="h-full origin-left rounded-full bg-mk-cyan-deep transition-transform duration-500 ease-out"
+          style={{ transform: `scaleX(${progress / 100})` }}
         />
       </div>
 
@@ -461,7 +474,7 @@ export function BusinessHealthWizard({
           <p className="mk-mono text-[11px] text-mk-cyan-deep">
             {infoStep.eyebrow}
           </p>
-          <h2 className="mk-display mt-3 text-2xl font-medium leading-snug text-mk-ink">
+          <h2 id="wizard-step-label" className="mk-display mt-3 text-2xl font-medium leading-snug text-mk-ink">
             {infoStep.question}
           </h2>
           <div className="mt-7">
@@ -469,6 +482,10 @@ export function BusinessHealthWizard({
               <textarea
                 rows={4}
                 autoFocus
+                autoComplete={infoStep.autoComplete}
+                aria-labelledby="wizard-step-label"
+                aria-invalid={Boolean(inputHint || stepError)}
+                aria-describedby={inputHint || stepError ? "wizard-step-error" : undefined}
                 placeholder={infoStep.placeholder}
                 value={userInfo[infoStep.key]}
                 onChange={(e) => handleInputChange(infoStep.key, e.target.value)}
@@ -478,12 +495,16 @@ export function BusinessHealthWizard({
                     handleContinue();
                   }
                 }}
-                className="w-full resize-none rounded-xl border border-mk-line bg-white px-4 py-3 text-[15px] text-mk-ink placeholder:text-mk-slate/50 transition focus:border-mk-cyan-deep focus:outline-none focus:ring-2 focus:ring-mk-cyan/30"
+                className="w-full resize-none rounded-xl border border-mk-slate/65 bg-white px-4 py-3 text-[15px] text-mk-ink placeholder:text-mk-slate/80 transition focus:border-mk-cyan-deep focus:outline-none focus:ring-2 focus:ring-mk-cyan/30"
               />
             ) : (
               <input
                 type={infoStep.inputType}
                 autoFocus
+                autoComplete={infoStep.autoComplete}
+                aria-labelledby="wizard-step-label"
+                aria-invalid={Boolean(inputHint || stepError)}
+                aria-describedby={inputHint || stepError ? "wizard-step-error" : undefined}
                 placeholder={infoStep.placeholder}
                 value={userInfo[infoStep.key]}
                 onChange={(e) => handleInputChange(infoStep.key, e.target.value)}
@@ -493,11 +514,11 @@ export function BusinessHealthWizard({
                     handleContinue();
                   }
                 }}
-                className="w-full rounded-xl border border-mk-line bg-white px-4 py-3 text-[15px] text-mk-ink placeholder:text-mk-slate/50 transition focus:border-mk-cyan-deep focus:outline-none focus:ring-2 focus:ring-mk-cyan/30"
+                className="w-full rounded-xl border border-mk-slate/65 bg-white px-4 py-3 text-[15px] text-mk-ink placeholder:text-mk-slate/80 transition focus:border-mk-cyan-deep focus:outline-none focus:ring-2 focus:ring-mk-cyan/30"
               />
             )}
             {(inputHint || stepError) && (
-              <p className="mt-2.5 flex items-start gap-1.5 text-[13px] leading-relaxed text-red-600">
+              <p id="wizard-step-error" className="mt-2.5 flex items-start gap-1.5 text-[13px] leading-relaxed text-red-700">
                 <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
                 {stepError ?? inputHint}
               </p>
@@ -516,10 +537,11 @@ export function BusinessHealthWizard({
                 <button
                   key={option.id}
                   type="button"
+                  aria-pressed={isSelected}
                   onClick={() =>
                     handleAnswerSelect(question, option.id, option.weightAge)
                   }
-                  className={`flex w-full items-center gap-3.5 rounded-xl border px-5 py-4 text-left text-[15px] leading-snug transition ${
+                  className={`flex w-full items-center gap-3.5 rounded-xl border px-5 py-4 text-left text-[15px] leading-snug transition active:scale-[0.99] ${
                     isSelected
                       ? "border-mk-cyan-deep bg-mk-cyan/5 text-mk-ink"
                       : "border-mk-line text-mk-slate hover:border-mk-cyan-deep hover:text-mk-ink"
@@ -556,7 +578,7 @@ export function BusinessHealthWizard({
           type="button"
           onClick={handleContinue}
           disabled={!stepValid || isCheckingUser}
-          className="inline-flex items-center gap-2 rounded-full bg-mk-ink px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-mk-navy disabled:cursor-not-allowed disabled:opacity-40"
+          className="inline-flex items-center gap-2 rounded-full bg-mk-ink px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-mk-navy disabled:cursor-not-allowed disabled:opacity-40 active:scale-[0.98]"
         >
           {isCheckingUser
             ? "Checking…"

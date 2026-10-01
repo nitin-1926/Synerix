@@ -1,11 +1,11 @@
 import { defineConfig } from "@trigger.dev/sdk";
 import { prismaExtension } from "@trigger.dev/build/extensions/prisma";
 import { additionalFiles, syncEnvVars } from "@trigger.dev/build/extensions/core";
-import { config as loadEnv } from "dotenv";
+import { existsSync } from "node:fs";
 
 // Deploy-time env for the config itself (the worker gets its env from the
 // Trigger.dev dashboard, kept in sync by the syncEnvVars extension below).
-loadEnv({ path: ".env" });
+if (existsSync(".env")) process.loadEnvFile(".env");
 
 /**
  * Everything the tasks read at runtime. Synced to the Trigger.dev project env
@@ -31,7 +31,6 @@ const WORKER_ENV_VARS = [
   "OPENAI_API_KEY",
   "RUNWARE_API_KEY",
   "FIRECRAWL_API_KEY",
-  "FAL_KEY",
 ];
 
 

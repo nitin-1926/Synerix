@@ -25,13 +25,12 @@ function ProfileFields(props: {
   onAccountType: (id: WorkspaceTypeId) => void;
 }) {
   return (
-    <div className="space-y-4 rounded-xl border border-border bg-muted/30 p-4">
-      <div className="space-y-2">
-        <p className="text-xs font-medium text-muted-foreground">
-          What kind of business is this? <span className="font-normal">— this sets your photography style</span>
-        </p>
+    <div className="space-y-4 border-t border-border pt-5">
+      <fieldset className="space-y-2">
+        <legend className="text-sm font-medium">What kind of business is this?</legend>
+        <p className="text-xs text-muted-foreground">This sets your photography style.</p>
         <AccountTypePicker value={props.accountType} onChange={props.onAccountType} required />
-      </div>
+      </fieldset>
       <div className="space-y-2">
         <Label htmlFor="profile-channel">
           You sell via <span className="font-normal text-muted-foreground">(optional)</span>
@@ -54,7 +53,7 @@ function ProfileFields(props: {
 const STAGE_COPY: Record<string, string> = {
   PENDING: "Queued…",
   CRAWLING: "Reading your website…",
-  EXTRACTING: "Learning your brand — colors, voice, products…",
+  EXTRACTING: "Learning your brand: colors, voice, products…",
 };
 
 export function OnboardingWizard(props: {
@@ -127,14 +126,14 @@ export function OnboardingWizard(props: {
       <Card>
         <CardContent className="flex flex-col items-center py-10 text-center">
           <span className="flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-            <Loader2 className="size-6 animate-spin" />
+            <Loader2 className="size-6 animate-spin motion-reduce:animate-none" />
           </span>
           <p className="mt-4 font-medium text-foreground">{STAGE_COPY[status] ?? "Working…"}</p>
-          <p className="mt-1 text-sm text-muted-foreground">This usually takes 1–2 minutes.</p>
+          <p className="mt-1 text-sm text-muted-foreground">This usually takes 1-2 minutes.</p>
           <button
             type="button"
             onClick={skipToManual}
-            className="mt-6 text-xs text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
+            className="mt-6 min-h-10 rounded-full px-3 text-xs text-muted-foreground underline-offset-4 outline-none transition-colors hover:text-foreground hover:underline focus-visible:ring-3 focus-visible:ring-ring/50"
           >
             Taking too long? Fill in details manually
           </button>
@@ -177,7 +176,7 @@ export function OnboardingWizard(props: {
                   />
                 </div>
                 <ProfileFields accountType={accountType} onAccountType={setAccountType} />
-                <Button type="submit" disabled={pending} className="w-full" size="lg">
+                <Button type="submit" disabled={pending} className="h-10 w-full active:scale-[0.98]" size="lg">
                   {pending ? "Starting…" : "Analyze my website"}
                 </Button>
               </form>
@@ -226,7 +225,7 @@ export function OnboardingWizard(props: {
                   />
                 </div>
                 <ProfileFields accountType={accountType} onAccountType={setAccountType} />
-                <Button type="submit" disabled={pending} className="w-full" size="lg">
+                <Button type="submit" disabled={pending} className="h-10 w-full active:scale-[0.98]" size="lg">
                   {pending ? "Saving…" : "Save & continue"}
                 </Button>
               </form>

@@ -1,20 +1,26 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { requireSuperAdmin } from "@/lib/auth";
+import {
+  EmptyState,
+  RunStatusBadge,
+  StatGrid,
+  compact,
+  fmtFixed,
+  fmtInt,
+  fmtUSD,
+  num,
+  tableHeadRow,
+  tableRow,
+} from "../admin-ui";
 
-export const metadata = { title: "Costs — Synerix Admin" };
+export const metadata = { title: "Costs | Synerix Admin" };
 // Always fresh — this is an observability view.
 export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 50;
-
-const usd2 = (n: number) => `$${n.toFixed(2)}`;
-const usd4 = (n: number) => `$${n.toFixed(4)}`;
-const num = (d: unknown) => Number(d ?? 0);
-/** "IN_SCENE" → "in-scene" for compact display. */
-const compact = (s: string) => s.toLowerCase().replace(/_/g, "-");
 
 const dateFmt = new Intl.DateTimeFormat("en-IN", {
   day: "numeric",
@@ -23,29 +29,12 @@ const dateFmt = new Intl.DateTimeFormat("en-IN", {
   minute: "2-digit",
 });
 
-function statusBadge(status: string) {
-  if (status === "COMPLETE") {
-    return (
-      <Badge
-        variant="secondary"
-        className="bg-emerald-500/15 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400"
-      >
-        {compact(status)}
-      </Badge>
-    );
-  }
-  if (status === "FAILED") return <Badge variant="destructive">{compact(status)}</Badge>;
-  return <Badge variant="outline">{compact(status)}</Badge>;
-}
-
 export default async function AdminCostsPage({
   searchParams,
 }: {
   searchParams: Promise<{ page?: string }>;
 }) {
-  // Authorization is enforced HERE, not only in the (admin) layout: a Next.js
-  // layout is not an authorization boundary — it is skipped on RSC segment
-  // requests, so a page that trusts it can serialize admin data to anyone.
+  // requireSuperAdmin() is the auth boundary — see its docstring.
   await requireSuperAdmin();
   const { page: pageParam } = await searchParams;
   const page = Math.max(1, Number.parseInt(pageParam ?? "1", 10) || 1);
@@ -105,25 +94,14 @@ export default async function AdminCostsPage({
   const totalPages = Math.max(1, Math.ceil(totalRuns / PAGE_SIZE));
 
   const stats = [
-    { label: "API spend · last 30 days", value: usd2(num(last30._sum.usd)) },
-    { label: "API spend · all time", value: usd2(num(allTime._sum.usd)) },
-    { label: "Generation runs", value: new Intl.NumberFormat("en-US").format(totalRuns) },
+    { label: "API spend · last 30 days", value: fmtUSD(num(last30._sum.usd)) },
+    { label: "API spend · all time", value: fmtUSD(num(allTime._sum.usd)) },
+    { label: "Generation runs", value: fmtInt(totalRuns) },
   ];
 
   return (
     <div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {stats.map((s) => (
-          <Card key={s.label} className="gap-1 py-4">
-            <CardContent className="px-4">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                {s.label}
-              </p>
-              <p className="mt-1 text-2xl font-semibold tracking-tight tabular-nums">{s.value}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <StatGrid stats={stats} />
 
       {bySource.length > 0 && (
         <p className="mt-3 text-xs text-muted-foreground">
@@ -131,7 +109,7 @@ export default async function AdminCostsPage({
           {bySource.map((s, i) => (
             <span key={s.source} className="tabular-nums">
               {i > 0 && " · "}
-              {s.source} {usd2(num(s._sum.usd))}
+              {s.source} {fmtUSD(num(s._sum.usd))}
             </span>
           ))}
         </p>
@@ -142,13 +120,13 @@ export default async function AdminCostsPage({
           <h2 className="mt-8 text-sm font-semibold">
             Spend by pipeline stage · last 30 days
             <span className="ml-2 font-normal text-xs text-muted-foreground">
-              share of {usd2(stageTotal)}
+              <span className="tabular-nums">share of {fmtUSD(stageTotal)}</span>
             </span>
           </h2>
           <div className="mt-2 overflow-x-auto rounded-lg border border-border">
             <table className="w-full min-w-max text-sm">
               <thead>
-                <tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                <tr className={tableHeadRow}>
                   <th className="px-4 py-2.5">Stage</th>
                   <th className="px-4 py-2.5">Kind</th>
                   <th className="px-4 py-2.5">Model</th>
@@ -162,14 +140,14 @@ export default async function AdminCostsPage({
                   const usd = num(s._sum.usd);
                   const share = stageTotal > 0 ? (usd / stageTotal) * 100 : 0;
                   return (
-                    <tr key={`${s.stage}|${s.kind}|${s.model}`}>
+                    <tr key={`${s.stage}|${s.kind}|${s.model}`} className={tableRow}>
                       <td className="px-4 py-2.5 font-medium">{s.stage}</td>
                       <td className="px-4 py-2.5">
                         <Badge variant="outline">{s.kind}</Badge>
                       </td>
                       <td className="px-4 py-2.5 text-muted-foreground">{s.model}</td>
-                      <td className="px-4 py-2.5 text-right tabular-nums">{s._count._all}</td>
-                      <td className="px-4 py-2.5 text-right font-medium tabular-nums">{usd4(usd)}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums">{fmtInt(s._count._all)}</td>
+                      <td className="px-4 py-2.5 text-right font-medium tabular-nums">{fmtUSD(usd, 4)}</td>
                       <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">
                         {share.toFixed(1)}%
                       </td>
@@ -188,71 +166,96 @@ export default async function AdminCostsPage({
           open a run for its own stage-by-stage split
         </span>
       </h2>
-      <div className="mt-2 overflow-x-auto rounded-lg border border-border">
-        <table className="w-full min-w-max text-sm">
-          <thead>
-            <tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              <th className="px-4 py-2.5">Date</th>
-              <th className="px-4 py-2.5">Workspace</th>
-              <th className="px-4 py-2.5">Brand</th>
-              <th className="px-4 py-2.5">Trigger / fidelity</th>
-              <th className="px-4 py-2.5">Status</th>
-              <th className="px-4 py-2.5">Bake-off</th>
-              <th className="px-4 py-2.5 text-right">Credits</th>
-              <th className="px-4 py-2.5 text-right">API USD</th>
-              <th className="px-4 py-2.5" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {runs.map((run) => (
-              <tr key={run.id} className="relative cursor-pointer hover:bg-muted/50">
-                <td className="px-4 py-2.5 whitespace-nowrap text-muted-foreground">
-                  <Link href={`/admin/costs/${run.id}`} className="absolute inset-0" aria-label="Run cost detail" />
-                  {dateFmt.format(run.createdAt)}
-                </td>
-                <td className="max-w-48 truncate px-4 py-2.5">{run.workspace.name}</td>
-                <td className="max-w-48 truncate px-4 py-2.5">{run.brand.name}</td>
-                <td className="px-4 py-2.5 whitespace-nowrap text-xs text-muted-foreground">
-                  {compact(run.trigger)} · {compact(run.fidelityMode)}
-                </td>
-                <td className="px-4 py-2.5">{statusBadge(run.status)}</td>
-                <td className="px-4 py-2.5">
-                  {run.bakeoff ? <Badge variant="outline">bake-off</Badge> : <span className="text-muted-foreground">—</span>}
-                </td>
-                <td className="px-4 py-2.5 text-right tabular-nums">{num(run.creditsDebited).toFixed(2)}</td>
-                <td className="px-4 py-2.5 text-right font-medium tabular-nums">
-                  {usd4(usdByRun.get(run.id) ?? 0)}
-                </td>
-                <td className="px-4 py-2.5 text-right text-muted-foreground">→</td>
+      {runs.length === 0 ? (
+        <div className="mt-2">
+          <EmptyState
+            title="No generation runs yet"
+            body="Runs show up here, with their API cost, once a workspace generates creatives."
+          />
+        </div>
+      ) : (
+        <div className="mt-2 overflow-x-auto rounded-lg border border-border">
+          <table className="w-full min-w-max text-sm">
+            <thead>
+              <tr className={tableHeadRow}>
+                <th className="px-4 py-2.5">Date</th>
+                <th className="px-4 py-2.5">Workspace</th>
+                <th className="px-4 py-2.5">Brand</th>
+                <th className="px-4 py-2.5">Trigger / fidelity</th>
+                <th className="px-4 py-2.5">Status</th>
+                <th className="px-4 py-2.5">Bake-off</th>
+                <th className="px-4 py-2.5 text-right">Credits</th>
+                <th className="px-4 py-2.5 text-right">API USD</th>
+                <th className="w-10 px-4 py-2.5">
+                  <span className="sr-only">Open</span>
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {runs.length === 0 && (
-        <p className="mt-6 text-sm text-muted-foreground">No generation runs yet.</p>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {runs.map((run) => (
+                <tr key={run.id} className={`group relative cursor-pointer ${tableRow}`}>
+                  <td className="px-4 py-2.5 whitespace-nowrap text-muted-foreground tabular-nums">
+                    <Link
+                      href={`/admin/costs/${run.id}`}
+                      className="absolute inset-0 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+                      aria-label={`Run cost detail, ${run.workspace.name}, ${dateFmt.format(run.createdAt)}`}
+                    />
+                    {dateFmt.format(run.createdAt)}
+                  </td>
+                  <td className="max-w-48 truncate px-4 py-2.5">{run.workspace.name}</td>
+                  <td className="max-w-48 truncate px-4 py-2.5">{run.brand.name}</td>
+                  <td className="px-4 py-2.5 whitespace-nowrap text-xs text-muted-foreground">
+                    {compact(run.trigger)} · {compact(run.fidelityMode)}
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <RunStatusBadge status={run.status} />
+                  </td>
+                  <td className="px-4 py-2.5">
+                    {run.bakeoff ? <Badge variant="outline">bake-off</Badge> : <span className="text-muted-foreground">—</span>}
+                  </td>
+                  <td className="px-4 py-2.5 text-right tabular-nums">{fmtFixed(num(run.creditsDebited), 2)}</td>
+                  <td className="px-4 py-2.5 text-right font-medium tabular-nums">
+                    {fmtUSD(usdByRun.get(run.id) ?? 0, 4)}
+                  </td>
+                  <td className="px-4 py-2.5 text-right text-muted-foreground">
+                    <ChevronRight className="ml-auto size-4 transition-transform duration-150 group-hover:translate-x-0.5 motion-reduce:transition-none" />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
-      <div className="mt-4 flex items-center justify-between text-sm">
-        {page > 1 ? (
-          <Link href={`/admin/costs?page=${page - 1}`} className="font-medium hover:underline">
-            ← Prev
-          </Link>
-        ) : (
-          <span className="text-muted-foreground/50">← Prev</span>
-        )}
-        <span className="text-xs text-muted-foreground">
-          Page {page} of {totalPages}
-        </span>
-        {page < totalPages ? (
-          <Link href={`/admin/costs?page=${page + 1}`} className="font-medium hover:underline">
-            Next →
-          </Link>
-        ) : (
-          <span className="text-muted-foreground/50">Next →</span>
-        )}
-      </div>
+      {(totalPages > 1 || page > 1) && (
+        <div className="mt-4 flex items-center justify-between text-sm">
+          {page > 1 ? (
+            <Link href={`/admin/costs?page=${page - 1}`} className="inline-flex items-center gap-1 font-medium hover:underline">
+              <ChevronLeft className="size-4" />
+              Prev
+            </Link>
+          ) : (
+            <span className="inline-flex cursor-not-allowed items-center gap-1 text-muted-foreground/50">
+              <ChevronLeft className="size-4" />
+              Prev
+            </span>
+          )}
+          <span className="text-xs text-muted-foreground tabular-nums">
+            Page {page} of {totalPages}
+          </span>
+          {page < totalPages ? (
+            <Link href={`/admin/costs?page=${page + 1}`} className="inline-flex items-center gap-1 font-medium hover:underline">
+              Next
+              <ChevronRight className="size-4" />
+            </Link>
+          ) : (
+            <span className="inline-flex cursor-not-allowed items-center gap-1 text-muted-foreground/50">
+              Next
+              <ChevronRight className="size-4" />
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

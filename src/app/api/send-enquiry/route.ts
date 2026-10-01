@@ -1,26 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import * as nodemailer from 'nodemailer';
 import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { smtpErrorResponse, transporter } from "@/lib/email";
 import { escapeHtml } from "@/lib/html";
 
 // Schema for validation
 const enquirySchema = z.object({
 	email: z.string().email('Invalid email address'),
 });
-
-// Create nodemailer transporter
-const createTransporter = () => {
-	return nodemailer.createTransport({
-		host: 'smtp.gmail.com',
-		port: 587,
-		secure: false, // true for 465, false for other ports
-		auth: {
-			user: process.env.GMAIL_USERNAME,
-			pass: process.env.GMAIL_PASSWORD,
-		},
-	});
-};
 
 // Generate enquiry notification email to business owner
 function generateEnquiryNotificationEmail(rawEmail: string) {
@@ -356,18 +343,16 @@ export async function POST(req: NextRequest) {
 		const body = await req.json();
 		const { email } = enquirySchema.parse(body);
 
-		// Check if Gmail credentials are configured
-		if (!process.env.GMAIL_USERNAME || !process.env.GMAIL_PASSWORD) {
+		// Null when Gmail credentials are not configured
+		const mailer = transporter();
+		if (!mailer) {
 			console.error('Gmail credentials not configured');
 			return NextResponse.json({ error: 'Email service not configured' }, { status: 500 });
 		}
 
-		// Create transporter
-		const transporter = createTransporter();
-
 		// Verify transporter configuration
 		try {
-			await transporter.verify();
+			await mailer.verify();
 		} catch (error) {
 			console.error('SMTP configuration error:', error);
 			return NextResponse.json({ error: 'Email service configuration error' }, { status: 500 });
@@ -406,8 +391,8 @@ export async function POST(req: NextRequest) {
 		try {
 			// Send both emails
 			const [notificationInfo, confirmationInfo] = await Promise.all([
-				transporter.sendMail(notificationMailOptions),
-				transporter.sendMail(confirmationMailOptions),
+				mailer.sendMail(notificationMailOptions),
+				mailer.sendMail(confirmationMailOptions),
 			]);
 
 
@@ -419,51 +404,7 @@ export async function POST(req: NextRequest) {
 			});
 		} catch (caught: unknown) {
 			console.error('Error sending enquiry emails:', caught);
-			const error = caught as { code?: string; response?: string; message?: string };
-
-			// Check for specific Nodemailer/SMTP errors
-			let errorMessage = 'Failed to send enquiry emails';
-			let statusCode = 500;
-
-			if (error.code) {
-				switch (error.code) {
-					case 'EAUTH':
-						errorMessage = 'Email authentication failed. Please check email configuration.';
-						statusCode = 500;
-						break;
-					case 'EENVELOPE':
-					case 'EMESSAGE':
-						errorMessage = 'Invalid email address. Please check and try again.';
-						statusCode = 400;
-						break;
-					case 'ECONNECTION':
-					case 'ETIMEDOUT':
-						errorMessage = 'Email service temporarily unavailable. Please try again later.';
-						statusCode = 503;
-						break;
-					default:
-						if (error.response && error.response.includes('550')) {
-							errorMessage = 'This email address cannot receive emails. Please use a different email.';
-							statusCode = 400;
-						}
-						break;
-				}
-			} else if (error.message) {
-				const errorMsg = error.message.toLowerCase();
-
-				if (errorMsg.includes('invalid email') || errorMsg.includes('email address')) {
-					errorMessage = 'Invalid email address. Please check and try again.';
-					statusCode = 400;
-				} else if (errorMsg.includes('blocked') || errorMsg.includes('bounced')) {
-					errorMessage = 'This email address cannot receive emails. Please use a different email.';
-					statusCode = 400;
-				} else if (errorMsg.includes('rate limit') || errorMsg.includes('quota')) {
-					errorMessage = 'Too many emails sent. Please try again later.';
-					statusCode = 429;
-				}
-			}
-
-			return NextResponse.json({ error: errorMessage }, { status: statusCode });
+			return smtpErrorResponse(caught, 'Failed to send enquiry emails');
 		}
 	} catch (error) {
 		console.error('Enquiry submission error:', error);

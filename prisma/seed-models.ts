@@ -1,12 +1,11 @@
-import { config } from "dotenv";
-// Next.js precedence: .env.local overrides .env (dotenv: first set wins).
-config({ path: ".env.local" });
-config({ path: ".env" });
+import { existsSync } from "node:fs";
+// Next.js precedence: .env.local overrides .env (loadEnvFile: first set wins).
+for (const file of [".env.local", ".env"]) if (existsSync(file)) process.loadEnvFile(file);
 
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { generateImageGemini } from "../src/lib/image/gemini";
-import { uploadBuffer, storageKeys, ensureMediaBucket } from "../src/lib/storage";
+import { uploadBuffer, storageKeys } from "../src/lib/storage";
 import { MODEL_PRESETS } from "../src/data/models/presets";
 
 /**
@@ -21,7 +20,6 @@ const prisma = new PrismaClient({
 });
 
 async function main() {
-  await ensureMediaBucket();
   // SEED_FORCE=1 regenerates the library: prune existing GLOBAL presets first so
   // renamed/recast presets replace the old set instead of duplicating it.
   if (process.env.SEED_FORCE) {

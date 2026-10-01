@@ -13,32 +13,26 @@ export const metadata = {
 
 const SERVICES = [
   {
-    n: "01",
     title: "Business planning & strategy",
     text: "A plan you actually run the business on: where the next crore of revenue comes from, which bets are sized to your balance sheet (not a pitch deck), and what you'll stop doing to fund them. Reviewed every quarter, revised when the market moves.",
   },
   {
-    n: "02",
     title: "Financial health & cash flow",
     text: "In our experience, most MSMEs don't have a revenue problem. They have a margin and collections problem. We rebuild pricing discipline, tighten receivables, and put a simple cash-flow rhythm in place so you know, every Monday, exactly how much runway you have.",
   },
   {
-    n: "03",
     title: "People & compliance",
     text: "GST filings, labour registers, contracts that actually protect you: the unglamorous hygiene that decides whether a bank, buyer or investor takes you seriously. Plus the harder part: hiring your first real managers and letting them manage.",
   },
   {
-    n: "04",
     title: "Operations & process improvement",
     text: "If the business stops when you take a week off, the business is the bottleneck. We write the SOPs with your team on the shop floor, kill the steps nobody can justify, and set up the three or four numbers worth reviewing every week.",
   },
   {
-    n: "05",
     title: "Marketing & branding",
     text: "Positioning a customer can repeat after one visit, distribution that goes beyond the founder's phonebook, and a digital presence that earns enquiries instead of just existing. When the plan calls for creatives, Synerix Studio makes them from your own products.",
   },
   {
-    n: "06",
     title: "Tech, digital & supply chain",
     text: "Right-sized tools for billing, inventory and a CRM your team actually opens, adopted until they stick. And a supply chain that stops eating your cash: supplier terms renegotiated with data in hand, logistics costs you can see per order.",
   },
@@ -71,13 +65,13 @@ export default function ConsultingPage() {
   return (
     <main>
       {/* ====== Hero (paper) ====== */}
-      <section className="bg-mk-paper pb-20 pt-36 md:pb-28 md:pt-44">
+      <section className="bg-mk-paper pb-20 pt-36 md:pb-28 md:pt-40">
         <div className="mx-auto max-w-6xl px-5 md:px-8">
           <p className="mk-mono mk-reveal text-[11px] text-mk-cyan-deep" style={{ animationDelay: "0ms" }}>
             Synerix Consulting
           </p>
           <h1
-            className="mk-display mk-reveal mt-6 max-w-4xl text-balance text-[2.6rem] font-medium leading-[1.04] text-mk-ink md:text-7xl"
+            className="mk-display mk-reveal mt-6 max-w-5xl text-balance pb-1 text-[2.6rem] font-medium leading-[1.1] text-mk-ink md:text-6xl lg:text-7xl"
             style={{ animationDelay: "90ms" }}
           >
             Senior counsel for businesses that{" "}
@@ -93,14 +87,14 @@ export default function ConsultingPage() {
           <div className="mk-reveal mt-10 flex flex-col gap-3 sm:flex-row" style={{ animationDelay: "270ms" }}>
             <a
               href="#enquiry"
-              className="group inline-flex items-center justify-center gap-2 rounded-full bg-mk-ink px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-mk-navy"
+              className="group inline-flex items-center justify-center gap-2 rounded-full bg-mk-ink px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-mk-navy active:scale-[0.98]"
             >
               Book a conversation
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
             </a>
             <Link
               href="/tests/business-health"
-              className="inline-flex items-center justify-center gap-2 rounded-full border border-mk-line px-6 py-3.5 text-sm font-medium text-mk-ink transition hover:border-mk-cyan-deep hover:text-mk-cyan-deep"
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-mk-line px-6 py-3.5 text-sm font-medium text-mk-ink transition hover:border-mk-cyan-deep hover:text-mk-cyan-deep active:scale-[0.98]"
             >
               Take the free Health Check
             </Link>
@@ -119,9 +113,8 @@ export default function ConsultingPage() {
 
           <div className="mt-14 grid gap-12 md:grid-cols-2 md:gap-x-10 md:gap-y-16">
             {SERVICES.map((s) => (
-              <div key={s.n} className="border-t-2 border-mk-ink pt-5">
-                <span className="mk-mono text-[11px] text-mk-cyan-deep">{s.n}</span>
-                <h3 className="mk-display mt-3 text-2xl font-medium text-mk-ink md:text-3xl">
+              <div key={s.title} className="border-t-2 border-mk-ink pt-5">
+                <h3 className="mk-display text-2xl font-medium text-mk-ink md:text-3xl">
                   {s.title}
                 </h3>
                 <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-mk-slate">{s.text}</p>
@@ -181,7 +174,7 @@ export default function ConsultingPage() {
           </div>
           <Link
             href="/tests/business-health"
-            className="group inline-flex shrink-0 items-center gap-2 rounded-full bg-mk-ink px-7 py-4 text-sm font-semibold text-white transition hover:bg-mk-navy"
+            className="group inline-flex shrink-0 items-center gap-2 rounded-full bg-mk-ink px-7 py-4 text-sm font-semibold text-white transition hover:bg-mk-navy active:scale-[0.98]"
           >
             Take the free Health Check
             <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />

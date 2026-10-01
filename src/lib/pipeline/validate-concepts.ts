@@ -3,6 +3,7 @@ import { z } from "zod";
 import { MODELS, resolveLanguageModel } from "@/lib/ai/models";
 import { creativeConceptSchema, type CreativeConcept } from "./schemas";
 import type { CostTracker } from "./cost";
+import { stripDashes } from "./dashes";
 
 /**
  * Semantic brief QA — runs BETWEEN concepting and rendering, before any image
@@ -163,6 +164,6 @@ export async function enhanceConceptPrompts(opts: {
     // A stray em/en dash is NOT doubt — it is one character we can fix, and
     // discarding the whole polished prompt over it threw away a paid Opus pass.
     if (!polished || polished.length < 300) return c;
-    return { ...c, imagePrompt: polished.replace(/\s*[—–]\s*/g, ", ").replace(/,\s*,/g, ", ") };
+    return { ...c, imagePrompt: stripDashes(polished) };
   });
 }

@@ -2,12 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { addMonths, differenceInCalendarDays, format, startOfDay } from "date-fns";
-import { Search } from "lucide-react";
+import { CalendarSearch, Search, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -50,8 +48,11 @@ export function FestivalList({ items }: { items: FestivalListItem[] }) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<(typeof CATEGORY_CHIPS)[number]>("ALL");
 
-  const today = startOfDay(new Date());
-  const horizon = addMonths(today, 12);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const horizon = new Date(today);
+  horizon.setFullYear(today.getFullYear() + 1);
+  if (horizon.getMonth() !== today.getMonth()) horizon.setDate(0); // Feb 29 -> Feb 28, not Mar 1
   const q = query.trim().toLowerCase();
 
   const filtered = [...items]
@@ -71,7 +72,7 @@ export function FestivalList({ items }: { items: FestivalListItem[] }) {
 
   const groups: { label: string; items: FestivalListItem[] }[] = [];
   for (const item of filtered) {
-    const label = format(new Date(item.date), "MMMM yyyy");
+    const label = new Date(item.date).toLocaleDateString("en-US", { month: "long", year: "numeric" });
     const last = groups[groups.length - 1];
     if (last?.label === label) last.items.push(item);
     else groups.push({ label, items: [item] });
@@ -104,8 +105,9 @@ export function FestivalList({ items }: { items: FestivalListItem[] }) {
             key={c}
             type="button"
             onClick={() => setCategory(c)}
+            aria-pressed={category === c}
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+              "inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full border px-3.5 text-xs font-medium outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 active:scale-[0.98] motion-reduce:transform-none sm:h-8",
               category === c
                 ? "border-transparent bg-primary text-primary-foreground"
                 : "border-border text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -125,35 +127,50 @@ export function FestivalList({ items }: { items: FestivalListItem[] }) {
       </div>
 
       {groups.length === 0 ? (
-        <p className="py-16 text-center text-sm text-muted-foreground">
-          No occasions match — try a different search or filter.
-        </p>
+        <div className="mt-6 flex flex-col items-center rounded-2xl border-2 border-dashed border-border px-6 py-14 text-center">
+          <span className="flex size-12 items-center justify-center rounded-full bg-secondary text-muted-foreground">
+            <CalendarSearch className="size-5" />
+          </span>
+          <h2 className="mt-4 text-base font-semibold text-foreground">No occasions match</h2>
+          <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+            Try a different search, or show every category and date.
+          </p>
+          <Button
+            variant="outline"
+            size="lg"
+            className="mt-6"
+            onClick={() => {
+              setQuery("");
+              setCategory("ALL");
+              setView("all");
+            }}
+          >
+            Clear filters
+          </Button>
+        </div>
       ) : (
-        <div className="mt-5 space-y-7">
+        <div className="mt-5 space-y-6">
           {groups.map((group) => (
             <section key={group.label}>
-              <h2 className="sticky top-14 z-10 -mx-1 bg-background/95 px-1 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground backdrop-blur-sm md:top-0">
+              <h2 className="sticky top-14 z-10 -mx-1 bg-background px-1 py-2 text-sm font-semibold text-foreground md:top-0">
                 {group.label}
               </h2>
-              <div className="mt-1 space-y-2.5">
+              <ul className="mt-1 divide-y divide-border overflow-hidden rounded-2xl bg-card ring-1 ring-foreground/10">
                 {group.items.map((item) => {
                   const date = new Date(item.date);
-                  const days = differenceInCalendarDays(date, new Date());
+                  const days = Math.round((new Date(date).setHours(0, 0, 0, 0) - today.getTime()) / 86_400_000);
                   return (
-                    <Card
-                      key={item.key}
-                      className="flex-row items-center gap-3 px-(--card-spacing)"
-                    >
-                      <div className="flex w-14 shrink-0 flex-col items-center justify-center rounded-xl bg-secondary py-1.5">
-                        <span className="text-sm font-semibold leading-tight text-foreground">
-                          {format(date, "dd MMM")}
+                    <li key={item.key} className="flex items-center gap-3 px-3 py-3 sm:px-4">
+                      <div className="flex w-12 shrink-0 flex-col items-center justify-center rounded-xl bg-secondary py-1.5">
+                        <span className="text-lg font-semibold leading-none tabular-nums text-foreground">
+                          {String(date.getDate()).padStart(2, "0")}
                         </span>
-                        <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                          {format(date, "EEE")}
+                        <span className="mt-1 text-[11px] leading-none text-muted-foreground">
+                          {date.toLocaleDateString("en-US", { weekday: "short" })}
                         </span>
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                           <p className="truncate font-medium text-foreground">{item.name}</p>
                           <Badge variant="secondary" className="shrink-0 gap-1">
                             <span
@@ -166,12 +183,12 @@ export function FestivalList({ items }: { items: FestivalListItem[] }) {
                           </Badge>
                         </div>
                         {(item.nameHindi || days >= 0) && (
-                          <p className="mt-0.5 truncate text-sm text-muted-foreground">
+                          <p className="mt-0.5 truncate text-sm text-muted-foreground tabular-nums">
                             {item.nameHindi}
                             {item.nameHindi && days >= 0 && " · "}
                             {days >= 0 &&
-                              (days === 0 ? (
-                                <span className="font-medium text-primary">Today</span>
+                              (days <= 1 ? (
+                                <span className="font-medium text-primary">{daysAwayLabel(days)}</span>
                               ) : (
                                 daysAwayLabel(days)
                               ))}
@@ -181,16 +198,17 @@ export function FestivalList({ items }: { items: FestivalListItem[] }) {
                       <Button
                         nativeButton={false}
                         render={<Link href={item.href} />}
-                        size="sm"
                         variant="outline"
-                        className="shrink-0"
+                        aria-label={`Create for ${item.name}`}
+                        className="h-10 shrink-0 active:scale-[0.98] motion-reduce:transform-none sm:h-8"
                       >
+                        <Sparkles data-icon="inline-start" />
                         Create
                       </Button>
-                    </Card>
+                    </li>
                   );
                 })}
-              </div>
+              </ul>
             </section>
           ))}
         </div>

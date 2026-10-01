@@ -1,32 +1,23 @@
+import { unstable_cache } from "next/cache";
 import { auth as triggerAuth } from "@trigger.dev/sdk";
 
 /**
- * Read-only Trigger.dev realtime token for one run, cached in the server
- * process. The studio page re-renders on every progress tick and each render
- * minted a fresh token — a cross-region API call (~100-400ms) sitting in front
- * of every RSC response, roughly 15 times per generation. The token is scoped
- * to a single run id and expires on its own, so caching it is safe; we expire
- * the entry before the token itself so a stale token is never handed out.
+ * Read-only Trigger.dev realtime token for one run, cached. The studio page
+ * re-renders on every progress tick and each render minted a fresh token — a
+ * cross-region API call (~100-400ms) in front of every RSC response, roughly 15
+ * times per generation. The token is scoped to a single run id, so sharing it
+ * is safe. It lives 1h and is reused for at most 25 min, so a handed-out token
+ * always has 35+ min left (a 30-min token cached for 25 could reach the browser
+ * with 5 min left and silently kill the live progress subscription).
  */
-const TTL_MS = 25 * 60 * 1000;
-const cache = new Map<string, { token: string; expiresAt: number }>();
+const mint = unstable_cache(
+  (triggerRunId: string) =>
+    triggerAuth.createPublicToken({ scopes: { read: { runs: [triggerRunId] } }, expirationTime: "1h" }),
+  ["trigger-realtime-token"],
+  { revalidate: 25 * 60 },
+);
 
 export async function realtimeToken(triggerRunId: string): Promise<string | null> {
-  const hit = cache.get(triggerRunId);
-  if (hit && hit.expiresAt > Date.now()) return hit.token;
-  try {
-    const token = await triggerAuth.createPublicToken({
-      scopes: { read: { runs: [triggerRunId] } },
-      expirationTime: "30m",
-    });
-    cache.set(triggerRunId, { token, expiresAt: Date.now() + TTL_MS });
-    // Bound the map: a long-lived server instance would otherwise accumulate
-    // one entry per run it has ever rendered.
-    if (cache.size > 500) {
-      for (const [k, v] of cache) if (v.expiresAt <= Date.now()) cache.delete(k);
-    }
-    return token;
-  } catch {
-    return null;
-  }
+  // A thrown mint is not cached, so a transient failure retries on the next render.
+  return mint(triggerRunId).catch(() => null);
 }

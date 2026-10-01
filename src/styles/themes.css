@@ -1,15 +1,12 @@
 /* =============================================================================
-   Theme registry — token blocks.
+   Theme tokens — a single theme (the old multi-theme registry was removed).
 
-   Each theme = a light block (.theme-<id>) + a dark override (.theme-<id>.dark).
-   The active theme class lives on <html> (see src/lib/themes.ts + layout.tsx);
-   next-themes adds the `.dark` class for dark mode. globals.css maps these
-   custom properties onto Tailwind tokens via `@theme inline`.
-
-   To add a theme: paste a new pair of blocks here, register it in themes.ts.
+   A light block + a dark override; the theme class lives on <html> (see
+   layout.tsx) and next-themes adds `.dark` for dark mode. globals.css maps
+   these custom properties onto Tailwind tokens via `@theme inline`.
    ============================================================================= */
 
-/* ---- Violet Bloom (default) — tweakcn.com/r/themes/violet-bloom ---- */
+/* ---- Synerix: ink-navy primary, cyan accent (matches the marketing mk-* palette) ---- */
 .theme-synerix {
   --background: oklch(0.991 0.002 106.4);
   --foreground: oklch(0.205 0.042 265.9);
@@ -28,7 +25,7 @@
   --destructive: oklch(0.604 0.205 24.1);
   --destructive-foreground: oklch(1 0 0);
   --border: oklch(0.918 0.008 240);
-  --input: oklch(0.93 0.006 240);
+  --input: oklch(0.895 0.008 240);
   --ring: oklch(0.317 0.092 266.4);
   --chart-1: oklch(0.317 0.092 266.4);
   --chart-2: oklch(0.745 0.131 194.8);

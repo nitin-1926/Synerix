@@ -51,7 +51,7 @@ import { Toggle } from "@/components/ui/toggle";
 import { cn } from "@/lib/utils";
 import { COPY_LANGUAGES, type CopyLanguage, type OverlaySpec } from "@/lib/composition/types";
 import type { Aspect } from "@/lib/image/runware";
-import { PreviewStage, clampLogoDraft, type LogoDraft } from "./preview-stage";
+import { PreviewStage, clampLogoDraft, creditsLabel, type LogoDraft } from "./preview-stage";
 
 type Lang = CopyLanguage;
 type CopyBlock = { eyebrow: string | null; headline: string; subhead: string | null; cta: string | null };
@@ -84,6 +84,13 @@ const CAUSE_LABEL: Record<string, string> = {
   regen_instruction: "Scene edit",
   revert: "Restored",
 };
+
+// Field labels: sentence case, not tracked caps — the rail already has one
+// header per section; a second shouting label per field was noise.
+const FIELD_LABEL = "text-xs font-medium text-muted-foreground";
+// Solid buttons dim to a washed-out tint at opacity-50 and read as broken.
+// Disabled = flat muted surface with legible text instead.
+const SOLID_DISABLED = "disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100";
 
 const versionDate = new Intl.DateTimeFormat("en-IN", {
   day: "numeric",
@@ -164,7 +171,7 @@ export function CreativeEditor(props: {
     const meta = editRun?.metadata as { status?: string; error?: string } | undefined;
     const status = editRun?.status;
     if (meta?.status === "failed") {
-      toast.error(meta.error ?? "Edit failed — credits refunded");
+      toast.error(meta.error ?? "Edit failed. Credits refunded");
       setPendingEdit(null);
       router.refresh();
       return;
@@ -177,7 +184,7 @@ export function CreativeEditor(props: {
       return;
     }
     if (status && ["FAILED", "CRASHED", "CANCELED", "SYSTEM_FAILURE", "EXPIRED", "TIMED_OUT"].includes(status)) {
-      toast.error("Edit failed — credits refunded");
+      toast.error("Edit failed. Credits refunded");
       setPendingEdit(null);
       router.refresh();
     }
@@ -343,11 +350,11 @@ export function CreativeEditor(props: {
   const missingAspects = ALL_ASPECTS.filter((a) => !props.renders.some((r) => r.aspectRatio === a));
   const busyLabel = langPending
     ? props.baked
-      ? "Re-setting the headline — takes 20–40s…"
+      ? "Re-setting the headline: takes 20 to 40s…"
       : "Switching language…"
     : textPending
       ? props.baked
-        ? "Applying text to the image — takes 20–40s…"
+        ? "Applying text to the image: takes 20 to 40s…"
         : "Saving text…"
       : scenePending
         ? "Regenerating the scene…"
@@ -379,18 +386,18 @@ export function CreativeEditor(props: {
         onLogoDraftChange={setLogoDraft}
       />
 
-      <aside className="space-y-4">
+      {/* One surface, divided sections: six separately bordered cards stacked
+          into a wall of boxes. Dividers keep the grouping without the noise. */}
+      <aside className="self-start divide-y divide-border rounded-2xl border border-border bg-card">
         {/* Approve / export */}
-        <section
-          className={cn(
-            "rounded-xl border border-border bg-card p-4",
-            props.approved && "border-primary/40",
-          )}
-        >
+        <section className="p-5">
           {props.approved ? (
             <div className="flex items-center gap-2">
               <span className="flex items-center gap-2 text-sm font-medium">
-                <Check className="size-4 text-primary" /> Approved — ready to share
+                <span className="flex size-6 items-center justify-center rounded-full bg-primary/10">
+                  <Check className="size-3.5 text-primary" />
+                </span>
+                Approved, ready to share
               </span>
               <Button
                 size="xs"
@@ -403,17 +410,15 @@ export function CreativeEditor(props: {
               </Button>
             </div>
           ) : (
-            <div className="space-y-2">
-              <Button
+            <Button
+                size="lg"
                 disabled={approvePending}
-                className="w-full"
+                className={cn("w-full", SOLID_DISABLED)}
                 onClick={() => mutate(startApprove, () => approveCreative(id), "Creative approved")}
               >
                 {approvePending ? <Loader2 className="animate-spin" /> : <Check data-icon="inline-start" />}
                 Approve creative
               </Button>
-              <p className="text-xs text-muted-foreground">Approving unlocks download.</p>
-            </div>
           )}
         </section>
 
@@ -421,7 +426,7 @@ export function CreativeEditor(props: {
         <Section
           icon={<Type className="size-4" />}
           title="Text & language"
-          badge={props.baked ? `${props.costs.regen} credits` : "Free"}
+          badge={props.baked ? creditsLabel(props.costs.regen) : "Free"}
           badgeAccent={props.baked}
         >
           <div className="flex flex-wrap gap-1.5">
@@ -432,7 +437,7 @@ export function CreativeEditor(props: {
                 disabled={langPending}
                 onClick={() => selectLanguage(l.id)}
                 className={cn(
-                  "rounded-full border px-3 py-1 text-xs font-medium transition-colors disabled:opacity-50",
+                  "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
                   lang === l.id
                     ? "border-primary bg-primary text-primary-foreground"
                     : "border-border bg-background text-muted-foreground hover:text-foreground",
@@ -444,7 +449,7 @@ export function CreativeEditor(props: {
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
             {props.baked
-              ? `Switching language re-sets the headline on the image · ${props.costs.regen} credits`
+              ? `Switching language re-sets the headline on the image · ${creditsLabel(props.costs.regen)}`
               : "Switching language is instant and free."}
           </p>
 
@@ -457,9 +462,7 @@ export function CreativeEditor(props: {
           <div className="mt-4 space-y-3">
             {fields.map(({ role, value }) => (
               <div key={role} className="space-y-1.5">
-                <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                  {ROLE_LABEL[role] ?? role}
-                </Label>
+                <Label className={FIELD_LABEL}>{ROLE_LABEL[role] ?? role}</Label>
                 <Input
                   value={drafts[role] ?? value}
                   maxLength={160}
@@ -470,12 +473,12 @@ export function CreativeEditor(props: {
           </div>
           <Button
             disabled={textPending || !textDirty}
-            className="mt-4 w-full"
+            className={cn("mt-4 w-full", SOLID_DISABLED)}
             variant={props.baked ? "default" : "secondary"}
             onClick={saveTexts}
           >
             {textPending ? <Loader2 className="animate-spin" /> : null}
-            {props.baked ? `Apply to image · ${props.costs.regen} credits` : "Save · free"}
+            {props.baked ? `Apply to image · ${creditsLabel(props.costs.regen)}` : "Save text"}
           </Button>
         </Section>
 
@@ -483,9 +486,7 @@ export function CreativeEditor(props: {
         <Section icon={<ImageIcon className="size-4" />} title="Logo & brand" badge="Free">
           {logo ? (
             <>
-              <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                Quick position
-              </Label>
+              <Label className={FIELD_LABEL}>Quick position</Label>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
                 {LOGO_PRESETS.map((p) => (
                   <Button
@@ -529,9 +530,14 @@ export function CreativeEditor(props: {
                     onChange={(v) => setLogoField("fw", v)}
                   />
                   <div className="flex gap-2">
-                    <Button size="sm" className="flex-1" disabled={logoPending} onClick={applyLogoPlacement}>
+                    <Button
+                      size="sm"
+                      className={cn("flex-1", SOLID_DISABLED)}
+                      disabled={logoPending}
+                      onClick={applyLogoPlacement}
+                    >
                       {logoPending ? <Loader2 className="animate-spin" /> : null}
-                      Apply placement · free
+                      Apply placement
                     </Button>
                     <Button size="sm" variant="ghost" disabled={logoPending} onClick={() => setLogoDraft(null)}>
                       Cancel
@@ -552,7 +558,7 @@ export function CreativeEditor(props: {
             <>
               <Separator className="my-4" />
               <div className="space-y-1.5">
-                <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Motto</Label>
+                <Label className={FIELD_LABEL}>Motto</Label>
                 <div className="flex gap-2">
                   <Input
                     value={drafts.motto ?? mottoLayer.textByLang[lang] ?? ""}
@@ -603,7 +609,7 @@ export function CreativeEditor(props: {
               Contact line {contactShown ? "on" : "off"}
             </Toggle>
             <p className="text-xs text-muted-foreground">
-              {props.hasContactLine ? "Free · content set in Brand settings." : "Add a contact line in Brand settings first."}
+              {props.hasContactLine ? "Text comes from Brand settings." : "Add a contact line in Brand settings first."}
             </p>
           </div>
         </Section>
@@ -612,7 +618,7 @@ export function CreativeEditor(props: {
         <Section
           icon={<Wand2 className="size-4" />}
           title="Scene"
-          badge={`${props.costs.regen} credits`}
+          badge={creditsLabel(props.costs.regen)}
           badgeAccent
         >
           <Textarea
@@ -632,32 +638,33 @@ export function CreativeEditor(props: {
               title="Rewrite into an art-directed instruction"
             >
               {enhancePending ? <Loader2 className="animate-spin" data-icon="inline-start" /> : <Sparkles data-icon="inline-start" />}
-              Enhance · {props.costs.enhance} cr
+              Enhance · {creditsLabel(props.costs.enhance)}
             </Button>
             <Button
               size="sm"
-              className="flex-1"
+              className={cn("flex-1", SOLID_DISABLED)}
               disabled={scenePending || enhancePending || note.trim().length < 4}
               onClick={() =>
                 mutate(startScene, () => regenerateWithInstruction(id, note), "Scene regenerated", () => setNote(""), "scene")
               }
             >
               {scenePending ? <Loader2 className="animate-spin" data-icon="inline-start" /> : null}
-              Regenerate · {props.costs.regen} credits
+              Regenerate · {creditsLabel(props.costs.regen)}
             </Button>
           </div>
           {scenePending && (
             <p className="mt-2 text-xs text-muted-foreground">
-              Re-imagining the scene — this can take up to a minute. Credits are refunded if it fails.
+              Re-imagining the scene. This can take up to a minute. Credits are refunded if it fails.
             </p>
           )}
 
           <button
             type="button"
             onClick={() => setShowAbout((s) => !s)}
-            className="mt-4 flex w-full items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+            aria-expanded={showAbout}
+            className="mt-4 flex w-full cursor-pointer items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
-            <ChevronDown className={cn("size-3.5 transition-transform", showAbout && "rotate-180")} />
+            <ChevronDown className={cn("size-3.5 transition-transform motion-reduce:transition-none", showAbout && "rotate-180")} />
             About this concept
           </button>
           {showAbout && (
@@ -693,15 +700,15 @@ export function CreativeEditor(props: {
                     mutate(startLayoutApply, () => applyLayout(id, o.templateId), `Layout: ${o.label}`, () => setLayoutOptions(null))
                   }
                   className={cn(
-                    "group relative overflow-hidden rounded-lg border bg-muted transition-all",
+                    "group relative cursor-pointer overflow-hidden rounded-lg border bg-muted transition-[border-color,transform] duration-150 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none",
                     o.current ? "border-primary ring-1 ring-primary/30" : "border-border hover:border-foreground/40",
                   )}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={o.dataUri} alt={o.label} className="aspect-[4/5] w-full object-cover" />
-                  <span className="absolute right-1 top-1 rounded bg-black/60 px-1 text-[9px] font-semibold text-white">{o.score}</span>
+                  <span className="absolute right-1 top-1 rounded-full bg-black/60 px-1.5 text-[10px] font-semibold tabular-nums text-white">{o.score}</span>
                   {o.current && (
-                    <span className="absolute bottom-1 left-1 rounded bg-primary px-1 text-[9px] font-semibold text-primary-foreground">Current</span>
+                    <span className="absolute bottom-1 left-1 rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">Current</span>
                   )}
                 </button>
               ))}
@@ -713,13 +720,13 @@ export function CreativeEditor(props: {
         </Section>
 
         {/* History */}
-        <Section icon={<History className="size-4" />} title={`History · ${props.versions.length}`}>
+        <Section icon={<History className="size-4" />} title="History" meta={props.versions.length > 0 ? String(props.versions.length) : undefined}>
           {props.versions.length === 0 ? (
             <p className="text-xs text-muted-foreground">No versions yet.</p>
           ) : (
-            <ul className="max-h-72 space-y-2 overflow-y-auto pr-1">
+            <ul className="-mx-2 max-h-72 space-y-1 overflow-y-auto">
               {props.versions.map((v, i) => (
-                <li key={v.index} className="flex items-center gap-3 rounded-lg border border-border/60 p-2">
+                <li key={v.index} className="flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-muted/50">
                   {v.thumbUrl ? (
                     /* eslint-disable-next-line @next/next/no-img-element */
                     <img src={v.thumbUrl} alt="" className="size-11 rounded-md border border-border object-cover" />
@@ -770,8 +777,8 @@ export function CreativeEditor(props: {
             </DialogTitle>
             <DialogDescription>
               The headline is baked into the image, so switching re-sets the typography in{" "}
-              {COPY_LANGUAGES.find((l) => l.id === confirmLang)?.label} on the artwork. Takes about 20–40 seconds ·{" "}
-              {props.costs.regen} credits (refunded if it fails quality checks).
+              {COPY_LANGUAGES.find((l) => l.id === confirmLang)?.label} on the artwork. Takes about 20 to 40 seconds ·{" "}
+              {creditsLabel(props.costs.regen)} (refunded if it fails quality checks).
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -792,7 +799,7 @@ export function CreativeEditor(props: {
                 );
               }}
             >
-              Switch · {props.costs.regen} credits
+              Switch · {creditsLabel(props.costs.regen)}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -804,17 +811,23 @@ export function CreativeEditor(props: {
 function Section(props: {
   icon: React.ReactNode;
   title: string;
+  /** Muted count beside the title (e.g. number of versions). */
+  meta?: string;
   badge?: string;
   badgeAccent?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-border bg-card p-4">
-      <header className="mb-3 flex items-center gap-2">
+    <section className="p-5">
+      <header className="mb-4 flex items-center gap-2">
         <span className="text-muted-foreground">{props.icon}</span>
         <h2 className="text-sm font-semibold tracking-tight">{props.title}</h2>
+        {props.meta && <span className="text-xs tabular-nums text-muted-foreground">{props.meta}</span>}
         {props.badge && (
-          <Badge variant={props.badgeAccent ? "default" : "secondary"} className="ml-auto">
+          <Badge
+            variant="secondary"
+            className={cn("ml-auto tabular-nums", props.badgeAccent && "bg-primary/10 text-primary")}
+          >
             {props.badge}
           </Badge>
         )}

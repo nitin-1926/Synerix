@@ -11,6 +11,8 @@ export const metadata = {
     "Add your brand and products, and generate ad creatives for the Indian market. Built from your real product photos, with crisp brand typography and copy in four languages.",
 };
 
+const LANGUAGES = ["English", "हिन्दी", "Hinglish", "ਪੰਜਾਬੀ"];
+
 const STEPS = [
   {
     n: "01",
@@ -48,13 +50,13 @@ export default function StudioProductPage() {
         )}
       />
       {/* ====== Hero ====== */}
-      <section className="mk-hero-bg mk-grain relative overflow-hidden bg-mk-ink pb-24 pt-40 text-white md:pb-28 md:pt-48">
+      <section className="mk-hero-bg mk-grain relative overflow-hidden bg-mk-ink pb-24 pt-36 text-white md:pb-28 md:pt-40">
         <div className="mx-auto max-w-6xl px-5 md:px-8">
           <p className="mk-mono mk-reveal text-[11px] text-mk-cyan" style={{ animationDelay: "0ms" }}>
             AI creative studio for Indian brands
           </p>
           <h1
-            className="mk-display mk-reveal mt-6 max-w-4xl text-balance text-[2.5rem] font-medium leading-[1.05] md:text-6xl"
+            className="mk-display mk-reveal mt-6 max-w-5xl text-balance pb-1 text-[2.5rem] font-medium leading-[1.1] md:text-5xl lg:text-[3.4rem]"
             style={{ animationDelay: "90ms" }}
           >
             Ad creatives for your business, made by the same people{" "}
@@ -70,14 +72,14 @@ export default function StudioProductPage() {
           <div className="mk-reveal mt-10 flex flex-col gap-3 sm:flex-row" style={{ animationDelay: "270ms" }}>
             <a
               href="mailto:consulting.synerix@gmail.com?subject=Synerix%20Studio%20access"
-              className="group inline-flex items-center justify-center gap-2 rounded-full bg-mk-cyan px-6 py-3.5 text-sm font-semibold text-mk-ink transition hover:bg-mk-cyan-bright"
+              className="group inline-flex items-center justify-center gap-2 rounded-full bg-mk-cyan px-6 py-3.5 text-sm font-semibold text-mk-ink transition hover:bg-mk-cyan-bright active:scale-[0.98]"
             >
               Request access
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
             </a>
             <Link
               href="/login"
-              className="inline-flex items-center justify-center gap-2 rounded-full border border-mk-line-dark px-6 py-3.5 text-sm font-medium text-white transition hover:border-mk-cyan hover:text-mk-cyan-bright"
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-mk-line-dark px-6 py-3.5 text-sm font-medium text-white transition hover:border-mk-cyan hover:text-mk-cyan-bright active:scale-[0.98]"
             >
               Sign in
             </Link>
@@ -110,17 +112,25 @@ export default function StudioProductPage() {
           <h2 className="mk-display max-w-lg text-balance text-3xl font-medium leading-tight text-mk-ink md:text-4xl">
             What makes it different.
           </h2>
+          {/* 6 items, 6 cells: the ink typography cell spans two rows beside a
+              stacked pair, then a row of three. Collapses to one column < md. */}
           <div className="mt-12 grid gap-6 md:grid-cols-6">
             {/* Typography: the signature capability, on an ink cell */}
-            <div className="mk-grain relative overflow-hidden rounded-2xl bg-mk-ink p-7 text-white md:col-span-4 md:p-9">
+            <div className="mk-grain relative flex flex-col overflow-hidden rounded-2xl bg-mk-ink p-7 text-white md:col-span-4 md:row-span-2 md:p-10">
               <PenTool className="size-5 text-mk-cyan" />
-              <h3 className="mk-display mt-4 text-xl font-medium md:text-2xl">Typography that never misspells</h3>
-              <p className="mt-2.5 max-w-md text-sm leading-relaxed text-mk-mist">
+              <h3 className="mk-display mt-4 text-2xl font-medium md:mt-auto md:text-4xl">
+                Typography that never misspells
+              </h3>
+              <p className="mt-3 max-w-md text-sm leading-relaxed text-mk-mist md:text-[15px]">
                 Headlines, CTAs and your logo are set as crisp text layers over the scene, so
                 spelling is always right, including Devanagari and Gurmukhi. Edit the text or
                 switch language in seconds, at no extra cost.
               </p>
-              <p className="mk-mono mt-6 text-[11px] text-mk-cyan">English · हिन्दी · Hinglish · ਪੰਜਾਬੀ</p>
+              <ul className="mk-mono mt-6 flex flex-wrap gap-x-5 gap-y-1 text-[11px] text-mk-cyan" aria-label="Languages">
+                {LANGUAGES.map((l) => (
+                  <li key={l}>{l}</li>
+                ))}
+              </ul>
             </div>
             <div className="rounded-2xl border border-mk-line bg-white p-7 md:col-span-2">
               <Package className="size-5 text-mk-cyan-deep" />
@@ -198,7 +208,7 @@ export default function StudioProductPage() {
             </ul>
             <a
               href="mailto:consulting.synerix@gmail.com?subject=Synerix%20Studio%20access"
-              className="group mt-8 inline-flex items-center gap-2 rounded-full bg-mk-cyan px-6 py-3 text-sm font-semibold text-mk-ink transition hover:bg-mk-cyan-bright"
+              className="group mt-8 inline-flex items-center gap-2 rounded-full bg-mk-cyan px-6 py-3 text-sm font-semibold text-mk-ink transition hover:bg-mk-cyan-bright active:scale-[0.98]"
             >
               Request access
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
@@ -220,7 +230,7 @@ export default function StudioProductPage() {
           </div>
           <Link
             href="/consulting"
-            className="group inline-flex shrink-0 items-center gap-2 rounded-full border border-mk-line px-6 py-3.5 text-sm font-medium text-mk-ink transition hover:border-mk-cyan-deep hover:text-mk-cyan-deep"
+            className="group inline-flex shrink-0 items-center gap-2 rounded-full border border-mk-line px-6 py-3.5 text-sm font-medium text-mk-ink transition hover:border-mk-cyan-deep hover:text-mk-cyan-deep active:scale-[0.98]"
           >
             Explore Synerix Consulting
             <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
@@ -231,11 +241,10 @@ export default function StudioProductPage() {
       {/* ====== FAQ ====== */}
       <section className="border-t border-mk-line bg-mk-paper py-20 md:py-24">
         <div className="mx-auto max-w-3xl px-5 md:px-8">
-          <p className="mk-mono text-[11px] text-mk-ink/50">FAQ</p>
-          <h2 className="mk-display mt-3 text-3xl font-medium leading-tight md:text-4xl">
+          <h2 className="mk-display text-3xl font-medium leading-tight md:text-4xl">
             Questions people ask before they start.
           </h2>
-          <dl className="mt-10 divide-y divide-mk-line border-y border-mk-line">
+          <dl className="mt-10 divide-y divide-mk-line">
             {FAQS.map((f) => (
               <div key={f.q} className="py-6">
                 <dt className="text-lg font-medium text-mk-ink">{f.q}</dt>
@@ -258,7 +267,7 @@ export default function StudioProductPage() {
           </p>
           <a
             href="mailto:consulting.synerix@gmail.com?subject=Synerix%20Studio%20access"
-            className="group mt-8 inline-flex items-center gap-2 rounded-full bg-mk-cyan px-7 py-4 text-sm font-semibold text-mk-ink transition hover:bg-mk-cyan-bright"
+            className="group mt-8 inline-flex items-center gap-2 rounded-full bg-mk-cyan px-7 py-4 text-sm font-semibold text-mk-ink transition hover:bg-mk-cyan-bright active:scale-[0.98]"
           >
             Request access
             <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />

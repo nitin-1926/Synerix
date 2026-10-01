@@ -107,7 +107,7 @@ export function BulkUpload() {
         setDone((d) => d + 1);
       }
       const ok = rows.length - failed.length;
-      if (ok > 0) toast.success(`Added ${ok} product${ok > 1 ? "s" : ""} — analyzing photos`);
+      if (ok > 0) toast.success(`Added ${ok} product${ok > 1 ? "s" : ""}. Analyzing photos`);
       if (failed.length) {
         toast.error(`${failed.length} failed`, { description: failed[0] });
         // Keep the dialog open so the user can retry the rest.

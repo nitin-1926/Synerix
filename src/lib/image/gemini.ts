@@ -1,6 +1,6 @@
 /**
  * Nano Banana Pro (gemini-3-pro-image) via the DIRECT Gemini API.
- * Spike-verified (scripts/spikes/nano-banana-direct.ts): superior at placing an
+ * Spike-verified (scripts/spikes/, removed in c7b7796): superior at placing an
  * exact product into a scene from a reference photo. Supports multi-reference
  * (product + logo) and aspect ratio control.
  */
@@ -26,17 +26,16 @@ export interface GeminiGenParams {
   aspect: GeminiAspect;
   /** Model id override (e.g. Nano Banana 2 vs Pro). Defaults to env/Pro. */
   model?: string;
-  /** Output resolution (Pro supports 1K/2K/4K). Omitted by default so the model
-   * uses its native size; set via the `size` param or env IMAGE_SIZE (mainly for
-   * the Pro/hero tier). Forcing a size on the fast model can be rejected. */
-  size?: GeminiImageSize;
 }
 
 export async function generateImageGemini(p: GeminiGenParams): Promise<Buffer> {
   const key = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
   if (!key) throw new Error("GOOGLE_GENERATIVE_AI_API_KEY missing");
   const model = p.model ?? GEMINI_IMAGE_MODEL;
-  const size = p.size ?? (process.env.IMAGE_SIZE as GeminiImageSize | undefined);
+  // Output resolution (Pro supports 1K/2K/4K). Unset by default so the model
+  // uses its native size; env IMAGE_SIZE forces one (mainly for the Pro/hero
+  // tier). Forcing a size on the fast model can be rejected.
+  const size = process.env.IMAGE_SIZE as GeminiImageSize | undefined;
 
   const parts: unknown[] = [];
   for (const ref of p.references ?? []) {
@@ -58,22 +57,14 @@ export async function generateImageGemini(p: GeminiGenParams): Promise<Buffer> {
 
   return withRetry(
     async () => {
-      const ac = new AbortController();
-      const timer = setTimeout(() => ac.abort(), timeoutMs);
-      let r: Response;
-      try {
-        r = await fetch(`${ENDPOINT}/${model}:generateContent?key=${key}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-          signal: ac.signal,
-        });
-      } catch (e) {
-        if (ac.signal.aborted) throw new Error(`gemini-image timeout after ${timeoutMs}ms`);
-        throw e;
-      } finally {
-        clearTimeout(timer);
-      }
+      // Aborts with a TimeoutError ("...aborted due to timeout"), which
+      // withRetry classifies as transient.
+      const r = await fetch(`${ENDPOINT}/${model}:generateContent?key=${key}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(timeoutMs),
+      });
       const text = await r.text();
       if (!r.ok) throw new Error(`gemini-image ${r.status}: ${text.slice(0, 400)}`);
       const json = JSON.parse(text) as {

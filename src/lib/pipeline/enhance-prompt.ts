@@ -1,6 +1,7 @@
 import { generateText } from "ai";
 import { MODELS, resolveLanguageModel } from "@/lib/ai/models";
 import type { CostTracker } from "./cost";
+import { stripDashes } from "./dashes";
 
 /**
  * Prompt enhancer (floki enhance-image-prompt essence, adapted for Synerix
@@ -48,5 +49,5 @@ export async function enhancePromptText(opts: {
   });
   opts.tracker?.addLLM(MODELS.concepts, usage, "enhance-prompt");
   // Hard guarantee on the dash ban, mirroring the concepting sanitizer.
-  return text.trim().replace(/\s*[—–]\s*/g, ", ").replace(/,\s*,/g, ", ");
+  return stripDashes(text);
 }

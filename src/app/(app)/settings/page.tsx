@@ -1,10 +1,9 @@
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { WORKSPACE_IMAGE_MODELS } from "@/lib/image/provider";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SettingsClient } from "./settings-client";
 
-export const metadata = { title: "Settings — Synerix Studio" };
+export const metadata = { title: "Settings | Synerix Studio" };
 
 export default async function SettingsPage() {
   const ctx = await requireAuth();
@@ -32,37 +31,30 @@ export default async function SettingsPage() {
         Manage your workspace, team members and invitations.
       </p>
 
-      <div className="mt-8 space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Team</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <SettingsClient
-              workspaceName={workspace.name}
-              workspaceType={workspace.type}
-              canManage={canManage}
-              isSuperAdmin={ctx.isSuperAdmin}
-              imageModel={workspace.imageModel}
-              imageModelOptions={WORKSPACE_IMAGE_MODELS.map((m) => ({ key: m.key, label: m.label, hint: m.hint }))}
-              currentUserId={ctx.userId}
-              members={members.map((m) => ({
-                membershipId: m.id,
-                userId: m.user.id,
-                name: m.user.name,
-                email: m.user.email,
-                image: m.user.image,
-                role: m.role,
-              }))}
-              invites={invites.map((i) => ({
-                id: i.id,
-                email: i.email,
-                role: i.role,
-                expiresAt: i.expiresAt ? i.expiresAt.toISOString() : null,
-              }))}
-            />
-          </CardContent>
-        </Card>
+      <div className="mt-10">
+        <SettingsClient
+          workspaceName={workspace.name}
+          workspaceType={workspace.type}
+          canManage={canManage}
+          isSuperAdmin={ctx.isSuperAdmin}
+          imageModel={workspace.imageModel}
+          imageModelOptions={WORKSPACE_IMAGE_MODELS.map((m) => ({ key: m.key, label: m.label, hint: m.hint }))}
+          currentUserId={ctx.userId}
+          members={members.map((m) => ({
+            membershipId: m.id,
+            userId: m.user.id,
+            name: m.user.name,
+            email: m.user.email,
+            image: m.user.image,
+            role: m.role,
+          }))}
+          invites={invites.map((i) => ({
+            id: i.id,
+            email: i.email,
+            role: i.role,
+            expiresAt: i.expiresAt ? i.expiresAt.toISOString() : null,
+          }))}
+        />
       </div>
     </div>
   );

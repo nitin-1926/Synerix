@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useRealtimeRun } from "@trigger.dev/react-hooks";
-import { ArrowLeft, Loader2, Paintbrush, ScanSearch, Sparkles, Wand2 } from "lucide-react";
+import { AlertCircle, ArrowLeft, Check, Loader2, Paintbrush, ScanSearch, Sparkles, Wand2, X } from "lucide-react";
 // The editor is 865 lines plus its preview stage, and on this route it renders
 // only AFTER a creative is selected — a run that is still generating never
 // shows it. Loading it lazily keeps that weight off the critical path of the
@@ -86,7 +86,12 @@ export function StudioCanvas(props: {
   useEffect(() => {
     if (TERMINAL.includes(liveStatus) || workerDead) {
       // A dead worker leaves the DB row non-terminal until the healer flips it;
-      // refreshing re-renders the page, which heals it and refunds.
+      // refreshing re-renders the page, which heals it and refunds. A pending
+      // coalesced refresh is now redundant — drop it, don't refetch twice.
+      if (refreshTimer.current) {
+        clearTimeout(refreshTimer.current);
+        refreshTimer.current = null;
+      }
       router.refresh();
       return;
     }
@@ -128,9 +133,21 @@ export function StudioCanvas(props: {
 
         {/* Concept selector */}
         <div>
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Options{generating && conceptCount > 0 ? ` · ${props.concepts.length}/${conceptCount}` : ""}
-          </p>
+          <h2 className="mb-2 text-sm font-semibold text-foreground">
+            Options
+            {generating && conceptCount > 0 && (
+              <span className="ml-1.5 font-normal text-muted-foreground tabular-nums">
+                {props.concepts.length}/{conceptCount}
+              </span>
+            )}
+          </h2>
+          {/* Partial run: say plainly what happened and what it cost. */}
+          {!generating && failedItems.length > 0 && props.concepts.length > 0 && (
+            <p className="mb-2 text-xs text-muted-foreground">
+              {props.concepts.length} of {props.concepts.length + failedItems.length} rendered.
+              {props.bakeoff ? "" : " Credits for the failed ones were refunded."}
+            </p>
+          )}
           <div className="grid grid-cols-2 gap-2 lg:grid-cols-1">
             {props.concepts.map((cpt) => (
               <Link
@@ -138,7 +155,7 @@ export function StudioCanvas(props: {
                 href={`/studio/${props.runId}?c=${cpt.id}`}
                 scroll={false}
                 className={cn(
-                  "group flex items-center gap-2 overflow-hidden rounded-xl border p-1.5 text-left transition-all",
+                  "group flex items-center gap-2 overflow-hidden rounded-xl border p-1.5 text-left outline-none transition-all duration-200 focus-visible:ring-3 focus-visible:ring-ring/50 active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100",
                   cpt.id === props.selectedId ? "border-primary bg-primary/5 ring-1 ring-primary/30" : "border-border hover:border-foreground/30",
                 )}
               >
@@ -159,9 +176,9 @@ export function StudioCanvas(props: {
             ))}
             {Array.from({ length: pendingSlots }).map((_, i) => (
               <div key={`pending-${i}`} className="flex items-center gap-2 rounded-xl border border-dashed border-border p-1.5">
-                <span className="mk-shimmer size-10 shrink-0 rounded-lg bg-muted" />
+                <span className="mk-shimmer size-10 shrink-0 rounded-lg bg-muted motion-reduce:after:animate-none" />
                 <span className="min-w-0 flex-1 space-y-1.5">
-                  <span className="mk-shimmer block h-2.5 w-2/3 rounded bg-muted" />
+                  <span className="mk-shimmer block h-2.5 w-2/3 rounded bg-muted motion-reduce:after:animate-none" />
                   <span className="block text-[10px] text-muted-foreground">Crafting option {props.concepts.length + i + 1}…</span>
                 </span>
               </div>
@@ -172,13 +189,15 @@ export function StudioCanvas(props: {
                 className="flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-1.5"
                 title={props.conceptErrors[id] ?? undefined}
               >
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-destructive/10 text-destructive">×</span>
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-destructive/10 text-destructive">
+                  <X className="size-4" aria-hidden />
+                </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-xs font-medium text-destructive">
-                    {id.includes("-") ? `Option ${Number(id.split("-")[0]) + 1} · ${id.split("-").slice(1).join("-")}` : `Option ${Number(id) + 1}`} failed
+                    {id.includes("-") ? `Option ${Number(id.split("-")[0]) + 1} · ${id.split("-").slice(1).join("-")}` : `Option ${Number(id) + 1}`} didn&apos;t render
                   </span>
                   <span className="block truncate text-[10px] text-muted-foreground">
-                    {props.conceptErrors[id]?.slice(0, 60) ?? "Didn't render"}{props.bakeoff ? "" : " · refunded"}
+                    {props.bakeoff ? (props.conceptErrors[id]?.slice(0, 60) ?? "No error recorded") : "Credits refunded"}
                   </span>
                 </span>
               </div>
@@ -188,7 +207,7 @@ export function StudioCanvas(props: {
 
         {/* Styling assets */}
         <div className="space-y-3 rounded-xl border border-border p-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Brand kit</p>
+          <h2 className="text-sm font-semibold text-foreground">Brand kit</h2>
           <div className="flex items-center gap-2">
             {props.assets.logoUrl ? (
               <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-white">
@@ -219,11 +238,18 @@ export function StudioCanvas(props: {
           <CreativeEditor key={props.editorProps.creativeId} {...props.editorProps} />
         ) : props.failed || workerDead ? (
           <div className="flex min-h-[60vh] flex-col items-center justify-center rounded-2xl border border-destructive/30 bg-destructive/5 p-8 text-center">
-            <p className="font-medium text-destructive">This run failed</p>
-            <p className="mt-1 max-w-sm text-sm text-destructive/80">
-              {props.error ?? (workerDead ? "The generation worker stopped unexpectedly." : "Something went wrong.")} Your credits were refunded.
+            <AlertCircle className="size-6 text-destructive" aria-hidden />
+            <h2 className="mt-3 font-semibold text-destructive">This run didn&apos;t finish</h2>
+            <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+              {props.error ?? (workerDead ? "The generation worker stopped unexpectedly." : "Something went wrong.")}
             </p>
-            <Link href="/studio" className="mt-4 text-sm font-medium text-primary hover:underline">Start a new one</Link>
+            {!props.bakeoff && <p className="mt-2 text-sm font-medium text-foreground">Your credits were refunded.</p>}
+            <Link
+              href="/studio"
+              className="mt-5 inline-flex h-10 items-center rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground transition-transform duration-150 hover:bg-primary/85 active:scale-[0.98] motion-reduce:transition-none"
+            >
+              Start a new one
+            </Link>
           </div>
         ) : (
           <GeneratingView
@@ -262,7 +288,8 @@ function GeneratingView(props: {
   const activeIndex = stageIndex === -1 ? 0 : stageIndex;
   const aspect = ASPECT_CSS[props.masterAspect] ?? "4 / 5";
   const accent = props.accent ?? undefined;
-  const frameCount = Math.min(Math.max(props.conceptCount || 2, 1), 3);
+  // One frame per expected option (capped so a bake-off doesn't flood the view).
+  const frameCount = Math.min(Math.max(props.conceptCount || 2, 1), 6);
 
   // Coarse progress: brief → concepts → render (render fills by done/count).
   const pct =
@@ -277,19 +304,35 @@ function GeneratingView(props: {
   return (
     <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-b from-muted/40 via-card to-card">
       <div className="flex min-h-[70vh] flex-col items-center justify-center gap-10 px-6 py-14">
-        {/* Hero — skeleton option frames being built */}
-        <div className="flex flex-wrap items-start justify-center gap-4">
-          {Array.from({ length: frameCount }).map((_, i) => (
-            <div
-              key={i}
-              className="mk-shimmer relative w-32 rounded-xl border border-border bg-muted shadow-sm sm:w-40"
-              style={{ aspectRatio: aspect, animationDelay: `${i * 200}ms` }}
-            >
-              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-                <Sparkles className="size-5 opacity-30" style={{ color: accent }} />
-              </span>
-            </div>
-          ))}
+        {/* Hero — one skeleton frame per option, in the run's real aspect. Frames
+            turn solid as options land (they then appear in the left rail). */}
+        <div className="flex max-w-2xl flex-wrap items-start justify-center gap-4">
+          {Array.from({ length: frameCount }).map((_, i) => {
+            const ready = i < props.done;
+            return (
+              <div key={i} className="w-28 sm:w-36">
+                <div
+                  className={cn(
+                    "relative w-full rounded-2xl border border-border shadow-sm",
+                    ready ? "bg-card" : "mk-shimmer bg-muted motion-reduce:after:animate-none",
+                  )}
+                  style={{ aspectRatio: aspect }}
+                >
+                  <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+                    {ready ? (
+                      <Check className="size-5 text-primary" aria-hidden />
+                    ) : (
+                      <Sparkles className="size-5 opacity-30" style={{ color: accent }} aria-hidden />
+                    )}
+                  </span>
+                </div>
+                <div className="mt-2 space-y-1.5">
+                  <div className="h-2.5 w-3/4 rounded bg-muted" />
+                  <div className="h-2 w-1/2 rounded bg-muted/70" />
+                </div>
+              </div>
+            );
+          })}
         </div>
 
         {/* Progress */}
@@ -302,7 +345,7 @@ function GeneratingView(props: {
           </div>
 
           <div className="mt-4 flex items-center justify-center gap-2 text-center">
-            <Loader2 className="size-4 shrink-0 animate-spin text-primary" />
+            <Loader2 className="size-4 shrink-0 animate-spin text-primary motion-reduce:animate-none" aria-hidden />
             <p className="text-sm font-medium text-foreground">
               {STAGES[activeIndex].label}
               {activeIndex === 2 && props.conceptCount > 0 && (
@@ -315,7 +358,7 @@ function GeneratingView(props: {
           <div className="mt-3 flex items-center justify-center gap-2 text-[11px] font-medium">
             {STAGES.map((stage, i) => (
               <span key={stage.key} className="flex items-center gap-2">
-                {i > 0 && <span className="text-muted-foreground/40">›</span>}
+                {i > 0 && <span className="text-muted-foreground/40" aria-hidden>›</span>}
                 <span
                   className={cn(
                     i < activeIndex ? "text-primary" : i === activeIndex ? "text-foreground" : "text-muted-foreground/60",
@@ -329,13 +372,27 @@ function GeneratingView(props: {
         </div>
 
         <p className="max-w-sm text-center text-xs text-muted-foreground">
-          Usually 1–2 minutes. Options appear on the left the moment each is ready — you can leave this page and find them in Creatives.
+          Usually 1 to 2 minutes. Options appear on the left the moment each is ready. You can leave this page and find them in Creatives.
         </p>
       </div>
     </div>
   );
 }
 
+/** Mirrors the editor's layout (preview + 384px panel of sections). */
 function EditorSkeleton() {
-  return <div className="min-h-[60vh] animate-pulse rounded-2xl border border-border bg-card" />;
+  return (
+    <div className="grid gap-8 motion-safe:animate-pulse lg:grid-cols-[minmax(0,1fr)_384px]" aria-hidden>
+      <div className="mx-auto aspect-[4/5] w-full max-w-lg rounded-2xl bg-muted" />
+      <div className="space-y-4">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="space-y-3 rounded-xl border border-border bg-card p-4">
+            <div className="h-3.5 w-1/3 rounded bg-muted" />
+            <div className="h-9 w-full rounded-lg bg-muted" />
+            <div className="h-9 w-2/3 rounded-lg bg-muted" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }

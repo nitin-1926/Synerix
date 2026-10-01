@@ -19,9 +19,7 @@ const eslintConfig = [
       "build/**",
       "next-env.d.ts",
       "src/generated/**",
-      "scripts/spikes/**",
       ".trigger/**",
-      "legacy/**",
     ],
   },
 ];

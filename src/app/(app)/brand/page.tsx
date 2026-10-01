@@ -1,3 +1,4 @@
+import { ImageIcon } from "lucide-react";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { ensureBrand } from "@/lib/ensure-brand";
@@ -22,9 +23,17 @@ import { CREDIT_COSTS } from "@/lib/ai/models";
 import { LogoPicker } from "./logo-picker";
 import { LogoUpload } from "./logo-upload";
 import { ApparelDefaultControl } from "./apparel-default";
+import { ColorField } from "./color-field";
 import type { BrandDna } from "@/lib/schemas/brand-dna";
 
-export const metadata = { title: "Brand kit — Synerix Studio" };
+export const metadata = { title: "Brand kit | Synerix Studio" };
+
+const INGEST_LABEL: Record<string, string> = {
+  PENDING: "Website read queued",
+  CRAWLING: "Reading your website…",
+  EXTRACTING: "Reading your website…",
+  FAILED: "Website read failed",
+};
 
 export default async function BrandPage() {
   const auth = await requireAuth();
@@ -52,9 +61,12 @@ export default async function BrandPage() {
             Everything Studio knows about your brand. Creatives inherit these automatically.
           </p>
         </div>
-        <Badge variant={brand.ingestStatus === "READY" ? "secondary" : "outline"}>
-          {brand.ingestStatus.toLowerCase()}
-        </Badge>
+        {/* READY is the normal state; only surface the in-flight / failed ones. */}
+        {brand.ingestStatus !== "READY" && (
+          <Badge variant={brand.ingestStatus === "FAILED" ? "destructive" : "outline"} className="shrink-0">
+            {INGEST_LABEL[brand.ingestStatus] ?? brand.ingestStatus}
+          </Badge>
+        )}
       </div>
 
       <div className="mt-6">
@@ -80,22 +92,19 @@ export default async function BrandPage() {
                 giant unlabeled bar, not a color field. */}
             <div className="space-y-2">
               <Label htmlFor="primaryColorHex">Primary color</Label>
-              <div className="flex items-center gap-3">
-                <Input id="primaryColorHex" name="primaryColorHex" type="color" defaultValue={brand.primaryColorHex ?? "#b83b5e"} className="size-10 shrink-0 cursor-pointer rounded-lg p-1" />
-                <span className="font-mono text-sm uppercase text-muted-foreground">{brand.primaryColorHex ?? "#b83b5e"}</span>
-              </div>
+              <ColorField id="primaryColorHex" defaultValue={brand.primaryColorHex ?? "#b83b5e"} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="accentColorHex">Accent color</Label>
-              <div className="flex items-center gap-3">
-                <Input id="accentColorHex" name="accentColorHex" type="color" defaultValue={brand.accentColorsHex[0] ?? "#e8862e"} className="size-10 shrink-0 cursor-pointer rounded-lg p-1" />
-                <span className="font-mono text-sm uppercase text-muted-foreground">{brand.accentColorsHex[0] ?? "#e8862e"}</span>
-              </div>
+              <ColorField id="accentColorHex" defaultValue={brand.accentColorsHex[0] ?? "#e8862e"} />
             </div>
-            <div className="space-y-4 sm:col-span-2">
-              <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Brand block · logo &amp; contact
-              </h2>
+            <div className="space-y-4 border-t border-border pt-5 sm:col-span-2">
+              <div>
+                <h2 className="text-sm font-semibold text-foreground">Logo &amp; contact</h2>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  How the brand block sits on your creatives.
+                </p>
+              </div>
               <div className="grid gap-5 sm:grid-cols-2">
                 <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="contactLine">Contact line</Label>
@@ -147,7 +156,7 @@ export default async function BrandPage() {
         <CardHeader>
           <CardTitle className="text-base">Brand research</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Web-grounded evidence about your category — the ad patterns, customer language and
+            Web-grounded evidence about your category: the ad patterns, customer language and
             angles that work. Every generation reads this when building its brief. Refresh it after
             a repositioning or a new product line.
           </p>
@@ -162,6 +171,9 @@ export default async function BrandPage() {
                     day: "numeric",
                     month: "short",
                     year: "numeric",
+                    // Server renders in UTC; without this an early-morning IST
+                    // refresh shows yesterday's date.
+                    timeZone: "Asia/Kolkata",
                   })
                 : null
             }
@@ -173,7 +185,7 @@ export default async function BrandPage() {
         <CardHeader>
           <CardTitle className="text-base">Apparel output default</CardTitle>
           <p className="text-sm text-muted-foreground">
-            For on-model apparel creatives — applied by default, overridable per generation in the studio.
+            For on-model apparel creatives: applied by default, overridable per generation in the studio.
           </p>
         </CardHeader>
         <CardContent>
@@ -182,32 +194,42 @@ export default async function BrandPage() {
       </Card>
 
       {dna && (
-        <section className="mt-8 grid gap-4 sm:grid-cols-2">
-          <DnaCard title="Voice" items={[dna.voice.register.replaceAll("_", " "), ...dna.voice.signature_phrases.slice(0, 3)]} />
-          <DnaCard title="Products spotted" items={dna.offering.primary_products.slice(0, 6)} />
-          <DnaCard title="Audience" items={[dna.audience.target_customer ?? "—", ...dna.audience.occasions.slice(0, 4)]} />
-          <DnaCard
-            title="Positioning"
-            items={[
-              dna.positioning.promise ?? "—",
-              // Hide the price row when research couldn't determine it —
-              // "price: unknown" reads as a bug, not a fact.
-              ...(dna.positioning.price_band && dna.positioning.price_band !== "unknown"
-                ? [`Price band: ${dna.positioning.price_band}`]
-                : []),
-            ]}
-          />
-        </section>
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle className="text-base">What Studio learned about your brand</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <dl className="grid gap-x-8 gap-y-6 sm:grid-cols-2">
+              <DnaItem title="Voice" items={[dna.voice.register.replaceAll("_", " "), ...dna.voice.signature_phrases.slice(0, 3)]} />
+              <DnaItem title="Products spotted" items={dna.offering.primary_products.slice(0, 6)} />
+              <DnaItem title="Audience" items={[dna.audience.target_customer ?? "—", ...dna.audience.occasions.slice(0, 4)]} />
+              <DnaItem
+                title="Positioning"
+                items={[
+                  dna.positioning.promise ?? "—",
+                  // Hide the price row when research couldn't determine it —
+                  // "price: unknown" reads as a bug, not a fact.
+                  ...(dna.positioning.price_band && dna.positioning.price_band !== "unknown"
+                    ? [`Price band: ${dna.positioning.price_band}`]
+                    : []),
+                ]}
+              />
+            </dl>
+          </CardContent>
+        </Card>
       )}
 
       <section className="mt-10">
-        <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Brand assets</h2>
+        <h2 className="text-base font-semibold text-foreground">Brand assets</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Upload your logo, or tap a website-pulled image to set it as your logo.
         </p>
         <LogoUpload />
         {brand.assets.length === 0 ? (
-          <p className="mt-4 text-sm text-muted-foreground">No assets yet — upload a logo above.</p>
+          <div className="mt-4 flex items-center gap-3 rounded-2xl border-2 border-dashed border-border px-4 py-5 text-sm text-muted-foreground">
+            <ImageIcon className="size-5 shrink-0" />
+            No logo yet. Upload one so it can appear on your creatives.
+          </div>
         ) : (
           <LogoPicker
             assets={brand.assets.map((a) => ({
@@ -223,28 +245,24 @@ export default async function BrandPage() {
   );
 }
 
-function DnaCard({ title, items }: { title: string; items: string[] }) {
+function DnaItem({ title, items }: { title: string; items: string[] }) {
   const filtered = items.filter((i) => i && i !== "—");
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {filtered.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Nothing detected yet</p>
-        ) : (
-          <ul className="space-y-1.5">
+    <div>
+      <dt className="text-sm font-medium text-muted-foreground">{title}</dt>
+      {filtered.length === 0 ? (
+        <dd className="mt-1.5 text-sm text-muted-foreground">Nothing detected yet</dd>
+      ) : (
+        <dd className="mt-1.5">
+          <ul className="space-y-1">
             {filtered.map((i) => (
-              <li key={i} className="text-sm text-foreground">
+              <li key={i} className="text-sm text-foreground first-letter:uppercase">
                 {i}
               </li>
             ))}
           </ul>
-        )}
-      </CardContent>
-    </Card>
+        </dd>
+      )}
+    </div>
   );
 }

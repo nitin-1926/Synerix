@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Mono, Lora, Plus_Jakarta_Sans } from "next/font/google";
-import { ThemeProvider } from "@/components/theme-provider";
+import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -24,9 +24,9 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Synerix Studio — AI ad creatives for Indian businesses",
+  title: "Synerix Studio | AI ad creatives for Indian businesses",
   description:
-    "Ad creatives built from your real products — a calendar of 45 Indian occasions, your brand applied consistently, copy in English, Hindi, Hinglish and Punjabi.",
+    "Ad creatives built from your real products: a calendar of 45 Indian occasions, your brand applied consistently, copy in English, Hindi, Hinglish and Punjabi.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

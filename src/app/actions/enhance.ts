@@ -60,7 +60,7 @@ export async function enhanceUserPrompt(input: {
       workspaceId: auth.workspaceId,
       amount: CREDIT_COSTS.enhancePrompt,
       reason: "REFUND",
-      note: "Prompt enhancement failed — refunded",
+      note: "Prompt enhancement failed. Refunded",
     });
     return { error: `Enhancement failed: ${(e as Error).message?.slice(0, 160)}` };
   }

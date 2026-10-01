@@ -67,6 +67,249 @@ New entries go at the **top** of the Log section (reverse chronological).
 
 ## Log
 
+### 2026-10-02 — Pin Node 22.x in package.json engines (Vercel dropped Node 20)
+
+- Type: build
+- Scope: package.json
+
+Reasoning / RCA / research:
+    - PR #12's preview failed before install with "Node.js Version 20.x is
+      discontinued": the Vercel project setting still said 20.x. Every deploy,
+      including the next production one from main, would have failed the same way.
+    - Pinned in the repo (`engines.node`, which Vercel honours over the project
+      setting) rather than clicking the dashboard, so the choice is versioned.
+      22.x, not 24.x: CI, e2e, the Trigger deploy workflow and the Trigger
+      runtime (`node-22`) all run 22, so this keeps one Node major everywhere.
+
+### 2026-09-24 — Full design pass (app, admin, auth, marketing): preserve-mode polish, verified by screenshot
+
+- Type: refactor
+- Scope: src/components/ui/*, src/app/globals.css, src/styles/themes.css, src/components/{app-nav,admin-viewing-banner,account-type-picker,brand-kit-tabs}.tsx, src/app/(app)/{dashboard,onboarding,studio,library,brand,products,models,calendar,settings}/**, src/app/(auth)/** (+ new layout.tsx), src/app/(admin)/** (+ admin-ui.tsx), src/app/(marketing)/**, src/components/marketing/**, src/lib/{ist-date,workspace-type,run-heal}.ts, ledger notes in src/trigger/*, src/lib/editor/paid-edits.ts
+
+Reasoning / RCA / research:
+    - Ran design-taste-frontend + ui-ux-pro-max + frontend-design. Kept the
+      owner's 2026-07-11 redesign-PRESERVE decision (navy + cyan, Plus
+      Jakarta/Lora app, Fraunces marketing, slugs, nav labels, section order);
+      "premium" came from hierarchy, image-led surfaces, states and consistency,
+      not a new look. One shared brief bound 8 parallel area agents.
+    - Before/after screenshots at 1440 and 390 on every route (god-view into the
+      data-rich workspace). A "sidebar cut off" first read as a bug turned out
+      to be a full-page-capture artifact (it is sticky h-dvh); not "fixed".
+    - Biggest wins: dashboard showed zero images for a visual product (now a
+      recent-creatives strip, date-first festival list, one primary action);
+      editor preview scrolled away while editing (now sticky, gallery stage);
+      studio tiles hid names under overlays; login was a bare card (now a split
+      brand panel); admin titled cards by BRAND so two workspaces both read
+      "Blueman".
+    - Real bugs surfaced by the pass: studio helper text said "4 distinct
+      concepts" while the button said 1 (optionCount vs guidedCount); mobile had
+      no route to Settings/sign-out/workspace switch; library tile names were
+      hover-only (invisible on touch); Select triggers showed raw enum values
+      ("EDITOR", "nb2"); remove-member had no confirmation; negative admin
+      adjustments read "Credits granted"; ledger dates and festival "today"
+      were computed in UTC (festival vanished from 05:30 IST on its own day —
+      new todayIST() helper + test); focus rings invisible on ink sections;
+      health-check copy hardcoded "Twenty" questions; bento had an empty cell.
+    - Kept deliberately: Fraunces + ink/paper section rhythm (brand), lucide
+      icons (existing set), lone "—" empty placeholders in tables.
+
+Implementation summary:
+    - Primitives: disabled cursor + no hover on disabled (custom hover variant),
+      ink-tinted dialog scrim, reduced-motion caps infinite animations, skeleton
+      shimmer; contrast computed for every text token pair in both themes (all
+      ≥ 5.8:1).
+    - Em-dashes removed from remaining UI-bound strings incl. credit-ledger notes
+      and business-type hints; credit unit unified to "credits".
+    - tsc, eslint, 144 tests, next build green; after-screenshots reviewed.
+
+Follow-ups deferred:
+    - Preset AI-model names in the DB contain em-dashes ("Baby — toddler") —
+      a data fix, owner's call.
+    - Library search/filters only cover the current page of 60 (needs
+      server-side filtering); empty-state copy now says "on this page".
+    - Marketing hero still has no visual: needs an owner-approved real Studio
+      output. Nav/footer "Get started" (→ /login) became "Request access"
+      (mailto) since Studio is invite-only; revert = ACCESS_HREF in nav.tsx.
+
+### 2026-09-24 — Six-review sweep of PR #11: cross-verified findings, what was rejected and why
+
+- Type: chore
+- Scope: whole PR #11 range (`8d83958^1..8d83958`) + repo-wide audit; process record for the entries below
+
+Reasoning / RCA / research:
+    - Ran /code-review, ce-code-review, god-review, ponytail-review,
+      /security-review and ponytail-audit (15 reviewer agents). Findings were
+      merged by file+line and promoted on independent agreement: the refund
+      divisor bug was flagged by 6 reviewers, the brand-intel cooldown race by 7.
+    - Security (two independent passes): no exploitable vulnerability. The only
+      money-adjacent item (cooldown race) costs the caller, not the platform.
+    - REJECTED on evidence, not opinion: ponytail-audit #1 "delete the
+      baked-typography path" — 6 prod creatives still have
+      `typographyMode='baked'` and would lose editing. #34 "env knobs are set
+      nowhere" — e2e.yml sets PACK_QA_MAX_RETRIES, IMAGE_PROVIDER,
+      GEMINI_IMAGE_MODEL, LITE_QA_MAX_RETRIES and MODEL_*. #21 (db.ts URL
+      parsing), #35 (NextAuth env rename) skipped: risk to auth/DB for ~20 lines.
+    - Adversarial's "shared key deletion" looked theoretical until a prod query
+      found 1 product key referenced by two rows — it was live.
+    - Deliberately kept: Fingerprint identifying every marketing pageview
+      (owner asked for tracking, not just wizard attribution), the
+      `CREDITS_PER_ASPECT` pricing flag (a parked pricing decision), the
+      three business-health email charts (product call), the deleteObjects
+      1000-key batch loop (it is the S3 API limit, three lines).
+
+Implementation summary:
+    - Read-only prod checks before any schema change: 0 NULL storagePrefix,
+      0 NULL createdByUserId, 0 render keys outside their prefix, RLS on every
+      table, all migrations applied, 0 runs in the last 30 days.
+    - Unit tests 107 → 134; tsc + eslint clean.
+
+Follow-ups deferred:
+    - The 3 new migrations need `prisma migrate deploy` on prod (blocked for
+      owner approval — prod DB write). All are backward-compatible with the
+      currently deployed code.
+    - processConcept/processDirect creative-persist tails not merged: their
+      concept payloads genuinely differ; identity is now shared.
+
+### 2026-09-24 — One refund price for every refund path (`creditsPerCreative`)
+
+- Type: bug
+- Scope: prisma/schema.prisma + migrations/20260924090000_run_credits_per_creative, src/lib/run-pricing.ts (+test), src/trigger/generation-run.ts, src/lib/run-heal.ts, src/app/actions/generate.ts
+
+Reasoning / RCA / research:
+    - Three refund paths each re-derived the debit formula differently: finalize
+      divided by queue length, catchError by `conceptCount × aspects`, the
+      stall-healer by flat `perConcept`. Aspects are not charged by default, so
+      catchError REFUNDED 2.67 credits on a fully delivered 2-concept×3-aspect
+      run, and clamped a half-delivered compare run to 0 (customer lost 4).
+    - reconcileRunRefund pays the LARGEST owed amount it is handed, so the
+      most generous wrong formula always won.
+    - Rejected "derive expected items from pipeline.conceptStatus": direct mode
+      never writes it, and a short LLM concept list would still overcharge. The
+      correct unit is what one creative cost AT DEBIT TIME, so it is frozen then.
+
+Implementation summary:
+    - `undeliveredRefund(run, delivered) = debited − delivered × unit`, unit from
+      the new nullable column, with a legacy fallback (debit ÷ concepts × compare).
+    - 6 unit tests pin multi-aspect, compare, per-aspect flag, legacy and free runs.
+
+### 2026-09-24 — Paid brand-research refresh: atomic claim + research moved to Trigger (corrects 2026-08-04)
+
+- Type: bug
+- Scope: src/app/actions/brand.ts, src/trigger/brand-research.ts, src/app/(app)/brand/{refresh-intel.tsx,page.tsx}, prisma/schema.prisma + migrations/20260924091000_brand_intel_claim
+
+Reasoning / RCA / research:
+    - The 2026-08-04 design debited, then ran research INLINE in a server action
+      under the (app) segment's `maxDuration = 60`. Research can take 90s+
+      (search timeout + fallback + synthesis): Vercel kills the function after
+      the debit, the catch/refund never runs, and no cooldown is set, so the
+      retry charges again.
+    - The cooldown read `creativeIntelAt`, written only on success — a second
+      tab or a reload mid-research passed it and paid twice. The refund was
+      `.catch(() => {})`, so a failed refund left no trace.
+    - A rejected server action inside startTransition went to the root error
+      boundary, blanking the whole app on a paid action.
+
+Implementation summary:
+    - Conditional `updateMany` claims `creativeIntelRequestedAt` before the
+      debit (one winner per hour; also refuses right after a success).
+    - The action only debits and enqueues `brand-research` (maxDuration 300)
+      with a `charge`; the task's `onFailure` refunds once and releases the
+      claim, logging loudly if the refund itself fails. Enqueue failure refunds
+      inline.
+    - Button catches rejections, states cost via aria-describedby; "last run"
+      date formatted in Asia/Kolkata (server is UTC).
+    - brand.refresh.test.ts pins claim-before-debit, no charge on a lost claim,
+      release on insufficient credits, refund on enqueue failure, workspace
+      scoping. object-gc.test.ts pins the shared-key guard.
+
+### 2026-09-24 — Em-dashes removed from user-visible copy (standing rule)
+
+- Type: chore
+- Scope: 25 files under src/app/**, src/app/actions/** (toast/ledger strings), src/app/api/brand-status/route.ts
+
+Reasoning / RCA / research:
+    - Owner's standing rule: no em-dashes in website or dashboard copy. 42
+      strings rewritten; page titles moved to the existing "Page | Synerix" form.
+    - Left alone: lone "—" empty-value placeholders in tables/cards (a display
+      convention, not prose — owner's call), comments, LLM prompt text, emails.
+
+### 2026-09-24 — Storage: shared-key delete guard, all-or-nothing uploads, stable signed URLs
+
+- Type: bug
+- Scope: src/lib/object-gc.ts (new), src/lib/storage.ts (+test), src/app/actions/{products,models}.ts, src/lib/editor/paid-edits.ts, src/trigger/generation-run.ts, prisma migration 20260924092000_storage_prefix_not_null, deleted scripts/{migrate-storage-to-r2,setup-storage}.ts, scripts/PROD-MIGRATION.md
+
+Reasoning / RCA / research:
+    - scripts/seed-e2e-workspace.ts clones rows with the SAME storage keys, and
+      deleteObjects had no reference check: deleting the E2E copy of a product
+      destroyed Synerix Apparel's files (R2 has no versioning).
+    - createProduct uploaded in a Promise.all AFTER creating the row, so one
+      failed PUT left an image-less product, never dissected, plus orphans.
+    - The signed-URL cache was keyed by the key ARRAY, so adding one creative to
+      a set re-signed and re-downloaded every image in it. Pinning presign's
+      `signingDate` to a time window makes a key's URL identical across sets,
+      pages and instances with no cache at all.
+    - storagePrefix / createdByUserId were nullable only for pre-backfill rows
+      (verified 0 NULLs); the `renderPrefix` fallback and `"system"` user could
+      only ever write renders where nothing reads them. NOT NULL now fails loudly.
+    - The bake-off plate test was circular (built both keys itself); the key is
+      now a helper paid-edits calls, so dropping the creative id fails the test.
+
+Implementation summary:
+    - `deleteUnreferencedObjects` skips keys any ProductImage/AiModel/BrandAsset
+      still references; never throws. Uploads: allSettled → roll back row + objects.
+    - Thumbnails generated in parallel with the original PUT and skipped for
+      `runs/*/plates/` (never shown in a grid). `ensureMediaBucket` and the two
+      spent scripts deleted (bucket exists; objects already migrated).
+    - `_prisma_migrations` RLS enabled (fresh projects exposed it over the Data API).
+    - PROD-MIGRATION.md rewritten: no storage copy step, no deleted scripts, and
+      an honest rollback section (Supabase is a byte backup; keys were re-keyed
+      with no reverse map).
+
+### 2026-09-24 — Review fixes: canonical, pack QA, direct-mode QA, layout overlap, chat, CI
+
+- Type: bug
+- Scope: src/app/(marketing)/{layout.tsx,tests/business-health/page.tsx}, src/lib/pipeline/{pack-qa,dashes,concepts,validate-concepts,enhance-prompt}.ts, src/lib/composition/{archetypes,templates}.ts, src/components/marketing/chat-widget.tsx, src/app/api/chat/route.ts, src/app/(app)/{studio/[runId]/studio-canvas,library/library-client}.tsx, src/lib/realtime-token.ts, .github/workflows/e2e.yml
+
+Reasoning / RCA / research:
+    - Marketing layout set `canonical: "/"`, inherited by every page without its
+      own: live /tests/business-health declared itself a homepage duplicate.
+    - Pack QA's new "plausible ADULTS" criterion failed family scenes the concept
+      prompt explicitly asks for, buying up to 2 paid re-renders each.
+    - Direct mode was judged on sceneDo/sceneDont its literal prompt never
+      stated; retries re-used the same prompt and failed identically.
+    - badge_offer at 16:9: the upward-stacked headline rose into the badge's
+      rows. A new pairwise no-overlap test reproduced it before the fix.
+    - Chat: Stop renders in Send's spot, so a double-click aborted the question
+      just asked; `slice(findIndex(...) = -1)` defeated the no-user-turn guard.
+    - Realtime token: 30-min token cached 25 min could reach the browser with 5
+      left; now 1h token, 25-min cache. e2e.yml still had Supabase storage
+      secrets and no R2 — every paid e2e generation would have failed.
+    - Dash sanitizer existed in 3 copies, all turning "3–4 days" into "3, 4
+      days"; its test also caught a pre-existing double space.
+
+Implementation summary:
+    - Fixes as above; R2_* secrets set in GitHub (piped from .env.local, never
+      printed). Two new test suites (dashes, pairwise overlap).
+
+### 2026-09-24 — Cleanup from ponytail-review/audit (two parallel clusters)
+
+- Type: refactor
+- Scope: src/lib/image/{runware,provider,gemini}.ts, src/lib/pipeline/{brand-intel,cost,vision-qa,pack-qa,placement-qa,model-qa}.ts, src/lib/composition/render.ts, src/lib/email.ts, src/app/api/send-{test-report,enquiry}/, deleted src/app/api/admin/tests/**, src/components/theme-provider.tsx; package.json (−date-fns, −dotenv, −@supabase/supabase-js)
+
+Reasoning / RCA / research:
+    - Every deletion was grep-verified for callers first; behavior-changing
+      "simplifications" were declined (e.g. dropping SMTP `verify()` would have
+      changed the error text users see and written the DB row before mail failed).
+    - Runware dimension table re-keyed with byte-identical output for every
+      reachable model/aspect; sharp `tint()` output compared byte-for-byte.
+
+Implementation summary:
+    - One Runware task helper, one vision-QA runner (fail-open unchanged), one
+      SMTP transporter/error mapper, one fidelity re-render loop, typed
+      PipelineState (7 casts gone), dead params/flags/types removed,
+      `AbortSignal.timeout` over hand-rolled timers, `process.loadEnvFile` over
+      dotenv, date-fns replaced (2000-day fuzz, 0 mismatches).
+
 ### 2026-08-04 — Brand-research refresh becomes a paid, user-triggered action; Sentry removed
 
 - Type: feature

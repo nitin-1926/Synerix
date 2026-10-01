@@ -30,7 +30,7 @@ export function LoginForm() {
         onClick={handleGoogle}
         disabled={pending}
         variant="outline"
-        className="w-full"
+        className="h-11 w-full text-[0.95rem] active:scale-[0.98] motion-reduce:active:scale-100"
         size="lg"
       >
         <svg viewBox="0 0 24 24" className="mr-2 size-4" aria-hidden>
@@ -41,10 +41,14 @@ export function LoginForm() {
         </svg>
         {pending ? "Redirecting…" : "Continue with Google"}
       </Button>
-      <p className="text-center text-xs text-muted-foreground">
+      <p className="text-xs leading-relaxed text-muted-foreground">
         Synerix Studio is invite-only. Sign in with the email your invite was sent to.
       </p>
-      {error && <p className="text-center text-sm text-destructive">{error}</p>}
+      {error && (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

@@ -6,7 +6,7 @@ import { SITE } from "@/lib/site";
  * so this is a conversion fix as much as an SEO one. */
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-export const alt = "Synerix — AI ad creatives and consulting for Indian brands";
+export const alt = "Synerix: AI ad creatives and consulting for Indian brands";
 
 export default function OpengraphImage() {
   return new ImageResponse(

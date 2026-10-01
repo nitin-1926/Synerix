@@ -7,7 +7,8 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requireWriteAccess } from "@/lib/auth";
 import { ensureBrand } from "@/lib/ensure-brand";
-import { deleteObjects, storageKeys, uploadBuffer } from "@/lib/storage";
+import { storageKeys, uploadBuffer } from "@/lib/storage";
+import { deleteUnreferencedObjects } from "@/lib/object-gc";
 import type { productDissect } from "@/trigger/product-dissect";
 import type { productCutout } from "@/trigger/product-cutout";
 
@@ -52,16 +53,26 @@ export async function createProduct(formData: FormData) {
   // this was (upload + insert) x N against storage and a database in another
   // region — five photos meant ten serial cross-region round trips while the
   // user watched a spinner.
-  const uploads = await Promise.all(
-    files.map(async (f, i) => {
-      const imageId = crypto.randomUUID();
-      const ext = f.type.split("/")[1] === "jpeg" ? "jpg" : f.type.split("/")[1];
-      const key = storageKeys.productImage(product.id, imageId, ext);
-      await uploadBuffer(key, Buffer.from(await f.arrayBuffer()), f.type);
-      return { id: imageId, productId: product.id, storageKey: key, mimeType: f.type, isPrimary: i === 0 };
-    }),
+  const uploads = files.map((f, i) => {
+    const imageId = crypto.randomUUID();
+    const ext = f.type.split("/")[1] === "jpeg" ? "jpg" : f.type.split("/")[1];
+    return {
+      file: f,
+      row: { id: imageId, productId: product.id, storageKey: storageKeys.productImage(product.id, imageId, ext), mimeType: f.type, isPrimary: i === 0 },
+    };
+  });
+  const settled = await Promise.allSettled(
+    uploads.map(async (u) => uploadBuffer(u.row.storageKey, Buffer.from(await u.file.arrayBuffer()), u.file.type)),
   );
-  await prisma.productImage.createMany({ data: uploads });
+  // All or nothing: one failed PUT used to reject the whole Promise.all AFTER
+  // the product row existed, leaving an image-less product (dissection never
+  // triggered) plus the photos that did upload as unreferenced objects.
+  if (settled.some((r) => r.status === "rejected")) {
+    await prisma.product.delete({ where: { id: product.id } });
+    await deleteUnreferencedObjects(uploads.map((u) => u.row.storageKey), `product ${product.id}`);
+    return { error: "A photo failed to upload. Please try again." };
+  }
+  await prisma.productImage.createMany({ data: uploads.map((u) => u.row) });
 
   // Both tasks read the same rows and neither depends on the other's handle.
   await Promise.all([
@@ -163,14 +174,12 @@ export async function deleteProduct(productId: string) {
 
   // Collect keys BEFORE the delete — ProductImage cascades, so after this the
   // rows are gone and the objects would be unreachable orphans.
-  const keys = product.images.flatMap((i) => [i.storageKey, i.cutoutKey].filter(Boolean) as string[]);
+  const keys = product.images.flatMap((i) => [i.storageKey, i.cutoutKey]);
   await prisma.product.delete({ where: { id: product.id } });
   // After the row is gone: a failed object delete leaves recoverable garbage,
   // whereas deleting objects first would break a live product if the DB delete
   // then failed.
-  await deleteObjects(keys).catch((e) =>
-    console.warn(`[products] object cleanup failed for ${product.id}: ${(e as Error).message}`),
-  );
+  await deleteUnreferencedObjects(keys, `product ${product.id}`);
 
   revalidatePath("/products");
   return { ok: true };

@@ -2,6 +2,7 @@ import { generateObject } from "ai";
 import { MODELS, resolveLanguageModel } from "@/lib/ai/models";
 import { conceptsResponseSchema, type CreativeConcept } from "./schemas";
 import type { CostTracker } from "./cost";
+import { stripDashes } from "./dashes";
 
 /** Banned-vocab anti-slop list (floki copy playbook). */
 const BANNED_WORDS = [
@@ -52,13 +53,6 @@ HARD RULES:
 9. paletteHexes: lead with the brand's colours; add occasion colour motifs as supporting tones. Respect the brand's voice and price band.`;
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
-const DASHES = /\s*[—–]\s*/g;
-
-/** Hard guarantee: no em/en dashes survive into rendered copy. */
-function stripDashes(text: string | null | undefined): typeof text {
-  if (!text) return text;
-  return text.replace(DASHES, ", ").replace(/,\s*,/g, ", ").trim();
-}
 
 export async function generateConcepts(
   occasionBrief: string,
@@ -100,10 +94,10 @@ export async function generateConcepts(
     c.paletteHexes = (valid.length >= 2 ? valid : [...valid, ...fallbackPalette]).slice(0, 4);
     for (const lang of ["en", "hinglish", "hi", "pa"] as const) {
       const block = c.copy[lang];
-      block.headline = stripDashes(block.headline) ?? block.headline;
-      block.subhead = stripDashes(block.subhead) ?? null;
-      block.eyebrow = stripDashes(block.eyebrow) ?? null;
-      block.cta = stripDashes(block.cta) ?? block.cta;
+      block.headline = stripDashes(block.headline);
+      block.subhead = block.subhead ? stripDashes(block.subhead) : null;
+      block.eyebrow = block.eyebrow ? stripDashes(block.eyebrow) : null;
+      block.cta = stripDashes(block.cta);
     }
     for (const lang of ["en", "hinglish"] as const) {
       const text = `${c.copy[lang].headline} ${c.copy[lang].subhead ?? ""}`.toLowerCase();

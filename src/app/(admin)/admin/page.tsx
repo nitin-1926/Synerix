@@ -1,14 +1,12 @@
 import { prisma } from "@/lib/db";
 import { getSignedThumbUrls } from "@/lib/storage";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState, StatGrid, fmtCredits, fmtInt, fmtUSD, plural } from "./admin-ui";
 import { EnterWorkspaceButton, GrantCreditsDialog, RenameWorkspaceDialog } from "./workspace-actions";
 import { NewWorkspaceDialog } from "./new-workspace-dialog";
 import { requireSuperAdmin } from "@/lib/auth";
 
-function formatUSD(n: number) {
-  return `$${n.toFixed(2)}`;
-}
+export const metadata = { title: "Workspaces | Synerix Admin" };
 
 const dateFmt = new Intl.DateTimeFormat("en-IN", {
   day: "numeric",
@@ -17,9 +15,7 @@ const dateFmt = new Intl.DateTimeFormat("en-IN", {
 });
 
 export default async function AdminWorkspacesPage() {
-  // Authorization is enforced HERE, not only in the (admin) layout: a Next.js
-  // layout is not an authorization boundary — it is skipped on RSC segment
-  // requests, so a page that trusts it can serialize admin data to anyone.
+  // requireSuperAdmin() is the auth boundary — see its docstring.
   await requireSuperAdmin();
   const [workspaces, runs, granted, spent] = await Promise.all([
     prisma.workspace.findMany({
@@ -74,40 +70,32 @@ export default async function AdminWorkspacesPage() {
   const totalCost = [...costByWs.values()].reduce((a, b) => a + b, 0);
 
   const stats = [
-    { label: "Workspaces", value: String(workspaces.length) },
-    { label: "Creatives", value: String(totalCreatives) },
-    { label: "Credits outstanding", value: String(creditsOutstanding) },
-    { label: "Total API cost", value: formatUSD(totalCost) },
+    { label: "Workspaces", value: fmtInt(workspaces.length) },
+    { label: "Creatives", value: fmtInt(totalCreatives) },
+    { label: "Credits outstanding", value: fmtCredits(creditsOutstanding) },
+    { label: "Total API cost", value: fmtUSD(totalCost) },
   ];
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold tracking-tight">Workspaces</h2>
           <p className="text-sm text-muted-foreground">Every customer you manage. Click a card to work inside their brand.</p>
         </div>
         <NewWorkspaceDialog />
       </div>
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {stats.map((s) => (
-          <Card key={s.label} className="gap-1 py-4">
-            <CardContent className="px-4">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                {s.label}
-              </p>
-              <p className="mt-1 text-2xl font-semibold tracking-tight">{s.value}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <StatGrid stats={stats} className="grid-cols-2 lg:grid-cols-4" />
 
       <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {workspaces.map((ws) => {
           const balance = Number(ws.credits?.balance ?? 0);
           const cost = costByWs.get(ws.id) ?? 0;
           const primaryBrand = ws.brands[0];
-          const brandLabel = ws.brands.map((b) => b.name).join(", ");
+          // Only the first two brands are fetched; count the rest.
+          const extraBrands = ws._count.brands - ws.brands.length;
+          const brandLabel =
+            ws.brands.map((b) => b.name).join(", ") + (extraBrands > 0 ? ` +${extraBrands}` : "");
           const logoUrl = primaryBrand?.assets[0]?.storageKey
             ? logoThumbs[primaryBrand.assets[0].storageKey]
             : null;
@@ -119,50 +107,51 @@ export default async function AdminWorkspacesPage() {
                 ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
                 : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400";
           return (
-            <Card key={ws.id} className="flex flex-col">
-              <CardHeader className="flex-row items-start gap-3 space-y-0">
-                <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border bg-muted">
+            // The Enter button's ::after stretches over the whole card, so the
+            // card is the click target; other controls sit above it (z-10).
+            <Card
+              key={ws.id}
+              className="relative flex flex-col transition-[box-shadow,transform] duration-150 hover:shadow-sm hover:ring-foreground/25 motion-safe:has-[[data-enter]:active]:scale-[0.99]"
+            >
+              <CardHeader className="flex items-start gap-3">
+                <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border bg-muted">
                   {logoUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={logoUrl} alt={primaryBrand?.name ?? ws.name} className="size-full object-contain p-1" />
                   ) : (
                     <span className="text-base font-semibold text-muted-foreground">
-                      {(primaryBrand?.name ?? ws.name).charAt(0).toUpperCase()}
+                      {ws.name.charAt(0).toUpperCase()}
                     </span>
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <CardTitle className="truncate text-base">{primaryBrand?.name ?? ws.name}</CardTitle>
+                  <CardTitle className="truncate text-base font-semibold">{ws.name}</CardTitle>
                   <p className="truncate text-xs text-muted-foreground">
-                    {ws.name}
+                    {brandLabel || "No brand yet"}
                     {" · "}
                     {ws.owner.email}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${healthClass}`}>
-                    {balance} cr
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums ${healthClass}`}>
+                    {fmtCredits(balance)} cr
                   </span>
                   <RenameWorkspaceDialog workspaceId={ws.id} workspaceName={ws.name} />
                 </div>
               </CardHeader>
-              <CardContent className="flex-1 space-y-3">
-                <div className="flex flex-wrap gap-1.5">
-                  <Badge variant="secondary">{ws._count.memberships} members</Badge>
-                  <Badge variant="secondary">{ws._count.brands} brands</Badge>
-                  <Badge variant="secondary">{creativesByWs.get(ws.id) ?? 0} creatives</Badge>
-                </div>
-                {ws.brands.length > 1 && (
-                  <p className="truncate text-xs text-muted-foreground">Brands: {brandLabel}</p>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  +{grantedByWs.get(ws.id) ?? 0} / −{spentByWs.get(ws.id) ?? 0} lifetime · API ≈{" "}
-                  {formatUSD(cost)} · {ws._count.generationRuns} runs · {dateFmt.format(ws.createdAt)}
+              <CardContent className="flex-1 space-y-1 text-xs tabular-nums">
+                <p>
+                  {plural(ws._count.memberships, "member")} · {plural(ws._count.brands, "brand")} ·{" "}
+                  {plural(creativesByWs.get(ws.id) ?? 0, "creative")} · {plural(ws._count.generationRuns, "run")}
+                </p>
+                <p className="text-muted-foreground">
+                  +{fmtCredits(grantedByWs.get(ws.id) ?? 0)} / −{fmtCredits(spentByWs.get(ws.id) ?? 0)} credits
+                  lifetime · API ≈ {fmtUSD(cost)} · since {dateFmt.format(ws.createdAt)}
                 </p>
               </CardContent>
-              <CardFooter className="gap-2">
-                <EnterWorkspaceButton workspaceId={ws.id} />
+              <CardFooter className="justify-between gap-2">
                 <GrantCreditsDialog workspaceId={ws.id} workspaceName={ws.name} balance={balance} />
+                <EnterWorkspaceButton workspaceId={ws.id} />
               </CardFooter>
             </Card>
           );
@@ -170,7 +159,13 @@ export default async function AdminWorkspacesPage() {
       </div>
 
       {workspaces.length === 0 && (
-        <p className="mt-6 text-sm text-muted-foreground">No workspaces yet.</p>
+        <div className="mt-6">
+          <EmptyState
+            title="No workspaces yet"
+            body="Create a customer workspace to set up their brand and start generating."
+            action={<NewWorkspaceDialog />}
+          />
+        </div>
       )}
     </div>
   );

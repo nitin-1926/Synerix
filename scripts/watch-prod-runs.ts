@@ -3,10 +3,9 @@
  * transitions. Used to verify the generate button end-to-end right after a
  * deploy (run with `npx tsx scripts/watch-prod-runs.ts`, Ctrl-C to stop).
  */
-import { config } from "dotenv";
+import { existsSync } from "node:fs";
 
-config({ path: ".env.local" });
-config({ path: ".env" });
+for (const file of [".env.local", ".env"]) if (existsSync(file)) process.loadEnvFile(file);
 
 const since = new Date();
 const seen = new Map<string, string>();

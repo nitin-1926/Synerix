@@ -94,7 +94,7 @@ export async function startGenerationRun(formData: FormData) {
     });
     if (!product) return { error: "Product not found" };
     if (d.fidelityMode === "EXACT_PRODUCT" && product.dissectionStatus !== "READY") {
-      return { error: "Product photos are still being analyzed — try again in a minute" };
+      return { error: "Product photos are still being analyzed. Try again in a minute" };
     }
   } else if (d.fidelityMode === "EXACT_PRODUCT") {
     return { error: "Exact-product mode needs a product selected" };
@@ -165,9 +165,8 @@ export async function startGenerationRun(formData: FormData) {
   // default. Set CREDITS_PER_ASPECT=1 to charge per rendered plate.
   const aspectMultiplier =
     process.env.CREDITS_PER_ASPECT === "1" ? Math.max(1, requestedAspects.length) : 1;
-  const cost = bakeoff
-    ? 0
-    : CREDIT_COSTS.perConcept * conceptCount * variantMultiplier * aspectMultiplier;
+  const perCreative = bakeoff ? 0 : CREDIT_COSTS.perConcept * aspectMultiplier;
+  const cost = perCreative * conceptCount * variantMultiplier;
 
   // Branding mode applies to apparel on-model only; elsewhere always branded.
   // Per-run choice wins, else the brand's default.
@@ -217,7 +216,10 @@ export async function startGenerationRun(formData: FormData) {
       throw e;
     }
 
-    await prisma.generationRun.update({ where: { id: run.id }, data: { creditsDebited: cost } });
+    await prisma.generationRun.update({
+      where: { id: run.id },
+      data: { creditsDebited: cost, creditsPerCreative: perCreative },
+    });
   }
 
   let handle;
@@ -245,10 +247,10 @@ export async function startGenerationRun(formData: FormData) {
         workspaceId: auth.workspaceId,
         generationRunId: run.id,
         owedRefund: cost,
-        note: "Generation could not be queued — refunded",
+        note: "Generation could not be queued. Refunded",
       });
     }
-    return { error: "Generation service is unavailable right now — your credits were not spent. Please try again shortly." };
+    return { error: "Generation service is unavailable right now. Your credits were not spent. Please try again shortly." };
   }
   await prisma.generationRun.update({
     where: { id: run.id },

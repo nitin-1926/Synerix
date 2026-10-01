@@ -5,6 +5,17 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Built-in hover, minus natively disabled controls: a disabled button keeps its
+   not-allowed cursor without flashing its hover colour. `:where()` adds zero
+   specificity, so className hover overrides still win exactly as before. */
+@custom-variant hover {
+  @media (hover: hover) {
+    &:where(:not(:disabled)):hover {
+      @slot;
+    }
+  }
+}
+
 /* Map the active theme's custom properties (set in themes.css) onto Tailwind
    tokens. Switching theme = swap the .theme-* class on <html>; every token
    below re-resolves automatically. */
@@ -97,7 +108,20 @@
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    /* Without this an infinite loop at 0.01ms repaints a random frame every
+       tick (pulse/shimmer flicker); one iteration ends it at rest. */
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* Skeleton sweep (src/components/ui/skeleton.tsx). */
+@keyframes skeleton-shimmer {
+  from {
+    translate: -100% 0;
+  }
+  to {
+    translate: 100% 0;
   }
 }
 

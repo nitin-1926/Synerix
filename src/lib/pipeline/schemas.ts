@@ -87,4 +87,12 @@ export interface PipelineState {
   occasionBrief?: string;
   concepts?: CreativeConcept[];
   conceptStatus?: Record<string, "rendering" | "done" | "failed">;
+  /** Set when the run took the deterministic lite path (e.g. "plain-on-model"). */
+  lite?: string;
+  briefQa?: unknown;
+  /** Optional stages that were skipped on error rather than failing the run. */
+  degraded?: string[];
+  /** Per work-item failure message, keyed like conceptStatus. */
+  errors?: Record<string, string>;
+  cost?: unknown;
 }

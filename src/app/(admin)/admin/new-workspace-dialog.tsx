@@ -47,7 +47,7 @@ export function NewWorkspaceDialog() {
         <DialogHeader>
           <DialogTitle>New customer workspace</DialogTitle>
           <DialogDescription>
-            Create the workspace now and finish brand setup + invites inside it. Nothing is gated — it goes live immediately.
+            Create the workspace now and finish brand setup + invites inside it. Nothing is gated. It goes live immediately.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4">
@@ -71,7 +71,7 @@ export function NewWorkspaceDialog() {
             <Label htmlFor="ws-url">Client website (optional)</Label>
             <Input
               id="ws-url"
-              placeholder="gillco.in — we'll pull their brand kit"
+              placeholder="gillco.in: we'll pull their brand kit"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
             />

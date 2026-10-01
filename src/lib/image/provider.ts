@@ -9,13 +9,6 @@ import { generateImage as generateRunware, downloadImage, type Aspect } from "./
 import { ASPECT_DIMENSIONS } from "@/lib/composition/types";
 import { withRetry } from "./retry";
 
-/** gpt-image-2 PNGs ship C2PA content-credential chunks that @napi-rs/canvas
- * cannot decode (its fallback throws "Invalid SVG image" downstream in the
- * compositor). Re-encode through sharp → clean, universally readable PNG. */
-async function normalizePng(buf: Buffer): Promise<Buffer> {
-  return sharp(buf).png().toBuffer();
-}
-
 export type ImageProvider = "gemini" | "seedream" | "gpt-image-2";
 /** Gemini quality tier: hero = Nano Banana Pro (max fidelity / 4K — the
  *  cascade's primary); default = Nano Banana 2 (cheap, fast backup/draft). */
@@ -37,7 +30,6 @@ export interface SceneGenParams {
   /** With `provider: "seedream"` (Runware): which Runware model id/key to use.
    * Defaults to Seedream v4. Lets one provider expose several Runware models. */
   runwareModel?: string;
-  negativePrompt?: string;
 }
 
 export interface SceneGenResult {
@@ -200,10 +192,8 @@ async function runProvider(step: ChainStep, p: SceneGenParams): Promise<SceneGen
   const refUris = (p.references ?? []).map((r) => `data:${r.mime};base64,${r.buffer.toString("base64")}`);
   const res = await generateRunware({
     prompt: p.prompt,
-    negativePrompt: p.negativePrompt,
     modelKey: step.runwareModel ?? "seedream_v4",
     aspect: p.aspect as Aspect,
-    quality: "1k",
     referenceImages: refUris.length ? refUris : undefined,
   });
   return { buffer: await downloadImage(res.imageUrl), provider, costModel: res.modelId };
@@ -263,38 +253,37 @@ async function generateGptImage2(p: SceneGenParams): Promise<Buffer> {
   const size = closestGptSize(p.aspect);
 
   const attempt = async (): Promise<Buffer> => {
-    if (p.references?.length) {
+    const refs = p.references ?? [];
+    const edit = refs.length > 0;
+    let init: RequestInit;
+    if (edit) {
       const form = new FormData();
       form.append("model", "gpt-image-2");
       form.append("prompt", p.prompt);
       form.append("size", size);
       // NOTE: no `input_fidelity` — gpt-image-1's fidelity knob was removed in
       // gpt-image-2 (the edits endpoint 400s on it; high fidelity is built in).
-      p.references.forEach((r, i) => {
+      refs.forEach((r, i) => {
         form.append("image[]", new Blob([new Uint8Array(r.buffer)], { type: r.mime }), `ref-${i}.png`);
       });
-      const r = await fetch("https://api.openai.com/v1/images/edits", {
+      init = { method: "POST", headers: { Authorization: `Bearer ${key}` }, body: form };
+    } else {
+      init = {
         method: "POST",
-        headers: { Authorization: `Bearer ${key}` },
-        body: form,
-      });
-      const text = await r.text();
-      if (!r.ok) throw new Error(`gpt-image-2 edit ${r.status}: ${text.slice(0, 300)}`);
-      const b64 = JSON.parse(text).data?.[0]?.b64_json;
-      if (!b64) throw new Error("gpt-image-2: no image");
-      return normalizePng(Buffer.from(b64, "base64"));
+        headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ model: "gpt-image-2", prompt: p.prompt, size }),
+      };
     }
 
-    const r = await fetch("https://api.openai.com/v1/images/generations", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: "gpt-image-2", prompt: p.prompt, size }),
-    });
+    const r = await fetch(`https://api.openai.com/v1/images/${edit ? "edits" : "generations"}`, init);
     const text = await r.text();
-    if (!r.ok) throw new Error(`gpt-image-2 ${r.status}: ${text.slice(0, 300)}`);
+    if (!r.ok) throw new Error(`gpt-image-2${edit ? " edit" : ""} ${r.status}: ${text.slice(0, 300)}`);
     const b64 = JSON.parse(text).data?.[0]?.b64_json;
     if (!b64) throw new Error("gpt-image-2: no image");
-    return normalizePng(Buffer.from(b64, "base64"));
+    // gpt-image-2 PNGs ship C2PA content-credential chunks that @napi-rs/canvas
+    // cannot decode (its fallback throws "Invalid SVG image" downstream in the
+    // compositor). Re-encode through sharp → clean, universally readable PNG.
+    return sharp(Buffer.from(b64, "base64")).png().toBuffer();
   };
 
   return withRetry(attempt, { label: "gpt-image-2", attempts: 3, baseDelayMs: 2000 });

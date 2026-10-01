@@ -26,7 +26,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 
 interface Member {
   membershipId: string;
@@ -61,6 +60,11 @@ const ASSIGNABLE_ROLES = [
   { value: "VIEWER", label: "Viewer" },
 ];
 
+function roleLabel(role: string) {
+  if (role === "OWNER") return "Owner";
+  return ASSIGNABLE_ROLES.find((r) => r.value === role)?.label ?? role.toLowerCase();
+}
+
 function errorMessage(e: unknown) {
   return e instanceof Error ? e.message : "Something went wrong";
 }
@@ -84,6 +88,9 @@ export function SettingsClient(props: {
   const [imageModel, setImageModel] = useState(props.imageModel ?? DEFAULT_MODEL);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("EDITOR");
+  // Two-step remove: first click arms, second confirms. Removal is one click
+  // away from locking a teammate out, so it should never be a misclick.
+  const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
 
   function run(fn: () => Promise<void>, success: string) {
     startTransition(async () => {
@@ -96,11 +103,15 @@ export function SettingsClient(props: {
     });
   }
 
+  const imageModelItems = [
+    { value: DEFAULT_MODEL, label: "Default (quality-first cascade)" },
+    ...props.imageModelOptions.map((m) => ({ value: m.key, label: m.label })),
+  ];
+
   return (
-    <div className="space-y-6">
-      {/* Workspace name */}
-      {props.canManage && (
-        <>
+    <div>
+      <Section title="Workspace" description="Your workspace name and the kind of creatives it makes.">
+        {props.canManage && (
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
             <div className="flex-1 space-y-1.5">
               <Label htmlFor="ws-name">Workspace name</Label>
@@ -119,237 +130,205 @@ export function SettingsClient(props: {
               Save
             </Button>
           </div>
-          <Separator />
-        </>
-      )}
+        )}
 
-      {/* Account type — sets the photography + concept style of future
-          generations. Editable by owner/admin; read-only for everyone else. */}
-      <div className="space-y-1.5">
-        <Label>Account type</Label>
-        <AccountTypePicker
-          value={wsType}
-          disabled={!props.canManage || pending}
-          onChange={(id) => {
-            if (id === wsType) return;
-            const prev = wsType;
-            setWsType(id);
-            startTransition(async () => {
-              try {
-                await setWorkspaceType(id);
-                toast.success("Account type updated");
-              } catch (e) {
-                setWsType(prev);
-                toast.error(errorMessage(e));
-              }
-            });
-          }}
-        />
-        <p className="text-xs text-muted-foreground">
-          Sets the photography &amp; concept style of future generations. Existing creatives are unaffected.
-        </p>
-      </div>
-      <Separator />
+        {/* Account type — sets the photography + concept style of future
+            generations. Editable by owner/admin; read-only for everyone else. */}
+        <div className="space-y-2">
+          <Label>Account type</Label>
+          <p className="text-xs text-muted-foreground">
+            Sets the photography &amp; concept style of future generations. Existing creatives are unaffected.
+          </p>
+          <AccountTypePicker
+            value={wsType}
+            disabled={!props.canManage || pending}
+            onChange={(id) => {
+              if (id === wsType) return;
+              const prev = wsType;
+              setWsType(id);
+              startTransition(async () => {
+                try {
+                  await setWorkspaceType(id);
+                  toast.success("Account type updated");
+                } catch (e) {
+                  setWsType(prev);
+                  toast.error(errorMessage(e));
+                }
+              });
+            }}
+          />
+        </div>
+      </Section>
 
       {/* Image model — platform super-admin only. Sets the model every run in
           this workspace prefers (fallback cascade kept behind it). */}
       {props.isSuperAdmin && (
-        <>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-            <div className="flex-1 space-y-1.5">
-              <Label>Image model (admin)</Label>
-              <Select
-                value={imageModel}
-                onValueChange={(v) => {
-                  if (!v || v === imageModel) return;
-                  setImageModel(v);
-                  run(() => setWorkspaceImageModel(v === DEFAULT_MODEL ? null : v), "Image model updated");
-                }}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={DEFAULT_MODEL}>Default (quality-first cascade)</SelectItem>
-                  {props.imageModelOptions.map((m) => (
-                    <SelectItem key={m.key} value={m.key}>
-                      {m.label} — {m.hint}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                Only you (platform admin) can see and change this. Every generation in this workspace prefers the chosen
-                model; the resilience fallback cascade stays behind it.
-              </p>
-            </div>
-          </div>
-          <Separator />
-        </>
-      )}
-
-      {/* Invite */}
-      {props.canManage && (
-        <form
-          className="flex flex-col gap-2 sm:flex-row sm:items-end"
-          onSubmit={(e) => {
-            e.preventDefault();
-            startTransition(async () => {
-              try {
-                const res = await inviteMember(inviteEmail, inviteRole);
-                setInviteEmail("");
-                toast.success(
-                  res?.emailSent
-                    ? "Invite email sent — they'll join when they sign in with Google"
-                    : "Invited — email delivery is off, so share the sign-in link with them yourself",
-                );
-              } catch (err) {
-                toast.error(errorMessage(err));
-              }
-            });
-          }}
+        <Section
+          title="Image model"
+          description="Only you (platform admin) can see and change this."
         >
-          <div className="flex-1 space-y-1.5">
-            <Label htmlFor="invite-email">Invite by email</Label>
-            <Input
-              id="invite-email"
-              type="email"
-              required
-              placeholder="teammate@business.com"
-              value={inviteEmail}
-              onChange={(e) => setInviteEmail(e.target.value)}
-            />
-          </div>
-          <div className="w-full space-y-1.5 sm:w-36">
-            <Label>Role</Label>
-            <Select value={inviteRole} onValueChange={(v) => v && setInviteRole(v)}>
+          <div className="space-y-1.5">
+            <Label>Preferred model</Label>
+            <Select
+              items={imageModelItems}
+              value={imageModel}
+              onValueChange={(v) => {
+                if (!v || v === imageModel) return;
+                setImageModel(v);
+                run(() => setWorkspaceImageModel(v === DEFAULT_MODEL ? null : v), "Image model updated");
+              }}
+            >
               <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {ASSIGNABLE_ROLES.map((r) => (
-                  <SelectItem key={r.value} value={r.value}>
-                    {r.label}
+                <SelectItem value={DEFAULT_MODEL}>Default (quality-first cascade)</SelectItem>
+                {props.imageModelOptions.map((m) => (
+                  <SelectItem key={m.key} value={m.key}>
+                    {m.label}: {m.hint}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            <p className="text-xs text-muted-foreground">
+              Every generation in this workspace prefers the chosen model; the resilience fallback cascade stays
+              behind it.
+            </p>
           </div>
-          <Button type="submit" disabled={pending || !inviteEmail}>
-            <UserPlus className="mr-1.5 size-4" />
-            Invite
-          </Button>
-        </form>
+        </Section>
       )}
 
-      {/* Members */}
-      <div className="space-y-2">
-        <p className="text-sm font-medium">Members ({props.members.length})</p>
-        <ul className="divide-y divide-border rounded-lg border border-border">
-          {props.members.map((m) => (
-            <li key={m.membershipId} className="flex items-center gap-3 px-4 py-3">
-              {m.image ? (
-                // eslint-disable-next-line @next/next/no-img-element -- avatar from Google, already tiny
-                <img src={m.image} alt="" className="size-8 rounded-full" />
-              ) : (
-                <span className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold uppercase text-primary">
-                  {(m.name ?? m.email).slice(0, 1)}
-                </span>
-              )}
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">
-                  {m.name ?? m.email}
-                  {m.userId === props.currentUserId && (
-                    <span className="ml-1.5 text-xs text-muted-foreground">(you)</span>
-                  )}
-                </p>
-                <p className="truncate text-xs text-muted-foreground">{m.email}</p>
-              </div>
-              {m.role === "OWNER" || !props.canManage ? (
-                <Badge variant="secondary">{m.role.toLowerCase()}</Badge>
-              ) : (
-                <div className="flex items-center gap-1">
-                  <Select
-                    value={m.role}
-                    onValueChange={(v) =>
-                      v && v !== m.role && run(() => updateMemberRole(m.membershipId, v), "Role updated")
-                    }
-                  >
-                    <SelectTrigger className="h-8 w-28 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ASSIGNABLE_ROLES.map((r) => (
-                        <SelectItem key={r.value} value={r.value}>
-                          {r.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    title="Remove member"
-                    aria-label={`Remove ${m.email}`}
-                    disabled={pending || m.userId === props.currentUserId}
-                    onClick={() => run(() => removeMember(m.membershipId), "Member removed")}
-                  >
-                    <X />
-                  </Button>
-                </div>
-              )}
-            </li>
-          ))}
-        </ul>
-      </div>
+      <Section title="Team" description="Who can use this workspace and what they can do.">
+        {props.canManage && (
+          <form
+            className="flex flex-col gap-2 sm:flex-row sm:items-end"
+            onSubmit={(e) => {
+              e.preventDefault();
+              startTransition(async () => {
+                try {
+                  const res = await inviteMember(inviteEmail, inviteRole);
+                  setInviteEmail("");
+                  toast.success(
+                    res?.emailSent
+                      ? "Invite email sent. They'll join when they sign in with Google"
+                      : "Invited. Email delivery is off, so share the sign-in link with them yourself",
+                  );
+                } catch (err) {
+                  toast.error(errorMessage(err));
+                }
+              });
+            }}
+          >
+            <div className="flex-1 space-y-1.5">
+              <Label htmlFor="invite-email">Invite by email</Label>
+              <Input
+                id="invite-email"
+                type="email"
+                required
+                placeholder="teammate@business.com"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+              />
+            </div>
+            <div className="w-full space-y-1.5 sm:w-40">
+              <Label>Role</Label>
+              <Select items={ASSIGNABLE_ROLES} value={inviteRole} onValueChange={(v) => v && setInviteRole(v)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ASSIGNABLE_ROLES.map((r) => (
+                    <SelectItem key={r.value} value={r.value}>
+                      {r.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button type="submit" disabled={pending || !inviteEmail}>
+              <UserPlus className="mr-1.5 size-4" />
+              Invite
+            </Button>
+          </form>
+        )}
 
-      {/* Pending invites */}
-      {props.invites.length > 0 && (
         <div className="space-y-2">
-          <p className="text-sm font-medium">Pending invites ({props.invites.length})</p>
-          <ul className="divide-y divide-border rounded-lg border border-dashed border-border">
-            {props.invites.map((i) => (
-              <li key={i.id} className="flex items-center gap-3 px-4 py-3">
+          <h3 className="text-sm font-medium">
+            Members <span className="ml-1 tabular-nums text-muted-foreground">{props.members.length}</span>
+          </h3>
+          <ul className="divide-y divide-border rounded-2xl border border-border">
+            {props.members.map((m) => (
+              <li key={m.membershipId} className="flex items-center gap-3 px-4 py-3">
+                {m.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- avatar from Google, already tiny
+                  <img src={m.image} alt="" className="size-9 shrink-0 rounded-full" />
+                ) : (
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold uppercase text-primary">
+                    {(m.name ?? m.email).slice(0, 1)}
+                  </span>
+                )}
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm">{i.email}</p>
-                  <p className="text-xs text-muted-foreground">
-                    Joins as {i.role.toLowerCase()} on first Google sign-in
-                    {" · "}
-                    {inviteExpiryLabel(i.expiresAt)}
+                  <p className="truncate text-sm font-medium">
+                    {m.name ?? m.email}
+                    {m.userId === props.currentUserId && (
+                      <span className="ml-1.5 text-xs font-normal text-muted-foreground">(you)</span>
+                    )}
                   </p>
+                  <p className="truncate text-xs text-muted-foreground">{m.email}</p>
                 </div>
-                {props.canManage && (
-                  <div className="flex items-center gap-1">
+                {m.role === "OWNER" || !props.canManage ? (
+                  <Badge variant="secondary">{roleLabel(m.role)}</Badge>
+                ) : confirmRemove === m.membershipId ? (
+                  <div className="flex shrink-0 items-center gap-1">
                     <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      title="Resend invite email"
-                      aria-label={`Resend invite for ${i.email}`}
+                      variant="destructive"
+                      size="sm"
+                      className="h-10 sm:h-8"
                       disabled={pending}
-                      onClick={() =>
-                        startTransition(async () => {
-                          try {
-                            const res = await resendInvite(i.id);
-                            toast.success(
-                              res?.emailSent
-                                ? "Invite email resent"
-                                : "Invite renewed, but email delivery is off",
-                            );
-                          } catch (err) {
-                            toast.error(errorMessage(err));
-                          }
-                        })
-                      }
+                      onClick={() => {
+                        setConfirmRemove(null);
+                        run(() => removeMember(m.membershipId), "Member removed");
+                      }}
                     >
-                      <Send />
+                      Remove
                     </Button>
                     <Button
                       variant="ghost"
-                      size="icon-sm"
-                      title="Revoke invite"
-                      aria-label={`Revoke invite for ${i.email}`}
-                      disabled={pending}
-                      onClick={() => run(() => revokeInvite(i.id), "Invite revoked")}
+                      size="sm"
+                      className="h-10 sm:h-8"
+                      onClick={() => setConfirmRemove(null)}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Select
+                      items={ASSIGNABLE_ROLES}
+                      value={m.role}
+                      onValueChange={(v) =>
+                        v && v !== m.role && run(() => updateMemberRole(m.membershipId, v), "Role updated")
+                      }
+                    >
+                      <SelectTrigger className="h-10 w-32 text-xs sm:h-8 sm:w-36">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ASSIGNABLE_ROLES.map((r) => (
+                          <SelectItem key={r.value} value={r.value}>
+                            {r.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-10 text-muted-foreground hover:bg-destructive/10 hover:text-destructive sm:size-8"
+                      title="Remove member"
+                      aria-label={`Remove ${m.email}`}
+                      disabled={pending || m.userId === props.currentUserId}
+                      onClick={() => setConfirmRemove(m.membershipId)}
                     >
                       <X />
                     </Button>
@@ -359,7 +338,86 @@ export function SettingsClient(props: {
             ))}
           </ul>
         </div>
-      )}
+
+        {props.invites.length > 0 && (
+          <div className="space-y-2">
+            <h3 className="text-sm font-medium">
+              Pending invites{" "}
+              <span className="ml-1 tabular-nums text-muted-foreground">{props.invites.length}</span>
+            </h3>
+            <ul className="divide-y divide-border rounded-2xl border border-dashed border-border">
+              {props.invites.map((i) => {
+                const expired = !!i.expiresAt && new Date(i.expiresAt).getTime() <= Date.now();
+                return (
+                  <li key={i.id} className="flex items-center gap-3 px-4 py-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm">{i.email}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Joins as {roleLabel(i.role).toLowerCase()} on first Google sign-in
+                        {" · "}
+                        <span className={expired ? "text-amber-700 dark:text-amber-500" : undefined}>
+                          {inviteExpiryLabel(i.expiresAt)}
+                        </span>
+                      </p>
+                    </div>
+                    {props.canManage && (
+                      <div className="flex shrink-0 items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-10 sm:size-8"
+                          title="Resend invite email"
+                          aria-label={`Resend invite for ${i.email}`}
+                          disabled={pending}
+                          onClick={() =>
+                            startTransition(async () => {
+                              try {
+                                const res = await resendInvite(i.id);
+                                toast.success(
+                                  res?.emailSent
+                                    ? "Invite email resent"
+                                    : "Invite renewed, but email delivery is off",
+                                );
+                              } catch (err) {
+                                toast.error(errorMessage(err));
+                              }
+                            })
+                          }
+                        >
+                          <Send />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-10 text-muted-foreground hover:bg-destructive/10 hover:text-destructive sm:size-8"
+                          title="Revoke invite"
+                          aria-label={`Revoke invite for ${i.email}`}
+                          disabled={pending}
+                          onClick={() => run(() => revokeInvite(i.id), "Invite revoked")}
+                        >
+                          <X />
+                        </Button>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+      </Section>
     </div>
+  );
+}
+
+function Section(props: { title: string; description: string; children: React.ReactNode }) {
+  return (
+    <section className="grid gap-5 border-t border-border py-8 first:border-t-0 first:pt-0 lg:grid-cols-[15rem_1fr] lg:gap-12">
+      <div>
+        <h2 className="text-base font-semibold">{props.title}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">{props.description}</p>
+      </div>
+      <div className="min-w-0 space-y-6">{props.children}</div>
+    </section>
   );
 }

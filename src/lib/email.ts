@@ -1,13 +1,15 @@
+import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
+import { escapeHtml } from "@/lib/html";
 
 /**
- * Transactional email for the studio app (workspace invites). Same Gmail SMTP
- * pattern as the marketing site's send-enquiry route: GMAIL_USERNAME +
- * GMAIL_PASSWORD (app password). When creds are missing, senders resolve
- * false instead of throwing — email is a courtesy, never a gate (invites
- * auto-accept on first sign-in regardless).
+ * Gmail SMTP transport shared by transactional email (workspace invites) and
+ * the marketing site's send-enquiry / send-test-report routes: GMAIL_USERNAME +
+ * GMAIL_PASSWORD (app password). Returns null when creds are missing; invite
+ * senders then resolve false instead of throwing — email is a courtesy, never
+ * a gate (invites auto-accept on first sign-in regardless).
  */
-function createTransporter() {
+export function transporter() {
   const user = process.env.GMAIL_USERNAME;
   const pass = process.env.GMAIL_PASSWORD;
   if (!user || !pass) return null;
@@ -19,11 +21,56 @@ function createTransporter() {
   });
 }
 
-const APP_URL = process.env.WEBSITE_URL ?? "https://www.synerix.in";
+/** Map a Nodemailer/SMTP send failure to a user-facing JSON error response. */
+export function smtpErrorResponse(caught: unknown, fallbackMessage: string) {
+  const error = caught as { code?: string; response?: string; message?: string };
 
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  // Check for specific Nodemailer/SMTP errors
+  let errorMessage = fallbackMessage;
+  let statusCode = 500;
+
+  if (error.code) {
+    switch (error.code) {
+      case "EAUTH":
+        errorMessage = "Email authentication failed. Please check email configuration.";
+        statusCode = 500;
+        break;
+      case "EENVELOPE":
+      case "EMESSAGE":
+        errorMessage = "Invalid email address. Please check and try again.";
+        statusCode = 400;
+        break;
+      case "ECONNECTION":
+      case "ETIMEDOUT":
+        errorMessage = "Email service temporarily unavailable. Please try again later.";
+        statusCode = 503;
+        break;
+      default:
+        if (error.response && error.response.includes("550")) {
+          errorMessage = "This email address cannot receive emails. Please use a different email.";
+          statusCode = 400;
+        }
+        break;
+    }
+  } else if (error.message) {
+    const errorMsg = error.message.toLowerCase();
+
+    if (errorMsg.includes("invalid email") || errorMsg.includes("email address")) {
+      errorMessage = "Invalid email address. Please check and try again.";
+      statusCode = 400;
+    } else if (errorMsg.includes("blocked") || errorMsg.includes("bounced")) {
+      errorMessage = "This email address cannot receive emails. Please use a different email.";
+      statusCode = 400;
+    } else if (errorMsg.includes("rate limit") || errorMsg.includes("quota")) {
+      errorMessage = "Too many emails sent. Please try again later.";
+      statusCode = 429;
+    }
+  }
+
+  return NextResponse.json({ error: errorMessage }, { status: statusCode });
 }
+
+const APP_URL = process.env.WEBSITE_URL ?? "https://www.synerix.in";
 
 /** Send a workspace invite. Returns whether the email actually went out. */
 export async function sendInviteEmail(opts: {
@@ -33,8 +80,8 @@ export async function sendInviteEmail(opts: {
   /** True when the invitee already had an account and was added directly. */
   alreadyMember: boolean;
 }): Promise<boolean> {
-  const transporter = createTransporter();
-  if (!transporter) {
+  const mailer = transporter();
+  if (!mailer) {
     console.warn("[email] GMAIL_USERNAME/GMAIL_PASSWORD not set — invite email skipped");
     return false;
   }
@@ -46,7 +93,7 @@ export async function sendInviteEmail(opts: {
     : `${inviter} invited you to the <strong>${workspace}</strong> workspace on Synerix Studio.`;
 
   try {
-    await transporter.sendMail({
+    await mailer.sendMail({
       from: `Synerix Studio <${process.env.GMAIL_USERNAME}>`,
       to: opts.to,
       subject: `You've been invited to ${opts.workspaceName} on Synerix Studio`,

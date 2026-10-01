@@ -263,7 +263,13 @@ export async function requireWriteAccess(): Promise<AuthContext> {
   return ctx;
 }
 
-/** Guard for the admin console: redirects non-super-admins to the app. */
+/**
+ * Guard for the admin console: redirects non-super-admins to the app.
+ *
+ * Every admin page must call this itself, not rely on the (admin) layout: a
+ * Next.js layout is not an authorization boundary — it is skipped on RSC
+ * segment requests, so a page that trusts it can serialize admin data to anyone.
+ */
 export async function requireSuperAdmin(): Promise<AuthContext> {
   const ctx = await requireAuth();
   if (!ctx.isSuperAdmin) redirect("/dashboard");

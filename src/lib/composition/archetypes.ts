@@ -280,9 +280,9 @@ export function buildOverlaySpec(input: ArchetypeInput): OverlaySpec {
     case "badge_offer": {
       // Offer badge top-right + headline bottom-left.
       spec.scrims.push({ direction: "bottom-up", color: "0,0,0", maxOpacity: 0.55, coverage: 0.45 });
+      const badgeSize = Math.round(W * 0.26);
       if (input.copy.eyebrow) {
         // Eyebrow doubles as the badge text (e.g. "FLAT 20% OFF").
-        const badgeSize = Math.round(W * 0.26);
         layers.push(
           baseLayer("eyebrow", input.copy.eyebrow, {
             fontSizePx: Math.round(W * 0.034), minFontSizePx: 18, align: "center",
@@ -293,7 +293,7 @@ export function buildOverlaySpec(input: ArchetypeInput): OverlaySpec {
         );
       }
       // Stack upward from the CTA so the headline, the benefit line and the
-      // pill can never collide or leave the frame on any canvas ratio.
+      // pill never collide with each other or leave the frame on any ratio.
       const badgeCtaTop = H - safeBottom - Math.round(W * 0.075);
       const badgeSubheadH = Math.round(H * 0.06);
       const badgeSubheadTop = input.copy.subhead
@@ -301,10 +301,15 @@ export function buildOverlaySpec(input: ArchetypeInput): OverlaySpec {
         : badgeCtaTop;
       const badgeHeadlineH = Math.round(H * 0.16);
       const badgeHeadlineTop = Math.max(safeTop, badgeSubheadTop - badgeHeadlineH - Math.round(H * 0.02));
+      // On a short canvas (16:9) the stack rises into the badge's rows; narrow
+      // any copy line that shares them to the column left of the badge rather
+      // than letting a long headline wrap underneath it.
+      const clearOfBadge = (top: number) =>
+        input.copy.eyebrow && top < safeTop + badgeSize ? W - pad * 2 - badgeSize - Math.round(W * 0.03) : W - pad * 2;
       layers.push(
         baseLayer("headline", input.copy.headline, {
           fontSizePx: Math.round(W * 0.08), minFontSizePx: 36, lineHeight: 1.2,
-          x: pad, y: badgeHeadlineTop, w: W - pad * 2, h: badgeHeadlineH,
+          x: pad, y: badgeHeadlineTop, w: clearOfBadge(badgeHeadlineTop), h: badgeHeadlineH,
         }),
       );
       if (input.copy.subhead) {
@@ -312,7 +317,7 @@ export function buildOverlaySpec(input: ArchetypeInput): OverlaySpec {
           baseLayer("subhead", input.copy.subhead, {
             fontWeight: 400, fontSizePx: Math.round(W * 0.03), minFontSizePx: 18,
             lineHeight: 1.4, color: "#f1e9dd",
-            x: pad, y: badgeSubheadTop, w: W - pad * 2, h: badgeSubheadH,
+            x: pad, y: badgeSubheadTop, w: clearOfBadge(badgeSubheadTop), h: badgeSubheadH,
           }),
         );
       }

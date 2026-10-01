@@ -3,7 +3,7 @@ import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { OnboardingWizard } from "./wizard";
 
-export const metadata = { title: "Set up your brand — Synerix Studio" };
+export const metadata = { title: "Set up your brand | Synerix Studio" };
 
 export default async function OnboardingPage() {
   const auth = await requireAuth();
@@ -16,7 +16,7 @@ export default async function OnboardingPage() {
 
   return (
     <div className="mx-auto max-w-xl">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3" aria-hidden>
         <span className="h-1.5 w-8 rounded-full bg-primary" />
         <span className="h-1.5 w-8 rounded-full bg-muted" />
       </div>
@@ -27,7 +27,7 @@ export default async function OnboardingPage() {
         Tell us about your business
       </h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        Paste your website and we&apos;ll learn your brand — colors, logo, voice, products. No
+        Paste your website and we&apos;ll learn your brand: colors, logo, voice, products. No
         website? Add the basics by hand, it takes a minute.
       </p>
       <div className="mt-8">

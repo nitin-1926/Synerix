@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { researchBrandIntel, type BrandIntel } from "@/lib/pipeline/brand-intel";
 import { CostTracker } from "@/lib/pipeline/cost";
 import { persistCost } from "@/lib/pipeline/cost-log";
+import { grantCredits } from "@/lib/credits";
 import type { Prisma } from "@/generated/prisma/client";
 
 /**
@@ -20,12 +21,44 @@ import type { Prisma } from "@/generated/prisma/client";
 // changes slowly; there's no value in paying for a web search on every run.
 const STALE_MS = Number(process.env.BRAND_INTEL_STALE_MS ?? 1000 * 60 * 60 * 24 * 30); // 30 days
 
+type BrandResearchPayload = {
+  brandId: string;
+  force?: boolean;
+  /** Set only by the paid manual refresh (refreshBrandIntel): what was debited,
+   * refunded by onFailure if the research never lands. */
+  charge?: { workspaceId: string; amount: number };
+};
+
 export const brandResearch = task({
   id: "brand-research",
   maxDuration: 300,
   // Idempotent + cheap to retry: it re-checks freshness before doing any work.
   retry: { maxAttempts: 2 },
-  run: async (payload: { brandId: string; force?: boolean }) => {
+  // Runs once, after the final attempt fails. A paid refresh gets its credits
+  // back and its claim released so the user can retry without the cooldown.
+  onFailure: async ({ payload, error }) => {
+    if (!payload.charge) return;
+    try {
+      await grantCredits({
+        workspaceId: payload.charge.workspaceId,
+        amount: payload.charge.amount,
+        reason: "REFUND",
+        note: "Brand research refresh failed",
+      });
+      await prisma.brand.update({
+        where: { id: payload.brandId },
+        data: { creativeIntelRequestedAt: null },
+      });
+    } catch (e) {
+      logger.error("brand-research REFUND FAILED — reconcile manually", {
+        ...payload.charge,
+        brandId: payload.brandId,
+        cause: (error as Error)?.message,
+        error: (e as Error).message,
+      });
+    }
+  },
+  run: async (payload: BrandResearchPayload) => {
     const brand = await prisma.brand.findUnique({ where: { id: payload.brandId } });
     if (!brand) return { skipped: "brand-not-found" as const };
 

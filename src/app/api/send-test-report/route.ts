@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import nodemailer from 'nodemailer';
 import { businessDiagnosticQuestions } from "@/data/website/questions";
-import { generateCategoryChart, generateRadarChart, generatePieChart } from './chart-generator';
+import { generateCategoryChart, generateRadarChart, generatePieChart, getScoreColor } from './chart-generator';
 import { prisma } from "@/lib/db";
+import { smtpErrorResponse, transporter } from "@/lib/email";
 import { escapeHtml } from "@/lib/html";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 
@@ -152,7 +152,7 @@ function generateBusinessHealthReport(
 	rawBusinessName: string,
 	rawBusinessDescription: string,
 	testScore: number,
-	answers: Array<{ questionId: string; optionId: string; weightAge: number }>,
+	categoryAnalysis: Array<{ category: string; percentage: number; score: number; total: number; questions: Array<{ question: string; answer?: string; score: number; maxScore: number }> }>,
 ) {
 	// HTML parts interpolate the escaped copies; the text/plain part must use
 	// the raw values (entities never decode in text/plain — "Johnson &amp; Sons"
@@ -160,35 +160,6 @@ function generateBusinessHealthReport(
 	const name = escapeHtml(rawName);
 	const businessName = escapeHtml(rawBusinessName);
 	const businessDescription = escapeHtml(rawBusinessDescription);
-	// Analyze answers by category
-	const categoryScores: { [key: string]: { score: number; total: number; questions: Array<{ question: string; answer?: string; score: number; maxScore: number }> } } = {};
-
-	businessDiagnosticQuestions.forEach(question => {
-		const answer = answers.find(a => a.questionId === question.id);
-		if (answer) {
-			if (!categoryScores[question.category]) {
-				categoryScores[question.category] = { score: 0, total: 0, questions: [] };
-			}
-			categoryScores[question.category].score += answer.weightAge;
-			categoryScores[question.category].total += 2; // Max score per question is 2
-			categoryScores[question.category].questions.push({
-				question: question.question,
-				answer: question.options.find(opt => opt.id === answer.optionId)?.content,
-				score: answer.weightAge,
-				maxScore: 2,
-			});
-		}
-	});
-
-	// Calculate category percentages
-	const categoryAnalysis = Object.entries(categoryScores).map(([category, data]) => ({
-		category,
-		percentage: Math.round((data.score / data.total) * 100),
-		score: data.score,
-		total: data.total,
-		questions: data.questions,
-	}));
-
 	// Identify strengths and weaknesses
 	const strengths = categoryAnalysis.filter(cat => cat.percentage >= 70).map(cat => cat.category);
 	const weaknesses = categoryAnalysis.filter(cat => cat.percentage <= 40).map(cat => cat.category);
@@ -795,13 +766,6 @@ Report Generated: ${new Date().toLocaleDateString('en-US', {
 }
 
 // Helper functions
-function getScoreColor(percentage: number): string {
-	if (percentage >= 80) return '#059669';
-	if (percentage >= 60) return '#d97706';
-	if (percentage >= 40) return '#dc2626';
-	return '#dc2626';
-}
-
 function getRiskDescription(score: number): string {
 	if (score >= 80)
 		return 'Your business shows excellent health with strong fundamentals across all areas. Focus on maintaining these high standards and exploring growth opportunities.';
@@ -907,19 +871,6 @@ const emailSchema = z.object({
 	fingerprintEventId: z.string().max(100).nullish(),
 });
 
-// Create nodemailer transporter
-const createTransporter = () => {
-	return nodemailer.createTransport({
-		host: 'smtp.gmail.com',
-		port: 587,
-		secure: false, // true for 465, false for other ports
-		auth: {
-			user: process.env.GMAIL_USERNAME,
-			pass: process.env.GMAIL_PASSWORD,
-		},
-	});
-};
-
 export async function POST(req: NextRequest) {
 	try {
 		if (!rateLimit(`send-test-report:${clientIp(req)}`, { limit: 3, windowMs: 60 * 60_000 })) {
@@ -959,18 +910,16 @@ export async function POST(req: NextRequest) {
 			);
 		}
 
-		// Check if Gmail credentials are configured
-		if (!process.env.GMAIL_USERNAME || !process.env.GMAIL_PASSWORD) {
+		// Null when Gmail credentials are not configured
+		const mailer = transporter();
+		if (!mailer) {
 			console.error('Gmail credentials not configured');
 			return NextResponse.json({ error: 'Email service not configured' }, { status: 500 });
 		}
 
-		// Create transporter
-		const transporter = createTransporter();
-
 		// Verify transporter configuration
 		try {
-			await transporter.verify();
+			await mailer.verify();
 		} catch (error) {
 			console.error('SMTP configuration error:', error);
 			return NextResponse.json({ error: 'Email service configuration error' }, { status: 500 });
@@ -1021,7 +970,7 @@ export async function POST(req: NextRequest) {
 		const safeEmail = escapeHtml(email);
 
 		// Generate comprehensive business health report
-		const reportData = generateBusinessHealthReport(name, businessName, businessDescription, testScore, answers);
+		const reportData = generateBusinessHealthReport(name, businessName, businessDescription, testScore, categoryAnalysis);
 
 		// Store test results in database
 		try {
@@ -1061,7 +1010,7 @@ export async function POST(req: NextRequest) {
 		};
 
 		try {
-			const info = await transporter.sendMail(mailOptions);
+			const info = await mailer.sendMail(mailOptions);
 
 			// Send detailed test results to admin
 			try {
@@ -1087,7 +1036,7 @@ export async function POST(req: NextRequest) {
 					replyTo: email, // Allow admin to reply directly to customer
 				};
 
-				await transporter.sendMail(adminMailOptions);
+				await mailer.sendMail(adminMailOptions);
 			} catch (adminError) {
 				console.error('Error sending admin email:', adminError);
 				// Don't fail the whole request if admin email fails
@@ -1107,51 +1056,7 @@ export async function POST(req: NextRequest) {
 			});
 		} catch (caught: unknown) {
 			console.error('Error sending email:', caught);
-			const error = caught as { code?: string; response?: string; message?: string };
-
-			// Check for specific Nodemailer/SMTP errors
-			let errorMessage = 'Failed to send verification email';
-			let statusCode = 500;
-
-			if (error.code) {
-				switch (error.code) {
-					case 'EAUTH':
-						errorMessage = 'Email authentication failed. Please check email configuration.';
-						statusCode = 500;
-						break;
-					case 'EENVELOPE':
-					case 'EMESSAGE':
-						errorMessage = 'Invalid email address. Please check and try again.';
-						statusCode = 400;
-						break;
-					case 'ECONNECTION':
-					case 'ETIMEDOUT':
-						errorMessage = 'Email service temporarily unavailable. Please try again later.';
-						statusCode = 503;
-						break;
-					default:
-						if (error.response && error.response.includes('550')) {
-							errorMessage = 'This email address cannot receive emails. Please use a different email.';
-							statusCode = 400;
-						}
-						break;
-				}
-			} else if (error.message) {
-				const errorMsg = error.message.toLowerCase();
-
-				if (errorMsg.includes('invalid email') || errorMsg.includes('email address')) {
-					errorMessage = 'Invalid email address. Please check and try again.';
-					statusCode = 400;
-				} else if (errorMsg.includes('blocked') || errorMsg.includes('bounced')) {
-					errorMessage = 'This email address cannot receive emails. Please use a different email.';
-					statusCode = 400;
-				} else if (errorMsg.includes('rate limit') || errorMsg.includes('quota')) {
-					errorMessage = 'Too many emails sent. Please try again later.';
-					statusCode = 429;
-				}
-			}
-
-			return NextResponse.json({ error: errorMessage }, { status: statusCode });
+			return smtpErrorResponse(caught, 'Failed to send verification email');
 		}
 	} catch (error) {
 		console.error('Email verification error:', error);

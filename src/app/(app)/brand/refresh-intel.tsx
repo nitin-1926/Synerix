@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,10 +10,10 @@ import { refreshBrandIntel } from "@/app/actions/brand";
  * Manual trigger for the Brand Creative Intelligence research pass.
  *
  * This is a PAID action (web-grounded research, real per-call spend), so the
- * cost is stated on the control itself rather than discovered afterwards in the
- * ledger, and the button disables while in flight — the server also enforces a
- * cooldown, but the round trip is slow enough that an undisabled button invites
- * the double-click the cooldown then has to reject.
+ * cost is stated on the control itself (and wired to it for screen readers)
+ * rather than discovered afterwards in the ledger. The server claims the slot
+ * atomically and queues the research in the background, so the button only
+ * waits for the enqueue, not for the research.
  */
 export function RefreshIntelButton({
   brandId,
@@ -25,31 +25,41 @@ export function RefreshIntelButton({
   lastRefreshedAt: string | null;
 }) {
   const [pending, start] = useTransition();
-  const [done, setDone] = useState(false);
+  const [queued, setQueued] = useState(false);
+  const costId = useId();
 
   function run() {
     start(async () => {
-      const res = await refreshBrandIntel(brandId);
-      if (res?.error) {
-        toast.error(res.error);
-        return;
+      // A server action can also REJECT (network drop, deploy mid-request, a
+      // thrown auth guard). Unhandled inside a transition that reaches the
+      // root error boundary and replaces the whole app on a paid action.
+      try {
+        const res = await refreshBrandIntel(brandId);
+        if (res?.error) {
+          toast.error(res.error);
+          return;
+        }
+        setQueued(true);
+        toast.success("Brand research started. It takes a minute or two; reload to see it.");
+      } catch {
+        toast.error("Could not reach the server. Check your credits page before retrying.");
       }
-      setDone(true);
-      toast.success(
-        res?.searchUsed
-          ? "Brand research refreshed from live web results"
-          : "Brand research refreshed",
-      );
     });
   }
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <Button onClick={run} disabled={pending || done} variant="outline" size="sm">
+      <Button
+        onClick={run}
+        disabled={pending || queued}
+        variant="outline"
+        size="sm"
+        aria-describedby={costId}
+      >
         <RefreshCw className={pending ? "animate-spin" : undefined} />
-        {pending ? "Researching…" : "Refresh research"}
+        {queued ? "Research running" : pending ? "Starting…" : "Refresh research"}
       </Button>
-      <span className="text-xs text-muted-foreground">
+      <span id={costId} className="text-xs text-muted-foreground">
         {cost} credit{cost === 1 ? "" : "s"}
         {lastRefreshedAt ? ` · last run ${lastRefreshedAt}` : " · never run"}
       </span>

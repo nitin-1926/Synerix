@@ -5,8 +5,9 @@ import { getBalance } from "@/lib/credits";
 import { getSignedThumbUrls } from "@/lib/storage";
 import { listAiModels } from "@/app/actions/models";
 import { CreateForm } from "./create-form";
+import { todayIST } from "@/lib/ist-date";
 
-export const metadata = { title: "Create — Synerix Studio" };
+export const metadata = { title: "Create | Synerix Studio" };
 
 export default async function StudioPage({
   searchParams,
@@ -49,7 +50,7 @@ export default async function StudioPage({
     params.occasion || params.entry
       ? []
       : prisma.festivalOccurrence.findMany({
-          where: { date: { gte: new Date() } },
+          where: { date: { gte: todayIST() } },
           orderBy: { date: "asc" },
           take: 10,
           include: { festival: true },

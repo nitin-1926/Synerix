@@ -116,6 +116,22 @@ describe("copy block fits the canvas (no layer may fall off the frame)", () => {
     }
   }
 
+  for (const archetype of ARCHETYPES_UNDER_TEST) {
+    for (const aspect of ASPECTS) {
+      it(`${archetype} @ ${aspect} never stacks one copy layer on another`, () => {
+        const spec = buildOverlaySpec({ ...base, archetype, aspectRatio: aspect, copy: fullCopy });
+        const ls = spec.textLayers;
+        for (let i = 0; i < ls.length; i++) {
+          for (let j = i + 1; j < ls.length; j++) {
+            const [a, b] = [ls[i], ls[j]];
+            const overlap = a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+            expect(overlap, `${a.role} overlaps ${b.role}`).toBe(false);
+          }
+        }
+      });
+    }
+  }
+
   it("every archetype renders the subhead — the benefit line used to be silently dropped by three of four", () => {
     for (const archetype of ARCHETYPES_UNDER_TEST) {
       const spec = buildOverlaySpec({ ...base, archetype, copy: fullCopy });

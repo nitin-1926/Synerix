@@ -7,16 +7,14 @@
  * Vercel environment falls back to its own deployment URL.
  */
 function resolveSiteUrl(): string {
-  const explicit = process.env.NEXT_PUBLIC_SITE_URL ?? process.env.WEBSITE_URL;
-  if (process.env.VERCEL_ENV && process.env.VERCEL_ENV !== "production") {
-    // VERCEL_URL first, and the order is the whole point: on a preview
-    // deployment VERCEL_PROJECT_PRODUCTION_URL still holds the PRODUCTION
-    // domain, so reading it first made every preview emit production
-    // canonicals — the exact deindexing risk this branch exists to prevent.
-    // VERCEL_URL is the per-deployment hostname.
-    const preview = process.env.VERCEL_URL ?? process.env.VERCEL_PROJECT_PRODUCTION_URL;
-    if (preview) return `https://${preview}`;
+  if (process.env.VERCEL_ENV && process.env.VERCEL_ENV !== "production" && process.env.VERCEL_URL) {
+    // VERCEL_URL is the per-deployment hostname (always set on Vercel). Never
+    // VERCEL_PROJECT_PRODUCTION_URL: on a preview it still holds the PRODUCTION
+    // domain, so every preview would emit production canonicals — the exact
+    // deindexing risk this branch exists to prevent.
+    return `https://${process.env.VERCEL_URL}`;
   }
+  const explicit = process.env.WEBSITE_URL;
   if (explicit) {
     try {
       return new URL(explicit).origin;
@@ -31,7 +29,6 @@ export const SITE_URL = resolveSiteUrl();
 
 export const SITE = {
   name: "Synerix",
-  legalName: "Synerix",
   tagline: "Business consulting for Indian MSMEs, and AI ad creatives that look shot, not generated.",
   email: "consulting.synerix@gmail.com",
   city: "Ludhiana",

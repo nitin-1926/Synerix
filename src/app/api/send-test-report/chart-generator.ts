@@ -1,14 +1,3 @@
-export interface ChartData {
-	labels: string[];
-	datasets: {
-		label: string;
-		data: number[];
-		backgroundColor: string[];
-		borderColor: string[];
-		borderWidth: number;
-	}[];
-}
-
 export function generateCategoryChart(categoryAnalysis: Array<{ category: string; percentage: number }>): string {
 	// Create HTML-based bar chart that works well in emails
 	let html = `
@@ -152,7 +141,7 @@ export function generatePieChart(categoryAnalysis: Array<{ category: string; per
 	return html;
 }
 
-function getScoreColor(percentage: number): string {
+export function getScoreColor(percentage: number): string {
 	if (percentage >= 80) return '#059669'; // Green
 	if (percentage >= 60) return '#d97706'; // Orange
 	if (percentage >= 40) return '#dc2626'; // Red

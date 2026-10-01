@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
-import { CREDIT_COSTS } from "@/lib/ai/models";
 import { reconcileRunRefund } from "@/lib/credits";
+import { undeliveredRefund } from "@/lib/run-pricing";
 import type { GenerationStatus } from "@/generated/prisma/client";
 
 /**
@@ -23,7 +23,16 @@ export const RUN_STALL_MS = Number(process.env.RUN_STALL_MS ?? 20 * 60 * 1000);
 export async function healStalledRun(runId: string): Promise<GenerationStatus | null> {
   const run = await prisma.generationRun.findUnique({
     where: { id: runId },
-    select: { id: true, workspaceId: true, status: true, startedAt: true, creditsDebited: true },
+    select: {
+      id: true,
+      workspaceId: true,
+      status: true,
+      startedAt: true,
+      creditsDebited: true,
+      creditsPerCreative: true,
+      conceptCount: true,
+      imageModelPref: true,
+    },
   });
   if (!run || TERMINAL.includes(run.status)) return null;
   if (Date.now() - run.startedAt.getTime() < RUN_STALL_MS) return null;
@@ -35,15 +44,15 @@ export async function healStalledRun(runId: string): Promise<GenerationStatus | 
     data: {
       status: nextStatus,
       finishedAt: new Date(),
-      error: "Run stalled (worker lost) — auto-failed",
+      error: "Run stalled (worker lost), auto-failed",
     },
   });
   if (flipped.count > 0 && Number(run.creditsDebited) > 0) {
     await reconcileRunRefund({
       workspaceId: run.workspaceId,
       generationRunId: run.id,
-      owedRefund: Number(run.creditsDebited) - delivered * CREDIT_COSTS.perConcept,
-      note: "Run stalled — automatic refund",
+      owedRefund: undeliveredRefund(run, delivered),
+      note: "Run stalled: automatic refund",
     });
   }
   return nextStatus;

@@ -18,8 +18,8 @@ export function AccountTypePicker(props: {
       {WORKSPACE_TYPES.map((t) => (
         <label
           key={t.id}
-          className={`flex items-start gap-2 rounded-md border p-2.5 text-sm transition-colors ${
-            props.disabled ? "cursor-default opacity-70" : "cursor-pointer"
+          className={`flex items-start gap-2.5 rounded-lg border p-3 text-sm transition-colors has-focus-visible:ring-3 has-focus-visible:ring-ring/50 ${
+            props.disabled ? "cursor-not-allowed opacity-70" : "cursor-pointer"
           } ${props.value === t.id ? "border-primary bg-primary/5" : "border-border" + (props.disabled ? "" : " hover:bg-muted/50")}`}
         >
           <input
@@ -30,7 +30,7 @@ export function AccountTypePicker(props: {
             onChange={() => props.onChange(t.id)}
             required={props.required}
             disabled={props.disabled}
-            className="mt-0.5"
+            className="mt-0.5 accent-primary"
           />
           <span>
             <span className="font-medium">{t.label}</span>
