@@ -3,14 +3,14 @@ import { prisma } from "@/lib/db";
 import { TestBuilder, type BuilderQuestion } from "./test-builder";
 import { requireSuperAdmin } from "@/lib/auth";
 
+export const metadata = { title: "Test editor | Synerix Admin" };
+
 export default async function AdminTestEditorPage({
   params,
 }: {
   params: Promise<{ testId: string }>;
 }) {
-  // Authorization is enforced HERE, not only in the (admin) layout: a Next.js
-  // layout is not an authorization boundary — it is skipped on RSC segment
-  // requests, so a page that trusts it can serialize admin data to anyone.
+  // requireSuperAdmin() is the auth boundary — see its docstring.
   await requireSuperAdmin();
   const { testId } = await params;
 

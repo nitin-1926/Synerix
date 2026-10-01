@@ -1,18 +1,24 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { ArrowLeft } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { requireSuperAdmin } from "@/lib/auth";
+import {
+  EmptyState,
+  RunStatusBadge,
+  StatGrid,
+  compact,
+  fmtFixed,
+  fmtInt,
+  fmtUSD,
+  num,
+  tableHeadRow,
+  tableRow,
+} from "../../admin-ui";
 
-export const metadata = { title: "Run costs — Synerix Admin" };
+export const metadata = { title: "Run costs | Synerix Admin" };
 export const dynamic = "force-dynamic";
-
-const usd2 = (n: number) => `$${n.toFixed(2)}`;
-const usd4 = (n: number) => `$${n.toFixed(4)}`;
-const num = (d: unknown) => Number(d ?? 0);
-const int = (n: number) => new Intl.NumberFormat("en-US").format(n);
-const compact = (s: string) => s.toLowerCase().replace(/_/g, "-");
 
 const dateFmt = new Intl.DateTimeFormat("en-IN", {
   day: "numeric",
@@ -38,9 +44,7 @@ export default async function AdminRunCostPage({
 }: {
   params: Promise<{ runId: string }>;
 }) {
-  // Authorization is enforced HERE, not only in the (admin) layout: a Next.js
-  // layout is not an authorization boundary — it is skipped on RSC segment
-  // requests, so a page that trusts it can serialize admin data to anyone.
+  // requireSuperAdmin() is the auth boundary — see its docstring.
   await requireSuperAdmin();
   const { runId } = await params;
 
@@ -94,7 +98,7 @@ export default async function AdminRunCostPage({
     { label: "Trigger", value: compact(run.trigger) },
     { label: "Fidelity", value: compact(run.fidelityMode) },
     { label: "Aspects", value: run.requestedAspects.join(", ") },
-    { label: "Concepts", value: String(run.conceptCount) },
+    { label: "Concepts", value: fmtInt(run.conceptCount) },
     { label: "Started", value: dateFmt.format(run.startedAt) },
     { label: "Duration", value: duration(run.startedAt, run.finishedAt) },
   ];
@@ -102,13 +106,17 @@ export default async function AdminRunCostPage({
   return (
     <div>
       <div className="flex flex-wrap items-center gap-3">
-        <Link href="/admin/costs" className="text-sm text-muted-foreground hover:text-foreground">
-          ← Costs
+        <Link
+          href="/admin/costs"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="size-4" />
+          Costs
         </Link>
         <h1 className="text-lg font-semibold tracking-tight">
           Run <span className="font-mono text-sm text-muted-foreground">{run.id.slice(0, 8)}</span>
         </h1>
-        <Badge variant="outline">{compact(run.status)}</Badge>
+        <RunStatusBadge status={run.status} />
         {run.bakeoff && <Badge variant="outline">bake-off</Badge>}
       </div>
 
@@ -121,64 +129,58 @@ export default async function AdminRunCostPage({
         ))}
       </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Card className="gap-1 py-4">
-          <CardContent className="px-4">
-            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Total API USD</p>
-            <p className="mt-1 text-2xl font-semibold tracking-tight tabular-nums">{usd2(totalUsd)}</p>
-          </CardContent>
-        </Card>
-        <Card className="gap-1 py-4">
-          <CardContent className="px-4">
-            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Credits debited</p>
-            <p className="mt-1 text-2xl font-semibold tracking-tight tabular-nums">{num(run.creditsDebited).toFixed(2)}</p>
-          </CardContent>
-        </Card>
-        <Card className="gap-1 py-4">
-          <CardContent className="px-4">
-            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">API calls</p>
-            <p className="mt-1 text-2xl font-semibold tracking-tight tabular-nums">{int(logs.length)}</p>
-          </CardContent>
-        </Card>
-      </div>
+      <StatGrid
+        className="mt-6"
+        stats={[
+          { label: "Total API USD", value: fmtUSD(totalUsd) },
+          { label: "Credits debited", value: fmtFixed(num(run.creditsDebited), 2) },
+          { label: "API calls", value: fmtInt(logs.length) },
+        ]}
+      />
 
       <h2 className="mt-8 text-sm font-semibold">Cost by stage</h2>
-      <div className="mt-2 overflow-x-auto rounded-lg border border-border">
-        <table className="w-full min-w-max text-sm">
-          <thead>
-            <tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              <th className="px-4 py-2.5">Stage</th>
-              <th className="px-4 py-2.5">Kind</th>
-              <th className="px-4 py-2.5">Provider / model</th>
-              <th className="px-4 py-2.5 text-right">Calls</th>
-              <th className="px-4 py-2.5 text-right">Tokens in / out</th>
-              <th className="px-4 py-2.5 text-right">Images</th>
-              <th className="px-4 py-2.5 text-right">USD</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {byStage.map((g) => (
-              <tr key={`${g.stage}|${g.kind}|${g.provider}|${g.model}`}>
-                <td className="px-4 py-2.5 font-medium">{g.stage}</td>
-                <td className="px-4 py-2.5">
-                  <Badge variant="outline">{g.kind}</Badge>
-                </td>
-                <td className="px-4 py-2.5 text-muted-foreground">
-                  {g.provider} · {g.model}
-                </td>
-                <td className="px-4 py-2.5 text-right tabular-nums">{int(g.calls)}</td>
-                <td className="px-4 py-2.5 text-right tabular-nums">
-                  {g.kind === "LLM" ? `${int(g.inTok)} / ${int(g.outTok)}` : "—"}
-                </td>
-                <td className="px-4 py-2.5 text-right tabular-nums">{g.kind === "IMAGE" ? int(g.images) : "—"}</td>
-                <td className="px-4 py-2.5 text-right font-medium tabular-nums">{usd4(g.usd)}</td>
+      {byStage.length === 0 ? (
+        <div className="mt-2">
+          <EmptyState
+            title="No API cost logged"
+            body="This run made no metered API calls, or it failed before its first one."
+          />
+        </div>
+      ) : (
+        <div className="mt-2 overflow-x-auto rounded-lg border border-border">
+          <table className="w-full min-w-max text-sm">
+            <thead>
+              <tr className={tableHeadRow}>
+                <th className="px-4 py-2.5">Stage</th>
+                <th className="px-4 py-2.5">Kind</th>
+                <th className="px-4 py-2.5">Provider / model</th>
+                <th className="px-4 py-2.5 text-right">Calls</th>
+                <th className="px-4 py-2.5 text-right">Tokens in / out</th>
+                <th className="px-4 py-2.5 text-right">Images</th>
+                <th className="px-4 py-2.5 text-right">USD</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {byStage.length === 0 && (
-        <p className="mt-2 text-sm text-muted-foreground">No API cost logged for this run.</p>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {byStage.map((g) => (
+                <tr key={`${g.stage}|${g.kind}|${g.provider}|${g.model}`} className={tableRow}>
+                  <td className="px-4 py-2.5 font-medium">{g.stage}</td>
+                  <td className="px-4 py-2.5">
+                    <Badge variant="outline">{g.kind}</Badge>
+                  </td>
+                  <td className="px-4 py-2.5 text-muted-foreground">
+                    {g.provider} · {g.model}
+                  </td>
+                  <td className="px-4 py-2.5 text-right tabular-nums">{fmtInt(g.calls)}</td>
+                  <td className="px-4 py-2.5 text-right tabular-nums">
+                    {g.kind === "LLM" ? `${fmtInt(g.inTok)} / ${fmtInt(g.outTok)}` : "—"}
+                  </td>
+                  <td className="px-4 py-2.5 text-right tabular-nums">{g.kind === "IMAGE" ? fmtInt(g.images) : "—"}</td>
+                  <td className="px-4 py-2.5 text-right font-medium tabular-nums">{fmtUSD(g.usd, 4)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {logs.length > 0 && (
@@ -187,7 +189,7 @@ export default async function AdminRunCostPage({
           <div className="mt-2 overflow-x-auto rounded-lg border border-border">
             <table className="w-full min-w-max text-sm">
               <thead>
-                <tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                <tr className={tableHeadRow}>
                   <th className="px-4 py-2.5">Time</th>
                   <th className="px-4 py-2.5">Stage</th>
                   <th className="px-4 py-2.5">Kind</th>
@@ -201,16 +203,16 @@ export default async function AdminRunCostPage({
               </thead>
               <tbody className="divide-y divide-border">
                 {logs.map((log) => (
-                  <tr key={log.id}>
-                    <td className="px-4 py-2 whitespace-nowrap text-muted-foreground">{timeFmt.format(log.createdAt)}</td>
+                  <tr key={log.id} className={tableRow}>
+                    <td className="px-4 py-2 whitespace-nowrap text-muted-foreground tabular-nums">{timeFmt.format(log.createdAt)}</td>
                     <td className="px-4 py-2">{log.stage}</td>
                     <td className="px-4 py-2 text-muted-foreground">{log.kind}</td>
                     <td className="px-4 py-2 text-muted-foreground">{log.provider}</td>
                     <td className="px-4 py-2 text-muted-foreground">{log.model}</td>
-                    <td className="px-4 py-2 text-right tabular-nums">{int(log.inputTokens)}</td>
-                    <td className="px-4 py-2 text-right tabular-nums">{int(log.outputTokens)}</td>
-                    <td className="px-4 py-2 text-right tabular-nums">{int(log.imageCount)}</td>
-                    <td className="px-4 py-2 text-right tabular-nums">{usd4(num(log.usd))}</td>
+                    <td className="px-4 py-2 text-right tabular-nums">{fmtInt(log.inputTokens)}</td>
+                    <td className="px-4 py-2 text-right tabular-nums">{fmtInt(log.outputTokens)}</td>
+                    <td className="px-4 py-2 text-right tabular-nums">{fmtInt(log.imageCount)}</td>
+                    <td className="px-4 py-2 text-right tabular-nums">{fmtUSD(num(log.usd), 4)}</td>
                   </tr>
                 ))}
               </tbody>

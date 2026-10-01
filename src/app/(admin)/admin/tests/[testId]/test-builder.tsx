@@ -377,183 +377,187 @@ export function TestBuilder(props: { test: BuilderTest | null; resultCount: numb
 
         {questions.length === 0 && (
           <p className="rounded-lg border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
-            No questions yet — click “Add question” to get started.
+            No questions yet. Click “Add question” to get started.
           </p>
         )}
 
-        {questions.map((q, index) => {
-          const open = openIds.has(q.id);
-          const isCustomCategory =
-            customCategoryIds.has(q.id) || (q.category !== "" && !CATEGORIES.includes(q.category));
-          const selectValue = isCustomCategory
-            ? CUSTOM_CATEGORY
-            : q.category === ""
-              ? null
-              : q.category;
-          return (
-            <Card key={q.id} className="gap-0 py-0">
-              <div className="flex w-full items-center gap-2 px-4 py-3">
-                <button
-                  type="button"
-                  className="flex min-w-0 flex-1 items-center gap-2 text-left"
-                  aria-expanded={open}
-                  onClick={() => toggleOpen(q.id)}
-                >
-                  <ChevronDown
-                    className={cn(
-                      "size-4 shrink-0 text-muted-foreground transition-transform",
-                      !open && "-rotate-90",
-                    )}
-                  />
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium">
-                    {index + 1}. {q.question.trim() || "Untitled question"}
-                  </span>
-                  {q.category && (
-                    <Badge variant="secondary" className="hidden sm:inline-flex">
-                      {q.category}
-                    </Badge>
-                  )}
-                </button>
-                <span className="flex items-center gap-0.5">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    title="Move up"
-                    aria-label={`Move question ${index + 1} up`}
-                    disabled={index === 0}
-                    onClick={() => moveQuestion(q.id, -1)}
-                  >
-                    <ArrowUp />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    title="Move down"
-                    aria-label={`Move question ${index + 1} down`}
-                    disabled={index === questions.length - 1}
-                    onClick={() => moveQuestion(q.id, 1)}
-                  >
-                    <ArrowDown />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    title="Remove question"
-                    aria-label={`Remove question ${index + 1}`}
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => removeQuestion(q.id)}
-                  >
-                    <Trash2 />
-                  </Button>
-                </span>
-              </div>
-
-              {open && (
-                <CardContent className="space-y-4 border-t border-border px-4 py-4">
-                  <div className="space-y-1.5">
-                    <Label htmlFor={`q-${q.id}-text`}>Question text</Label>
-                    <Input
-                      id={`q-${q.id}-text`}
-                      value={q.question}
-                      placeholder="Enter your question"
-                      onChange={(e) => updateQuestion(q.id, { question: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label>Category</Label>
-                    <div className="flex flex-col gap-2 sm:flex-row">
-                      <Select
-                        value={selectValue}
-                        onValueChange={(v) => {
-                          if (typeof v !== "string") return;
-                          setCustomCategoryIds((ids) => {
-                            const next = new Set(ids);
-                            if (v === CUSTOM_CATEGORY) next.add(q.id);
-                            else next.delete(q.id);
-                            return next;
-                          });
-                          updateQuestion(q.id, {
-                            category: v === CUSTOM_CATEGORY ? "" : v,
-                          });
-                        }}
-                      >
-                        <SelectTrigger className="w-full sm:w-64">
-                          <SelectValue placeholder="Select category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {CATEGORIES.map((c) => (
-                            <SelectItem key={c} value={c}>
-                              {c}
-                            </SelectItem>
-                          ))}
-                          <SelectItem value={CUSTOM_CATEGORY}>Custom…</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {isCustomCategory && (
-                        <Input
-                          value={q.category}
-                          placeholder="Custom category name"
-                          onChange={(e) => updateQuestion(q.id, { category: e.target.value })}
-                        />
+        {questions.length > 0 && (
+          <div className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
+            {questions.map((q, index) => {
+              const open = openIds.has(q.id);
+              const isCustomCategory =
+                customCategoryIds.has(q.id) || (q.category !== "" && !CATEGORIES.includes(q.category));
+              const selectValue = isCustomCategory
+                ? CUSTOM_CATEGORY
+                : q.category === ""
+                  ? null
+                  : q.category;
+              return (
+                <div key={q.id}>
+                  <div className="flex w-full items-center gap-2 px-4 py-2.5 transition-colors hover:bg-muted/40">
+                    <button
+                      type="button"
+                      className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                      aria-expanded={open}
+                      onClick={() => toggleOpen(q.id)}
+                    >
+                      <ChevronDown
+                        className={cn(
+                          "size-4 shrink-0 text-muted-foreground transition-transform duration-150 motion-reduce:transition-none",
+                          !open && "-rotate-90",
+                        )}
+                      />
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                        {index + 1}. {q.question.trim() || "Untitled question"}
+                      </span>
+                      {q.category && (
+                        <Badge variant="secondary" className="hidden sm:inline-flex">
+                          {q.category}
+                        </Badge>
                       )}
-                    </div>
+                    </button>
+                    <span className="flex items-center gap-0.5">
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        title="Move up"
+                        aria-label={`Move question ${index + 1} up`}
+                        disabled={index === 0}
+                        onClick={() => moveQuestion(q.id, -1)}
+                      >
+                        <ArrowUp />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        title="Move down"
+                        aria-label={`Move question ${index + 1} down`}
+                        disabled={index === questions.length - 1}
+                        onClick={() => moveQuestion(q.id, 1)}
+                      >
+                        <ArrowDown />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        title="Remove question"
+                        aria-label={`Remove question ${index + 1}`}
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => removeQuestion(q.id)}
+                      >
+                        <Trash2 />
+                      </Button>
+                    </span>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Options (with weightage)</Label>
-                    {q.options.map((o, optIndex) => (
-                      <div key={o.id} className="flex items-center gap-2">
-                        <span className="w-5 text-right text-sm text-muted-foreground">
-                          {optIndex + 1}.
-                        </span>
+                  {open && (
+                    <div className="space-y-4 border-t border-border bg-muted/20 px-4 py-4">
+                      <div className="space-y-1.5">
+                        <Label htmlFor={`q-${q.id}-text`}>Question text</Label>
                         <Input
-                          value={o.content}
-                          placeholder="Option text"
-                          aria-label={`Option ${optIndex + 1} text`}
-                          onChange={(e) => updateOption(q.id, o.id, { content: e.target.value })}
+                          id={`q-${q.id}-text`}
+                          value={q.question}
+                          placeholder="Enter your question"
+                          onChange={(e) => updateQuestion(q.id, { question: e.target.value })}
                         />
-                        <Select
-                          value={String(o.weightAge)}
-                          onValueChange={(v) => {
-                            if (typeof v === "string" && WEIGHTAGES.includes(v)) {
-                              updateOption(q.id, o.id, { weightAge: v });
-                            }
-                          }}
-                        >
-                          <SelectTrigger className="w-16" aria-label={`Option ${optIndex + 1} weightage`}>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {WEIGHTAGES.map((w) => (
-                              <SelectItem key={w} value={w}>
-                                {w}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          title="Remove option"
-                          aria-label={`Remove option ${optIndex + 1}`}
-                          disabled={q.options.length <= 2}
-                          onClick={() => removeOption(q.id, o.id)}
-                        >
-                          <X />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label>Category</Label>
+                        <div className="flex flex-col gap-2 sm:flex-row">
+                          <Select
+                            value={selectValue}
+                            onValueChange={(v) => {
+                              if (typeof v !== "string") return;
+                              setCustomCategoryIds((ids) => {
+                                const next = new Set(ids);
+                                if (v === CUSTOM_CATEGORY) next.add(q.id);
+                                else next.delete(q.id);
+                                return next;
+                              });
+                              updateQuestion(q.id, {
+                                category: v === CUSTOM_CATEGORY ? "" : v,
+                              });
+                            }}
+                          >
+                            <SelectTrigger className="w-full sm:w-64">
+                              <SelectValue placeholder="Select category" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {CATEGORIES.map((c) => (
+                                <SelectItem key={c} value={c}>
+                                  {c}
+                                </SelectItem>
+                              ))}
+                              <SelectItem value={CUSTOM_CATEGORY}>Custom…</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          {isCustomCategory && (
+                            <Input
+                              value={q.category}
+                              placeholder="Custom category name"
+                              onChange={(e) => updateQuestion(q.id, { category: e.target.value })}
+                            />
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Options (with weightage)</Label>
+                        {q.options.map((o, optIndex) => (
+                          <div key={o.id} className="flex items-center gap-2">
+                            <span className="w-5 text-right text-sm text-muted-foreground">
+                              {optIndex + 1}.
+                            </span>
+                            <Input
+                              value={o.content}
+                              placeholder="Option text"
+                              aria-label={`Option ${optIndex + 1} text`}
+                              onChange={(e) => updateOption(q.id, o.id, { content: e.target.value })}
+                            />
+                            <Select
+                              value={String(o.weightAge)}
+                              onValueChange={(v) => {
+                                if (typeof v === "string" && WEIGHTAGES.includes(v)) {
+                                  updateOption(q.id, o.id, { weightAge: v });
+                                }
+                              }}
+                            >
+                              <SelectTrigger className="w-16" aria-label={`Option ${optIndex + 1} weightage`}>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {WEIGHTAGES.map((w) => (
+                                  <SelectItem key={w} value={w}>
+                                    {w}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              title="Remove option"
+                              aria-label={`Remove option ${optIndex + 1}`}
+                              disabled={q.options.length <= 2}
+                              onClick={() => removeOption(q.id, o.id)}
+                            >
+                              <X />
+                            </Button>
+                          </div>
+                        ))}
+                        <Button size="sm" variant="ghost" onClick={() => addOption(q.id)}>
+                          <Plus className="mr-1 size-3.5" />
+                          Add option
                         </Button>
                       </div>
-                    ))}
-                    <Button size="sm" variant="ghost" onClick={() => addOption(q.id)}>
-                      <Plus className="mr-1 size-3.5" />
-                      Add option
-                    </Button>
-                  </div>
-                </CardContent>
-              )}
-            </Card>
-          );
-        })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Footer actions */}
@@ -569,7 +573,7 @@ export function TestBuilder(props: { test: BuilderTest | null; resultCount: numb
                 <DialogTitle>Delete this test?</DialogTitle>
                 <DialogDescription>
                   {props.resultCount > 0
-                    ? `Deletion is blocked while ${props.resultCount} result${props.resultCount === 1 ? "" : "s"} exist — deactivate the test instead.`
+                    ? `Deletion is blocked while ${props.resultCount} result${props.resultCount === 1 ? "" : "s"} exist. Deactivate the test instead.`
                     : "This permanently removes the test and its questions."}
                 </DialogDescription>
               </DialogHeader>
