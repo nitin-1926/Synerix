@@ -10,39 +10,33 @@ export const metadata = {
 };
 
 const STATS = [
-  { value: "20 questions", label: "the free Business Health Check, across 5 areas" },
-  { value: "6 service areas", label: "from cash flow to supply chain" },
-  { value: "25+ years", label: "of operator experience in MSME consulting" },
+  { value: "20", label: "questions in the free Health Check, across 5 areas" },
+  { value: "6", label: "service areas, from cash flow to supply chain" },
+  { value: "25+", label: "years of operator experience in MSME consulting" },
 ];
 
 const SERVICES = [
   {
-    n: "01",
     title: "Business Planning & Strategy",
     text: "A plan you run the business on: where the next crore comes from, and what you'll stop doing to fund it.",
   },
   {
-    n: "02",
     title: "Financial Management",
     text: "Pricing discipline, tighter receivables, and a cash-flow rhythm so you know every Monday how much runway you have.",
   },
   {
-    n: "03",
     title: "Operations & Process Improvement",
     text: "SOPs written on the shop floor and wasteful steps killed, so the business runs when you take a week off.",
   },
   {
-    n: "04",
     title: "Marketing & Branding",
     text: "Positioning a customer can repeat, and a digital presence that earns enquiries instead of just existing.",
   },
   {
-    n: "05",
     title: "Tech & Digital Transformation",
     text: "Right-sized tools for billing, inventory and CRM, adopted so your team actually uses them.",
   },
   {
-    n: "06",
     title: "Supply Chain Optimization",
     text: "Inventory that stops eating your cash, and logistics costs you can see per order.",
   },
@@ -67,6 +61,8 @@ const PILLARS = [
   },
 ];
 
+const LANGUAGES = ["English", "हिन्दी", "Hinglish", "ਪੰਜਾਬੀ"];
+
 const METHOD = [
   {
     n: "01",
@@ -89,13 +85,16 @@ export default function LandingPage() {
   return (
     <main>
       {/* ====== Hero ====== */}
-      <section className="mk-hero-bg mk-grain relative overflow-hidden bg-mk-ink pb-20 pt-40 text-white md:pb-24 md:pt-48">
+      {/* Type-only by design: no approved photography or product shots yet
+          (DEVLOG 2026-07-11). The headline carries the width instead of a
+          fake visual, and the numbers band below completes the first screen. */}
+      <section className="mk-hero-bg mk-grain relative overflow-hidden bg-mk-ink pb-14 pt-36 text-white md:pb-16 md:pt-40">
         <div className="mx-auto max-w-6xl px-5 md:px-8">
           <p className="mk-mono mk-reveal text-[11px] text-mk-cyan" style={{ animationDelay: "0ms" }}>
             MSME consulting · India
           </p>
           <h1
-            className="mk-display mk-reveal mt-6 max-w-4xl text-balance text-[2.6rem] font-medium leading-[1.04] md:text-7xl"
+            className="mk-display mk-reveal mt-6 max-w-5xl text-balance pb-1 text-[2.6rem] font-medium leading-[1.1] md:text-7xl lg:text-[5.5rem]"
             style={{ animationDelay: "90ms" }}
           >
             Your business, run like{" "}
@@ -111,32 +110,36 @@ export default function LandingPage() {
           <div className="mk-reveal mt-10 flex flex-col gap-3 sm:flex-row" style={{ animationDelay: "270ms" }}>
             <Link
               href="/tests/business-health"
-              className="group inline-flex items-center justify-center gap-2 rounded-full bg-mk-cyan px-6 py-3.5 text-sm font-semibold text-mk-ink transition hover:bg-mk-cyan-bright"
+              className="group inline-flex items-center justify-center gap-2 rounded-full bg-mk-cyan px-6 py-3.5 text-sm font-semibold text-mk-ink transition hover:bg-mk-cyan-bright active:scale-[0.98]"
             >
               Take the free Health Check
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
             </Link>
-            <a
-              href="mailto:consulting.synerix@gmail.com"
-              className="inline-flex items-center justify-center gap-2 rounded-full border border-mk-line-dark px-6 py-3.5 text-sm font-medium text-white transition hover:border-mk-cyan hover:text-mk-cyan-bright"
+            <Link
+              href="/consulting#enquiry"
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-mk-line-dark px-6 py-3.5 text-sm font-medium text-white transition hover:border-mk-cyan hover:text-mk-cyan-bright active:scale-[0.98]"
             >
               Book a conversation
-            </a>
+            </Link>
           </div>
         </div>
       </section>
 
       {/* ====== Numbers band (under the hero, not inside it) ====== */}
-      <section className="bg-mk-ink pb-16 text-white">
+      <section className="bg-mk-ink pb-16 text-white md:pb-20">
         <div className="mx-auto max-w-6xl px-5 md:px-8">
-          <div className="grid gap-6 border-t border-mk-line-dark pt-8 sm:grid-cols-3">
+          <dl className="grid grid-cols-3 gap-4 border-t border-mk-line-dark pt-8 md:gap-8">
             {STATS.map((s) => (
-              <div key={s.value}>
-                <p className="mk-display text-2xl text-white md:text-3xl">{s.value}</p>
-                <p className="mt-1 text-[13px] text-mk-mist">{s.label}</p>
+              <div key={s.value} className="flex flex-col">
+                <dt className="order-last mt-2 max-w-[16rem] text-xs leading-snug text-mk-mist md:text-[13px]">
+                  {s.label}
+                </dt>
+                <dd className="mk-display text-4xl font-medium tabular-nums text-white md:text-6xl">
+                  {s.value}
+                </dd>
               </div>
             ))}
-          </div>
+          </dl>
         </div>
       </section>
 
@@ -149,9 +152,8 @@ export default function LandingPage() {
 
           <div className="mt-14 grid gap-10 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8">
             {SERVICES.map((s) => (
-              <div key={s.n} className="border-t-2 border-mk-ink pt-5">
-                <span className="mk-mono text-[11px] text-mk-cyan-deep">{s.n}</span>
-                <h3 className="mk-display mt-3 text-xl font-medium text-mk-ink md:text-2xl">
+              <div key={s.title} className="border-t-2 border-mk-ink pt-5">
+                <h3 className="mk-display text-xl font-medium text-mk-ink md:text-2xl">
                   {s.title}
                 </h3>
                 <p className="mt-3 text-sm leading-relaxed text-mk-slate">{s.text}</p>
@@ -161,7 +163,7 @@ export default function LandingPage() {
 
           <Link
             href="/consulting"
-            className="group mt-14 inline-flex items-center gap-2 rounded-full bg-mk-ink px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-mk-navy"
+            className="group mt-14 inline-flex items-center gap-2 rounded-full bg-mk-ink px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-mk-navy active:scale-[0.98]"
           >
             See how an engagement runs
             <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
@@ -195,15 +197,20 @@ export default function LandingPage() {
           <h2 className="mk-display max-w-md text-balance text-3xl font-medium leading-tight text-mk-ink md:text-4xl">
             How we work.
           </h2>
-          <div className="mt-12 grid gap-12 md:grid-cols-3 md:gap-8">
+          <ol className="mt-12 grid gap-12 md:grid-cols-3 md:gap-10">
             {METHOD.map((m) => (
-              <div key={m.n} className="border-t-2 border-mk-ink pt-5">
-                <span className="mk-mono text-[11px] text-mk-cyan-deep">{m.n}</span>
-                <h3 className="mk-display mt-3 text-2xl font-medium text-mk-ink">{m.title}</h3>
+              <li key={m.n}>
+                <span
+                  aria-hidden
+                  className="mk-display block text-6xl font-medium leading-none tabular-nums text-mk-cyan-deep md:text-7xl"
+                >
+                  {m.n}
+                </span>
+                <h3 className="mk-display mt-6 text-2xl font-medium text-mk-ink">{m.title}</h3>
                 <p className="mt-3 text-sm leading-relaxed text-mk-slate">{m.text}</p>
-              </div>
+              </li>
             ))}
-          </div>
+          </ol>
         </div>
       </section>
 
@@ -217,13 +224,15 @@ export default function LandingPage() {
             <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-mk-mist">
               Synerix Studio turns your product photos into campaign-ready ad creatives.
             </p>
-            <p className="mk-mono mt-5 text-xs text-mk-mist">
-              English · हिन्दी · Hinglish · ਪੰਜਾਬੀ
-            </p>
+            <ul className="mk-mono mt-5 flex flex-wrap gap-x-5 gap-y-1 text-xs text-mk-mist" aria-label="Languages">
+              {LANGUAGES.map((l) => (
+                <li key={l}>{l}</li>
+              ))}
+            </ul>
           </div>
           <Link
             href="/synerix-studio"
-            className="group inline-flex shrink-0 items-center gap-2 rounded-full bg-mk-cyan px-6 py-3.5 text-sm font-semibold text-mk-ink transition hover:bg-mk-cyan-bright"
+            className="group inline-flex shrink-0 items-center gap-2 rounded-full bg-mk-cyan px-6 py-3.5 text-sm font-semibold text-mk-ink transition hover:bg-mk-cyan-bright active:scale-[0.98]"
           >
             See how it works
             <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
@@ -244,7 +253,7 @@ export default function LandingPage() {
           </p>
           <Link
             href="/tests/business-health"
-            className="group mt-9 inline-flex items-center gap-2 rounded-full bg-mk-ink px-7 py-4 text-sm font-semibold text-white transition hover:bg-mk-navy"
+            className="group mt-9 inline-flex items-center gap-2 rounded-full bg-mk-ink px-7 py-4 text-sm font-semibold text-white transition hover:bg-mk-navy active:scale-[0.98]"
           >
             Take the free Health Check
             <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />

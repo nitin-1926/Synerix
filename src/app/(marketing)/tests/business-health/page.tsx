@@ -2,7 +2,10 @@ import { prisma } from "@/lib/db";
 import { businessDiagnosticQuestions } from "@/data/website/questions";
 import { BusinessHealthWizard, type WizardQuestion } from "./wizard";
 
-export const metadata = { title: "Business Health Check" };
+export const metadata = {
+  title: "Business Health Check",
+  alternates: { canonical: "/tests/business-health" },
+};
 
 // The active test lives in the database — render per-request, not at build time.
 export const dynamic = "force-dynamic";
@@ -26,15 +29,14 @@ export default async function BusinessHealthPage() {
       {/* ====== Hero ====== */}
       <section className="mx-auto max-w-3xl px-5 pb-12 pt-32 text-center md:px-8 md:pb-16 md:pt-40">
         <p className="mk-mono text-[11px] text-mk-slate">
-          Free diagnostic · {questions.length} questions · 5 minutes
+          Free · {questions.length} questions, about 5 minutes
         </p>
         <h1 className="mk-display mt-5 text-balance text-4xl font-medium leading-tight text-mk-ink md:text-5xl">
           The Business Health Check
         </h1>
         <p className="mx-auto mt-5 max-w-xl text-pretty text-[15px] leading-relaxed text-mk-slate">
-          Twenty sharp questions across finance, people, operations, market and
-          strategy. Answer honestly, and your scored report, with concrete
-          recommendations, lands straight in your inbox.
+          Finance, people, operations, market and strategy. Answer honestly and
+          a scored report with concrete recommendations lands in your inbox.
         </p>
       </section>
 

@@ -79,6 +79,8 @@ export function EnquiryForm() {
         name="email"
         autoComplete="email"
         required
+        aria-invalid={status === "error"}
+        aria-describedby={status === "error" ? "enquiry-error" : undefined}
         value={email}
         onChange={(e) => {
           setEmail(e.target.value);
@@ -86,20 +88,20 @@ export function EnquiryForm() {
         }}
         placeholder="you@yourbusiness.in"
         disabled={status === "sending"}
-        className="mt-3 w-full rounded-xl border border-mk-line bg-white px-4 py-3.5 text-[15px] text-mk-ink placeholder:text-mk-slate/50 focus:border-mk-ink focus:outline-none disabled:opacity-60"
+        className="mt-3 w-full rounded-xl border border-mk-slate/65 bg-white px-4 py-3.5 text-[15px] text-mk-ink placeholder:text-mk-slate/80 transition focus:border-mk-cyan-deep focus:outline-none focus:ring-2 focus:ring-mk-cyan/30 disabled:opacity-60"
       />
       <button
         type="submit"
         disabled={status === "sending"}
-        className="group mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-mk-ink px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-mk-navy disabled:cursor-not-allowed disabled:opacity-60"
+        className="group mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-mk-ink px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-mk-navy active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {status === "sending" ? "Sending…" : "Request a call back"}
+        {status === "sending" ? "Sending…" : "Book a conversation"}
         {status !== "sending" && (
           <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
         )}
       </button>
       {status === "error" && (
-        <p className="mt-4 text-sm leading-relaxed text-red-700" role="alert">
+        <p id="enquiry-error" className="mt-4 text-sm leading-relaxed text-red-700" role="alert">
           {errorMessage}
         </p>
       )}

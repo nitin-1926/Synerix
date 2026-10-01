@@ -41,7 +41,7 @@ export function MarketingFooter() {
             <p className="mk-mono text-[11px] text-mk-cyan">Product</p>
             <ul className="mt-4 space-y-2.5 text-sm">
               <li><Link href="/login" className="transition-colors hover:text-white">Sign in</Link></li>
-              <li><Link href="/login" className="transition-colors hover:text-white">Get started</Link></li>
+              <li><a href="mailto:consulting.synerix@gmail.com?subject=Synerix%20Studio%20access" className="transition-colors hover:text-white">Request access</a></li>
             </ul>
           </div>
           <div>
@@ -61,7 +61,7 @@ export function MarketingFooter() {
           </div>
         </div>
 
-        <div className="mt-14 flex flex-col gap-3 border-t border-mk-line-dark pt-6 text-xs text-mk-mist/60 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-14 flex flex-col gap-3 border-t border-mk-line-dark pt-6 text-xs text-mk-mist/80 sm:flex-row sm:items-center sm:justify-between">
           <p>© {new Date().getFullYear()} Synerix. All rights reserved.</p>
           <p className="mk-mono text-[10px]">Made in India</p>
         </div>
