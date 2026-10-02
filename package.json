@@ -2,6 +2,9 @@
   "name": "synerix",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "dev": "concurrently -n next,trigger -c blue,magenta \"npm:dev:next\" \"npm:dev:trigger\"",
     "dev:next": "next dev --turbopack -p 6969",

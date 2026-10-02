@@ -67,6 +67,20 @@ New entries go at the **top** of the Log section (reverse chronological).
 
 ## Log
 
+### 2026-10-02 — Pin Node 22.x in package.json engines (Vercel dropped Node 20)
+
+- Type: build
+- Scope: package.json
+
+Reasoning / RCA / research:
+    - PR #12's preview failed before install with "Node.js Version 20.x is
+      discontinued": the Vercel project setting still said 20.x. Every deploy,
+      including the next production one from main, would have failed the same way.
+    - Pinned in the repo (`engines.node`, which Vercel honours over the project
+      setting) rather than clicking the dashboard, so the choice is versioned.
+      22.x, not 24.x: CI, e2e, the Trigger deploy workflow and the Trigger
+      runtime (`node-22`) all run 22, so this keeps one Node major everywhere.
+
 ### 2026-09-24 — Full design pass (app, admin, auth, marketing): preserve-mode polish, verified by screenshot
 
 - Type: refactor
